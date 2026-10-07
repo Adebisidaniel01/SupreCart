@@ -79,11 +79,18 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "CoreCart — Iconic Footwear" },
-      { name: "description", content: "CoreCart: iconic footwear for every step of your journey." },
+      { title: "CoreCart — Good finds, all in one place" },
+      {
+        name: "description",
+        content:
+          "Discover independent sellers and considered finds across fashion, footwear, home, tech, beauty and more.",
+      },
       { name: "author", content: "CoreCart" },
-      { property: "og:title", content: "CoreCart — Iconic Footwear" },
-      { property: "og:description", content: "Discover your next pair at CoreCart." },
+      { property: "og:title", content: "CoreCart — Good finds, all in one place" },
+      {
+        property: "og:description",
+        content: "Discover your kind of good across the CoreCart marketplace.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
@@ -121,7 +128,9 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-      <Storefront><Outlet /></Storefront>
+      <Storefront>
+        <Outlet />
+      </Storefront>
     </QueryClientProvider>
   );
 }
