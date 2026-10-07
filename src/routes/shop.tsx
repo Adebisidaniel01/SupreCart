@@ -6,7 +6,7 @@ import { ProductCard } from '@/components/storefront';
 import { products, categories, brands } from '@/lib/catalog';
 
 export const Route = createFileRoute('/shop')({
-  validateSearch: (search: Record<string, unknown>) => ({ filter: typeof search.filter === 'string' ? search.filter : 'All' }),
+  validateSearch: (search: Record<string, unknown>) => ({ filter: typeof search['filter'] === 'string' ? search['filter'] : 'All' }),
   head: () => ({ meta: [{ title: 'Shop Shoes & Sneakers — CoreCart' }, { name: 'description', content: 'Shop the CoreCart collection of iconic sneakers. Browse by brand, category and style.' }, { property: 'og:title', content: 'Shop Shoes & Sneakers — CoreCart' }, { property: 'og:description', content: 'Find your next pair in the CoreCart footwear collection.' }, { property: 'og:type', content: 'website' }, { name: 'twitter:card', content: 'summary_large_image' }] }),
   component: Shop,
 });

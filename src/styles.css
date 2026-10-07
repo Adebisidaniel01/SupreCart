@@ -22,7 +22,7 @@
 * { box-sizing: border-box; border-color: var(--border); letter-spacing: 0; }
 html { scroll-behavior: smooth; scroll-padding-top: 20px; }
 body { margin: 0; font-family: var(--font-sans); color: var(--foreground); background: var(--background); font-size: 14px; }
-a { text-decoration: none; color: inherit; } button,input,select { font-family: inherit; } button,a,input,select { -webkit-tap-highlight-color: transparent; } button { cursor:pointer; }
+a { text-decoration: none; } @layer base { a { color: inherit; } } button,input,select { font-family: inherit; } button,a,input,select { -webkit-tap-highlight-color: transparent; } button { cursor:pointer; }
 .page-width { width: calc(100% - 96px); max-width: 1320px; margin-inline: auto; }
 .announcement { height: 29px; display: flex; align-items: center; justify-content: center; gap: 7px; background: var(--primary); color: var(--primary-foreground); font-size: 10px; }
 .announcement svg { color:var(--gold); } .announcement-divider { margin-inline:3px; color:var(--muted-foreground); }
