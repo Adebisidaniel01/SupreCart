@@ -1,76 +1,32 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import {
-  ArrowRight,
-  ArrowUpRight,
-  Boxes,
-  Gem,
-  Headphones,
-  House,
-  Shirt,
-  Sparkles,
-} from "lucide-react";
+import { useEffect, useState } from "react";
+import { ArrowRight, ArrowUpRight, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { ProductCard } from "@/components/storefront";
-import { products, categories, brands, type Product } from "@/lib/catalog";
+import { ProductCard, Wordmark } from "@/components/storefront";
+import footwearCover from "@/assets/category-5.jpg";
+import { products, categories, type Product } from "@/lib/catalog";
 
-const categoryIcons = [Shirt, Boxes, House, Headphones, Gem, Sparkles];
 const featuredProducts = categories
   .map((category) => products.find((product) => product.category === category))
   .filter((product): product is Product => product !== undefined);
 const freshProducts = products.filter((product) => !featuredProducts.includes(product)).slice(-5);
 
-function BrandMark({ brand }: { brand: string }) {
-  const mark = brand.toLowerCase();
-  if (mark === "nike") {
-    return (
-      <svg viewBox="0 0 100 48" role="img" aria-label="Nike logo">
-        <path d="M4 32c7 16 22 14 38 7L97 13 43 29C23 35 12 37 4 32Z" fill="currentColor" />
-      </svg>
-    );
-  }
-  if (mark === "adidas") {
-    return (
-      <svg viewBox="0 0 58 48" role="img" aria-label="Adidas logo">
-        <path
-          d="M4 35h10L5 19l7-4 12 20h10L19 10l7-4 18 29h10L34 3l-9 5 1 2-8 5-2-3-9 5z"
-          fill="currentColor"
-        />
-      </svg>
-    );
-  }
-  if (mark === "new balance") {
-    return (
-      <svg viewBox="0 0 72 48" role="img" aria-label="New Balance logo">
-        <path
-          d="M3 36 18 9h9L13 36h-5l15-27h8L16 36h-5L26 9h8L19 36h-5L30 9h8L23 36h-5L34 9h8L27 36h-5L38 9h8L31 36h-5L42 9h8L35 36h-6L47 9h7L41 36h-6L52 9h8L45 36h-5L56 9h8L50 36h-7L64 9h5L54 36Z"
-          fill="currentColor"
-        />
-        <text x="9" y="46" fontSize="9" fontWeight="800" letterSpacing="2" fill="currentColor">
-          new balance
-        </text>
-      </svg>
-    );
-  }
-  if (mark === "vans") {
-    return (
-      <svg viewBox="0 0 78 48" role="img" aria-label="Vans logo">
-        <path d="M3 12h13l7 20 8-20h13L30 40H17Z" fill="currentColor" />
-        <text x="41" y="35" fontSize="26" fontWeight="900" fontStyle="italic" fill="currentColor">
-          V
-        </text>
-      </svg>
-    );
-  }
-  const initials = brand
-    .split(/\s|&/)
-    .filter(Boolean)
-    .map((part) => part[0])
-    .slice(0, 2)
-    .join("");
+function HomeSplash() {
+  const [visible, setVisible] = useState(true);
+
+  useEffect(() => {
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const timeout = window.setTimeout(() => setVisible(false), reducedMotion ? 700 : 1800);
+    return () => window.clearTimeout(timeout);
+  }, []);
+
+  if (!visible) return null;
+
   return (
-    <span className="brand-monogram" aria-label={`${brand} logo`} role="img">
-      {initials}
-    </span>
+    <div className="home-splash" role="status" aria-label="Loading CoreCart">
+      <Wordmark />
+      <p>Find your kind of good.</p>
+    </div>
   );
 }
 
@@ -91,6 +47,7 @@ export const Route = createFileRoute("/")({
 function Index() {
   return (
     <main className="page-width home-main">
+      <HomeSplash />
       <section className="hero marketplace-hero">
         <div className="hero-showcase" aria-label="A selection of marketplace products">
           {featuredProducts.slice(0, 4).map((product, index) => (
@@ -115,7 +72,7 @@ function Index() {
           <div className="hero-actions">
             <Button size="lg" asChild>
               <Link to="/shop" search={{ filter: "All" }}>
-                Explore the marketplace <ArrowRight />
+                Explore the marketplace
               </Link>
             </Button>
             <Button variant="outline" size="lg" asChild>
@@ -128,23 +85,6 @@ function Index() {
           <span>Good finds, from sellers worth knowing.</span>
         </div>
       </section>
-      <section className="brand-strip" id="brands">
-        <h2>BRANDS TO KNOW</h2>
-        {brands.map((brand, i) => (
-          <Link
-            className={`brand-logo brand-${i}`}
-            key={brand}
-            to="/shop"
-            search={{ filter: brand }}
-          >
-            <BrandMark brand={brand} />
-            <span>{brand}</span>
-          </Link>
-        ))}
-        <Link className="view-all" to="/shop" search={{ filter: "Brands" }}>
-          All brands <ArrowRight size={13} />
-        </Link>
-      </section>
       <section className="category-section" id="categories">
         <div className="section-heading">
           <div>
@@ -156,8 +96,9 @@ function Index() {
           </Link>
         </div>
         <div className="category-grid marketplace-categories">
-          {categories.map((category, i) => {
-            const Icon = categoryIcons[i] ?? Boxes;
+          {featuredProducts.map((product, i) => {
+            const category = product.category;
+            const cover = category === "Footwear" ? footwearCover : product.image;
             return (
               <Link
                 key={category}
@@ -166,7 +107,7 @@ function Index() {
                 className={`category category-card category-tone-${i}`}
               >
                 <div>
-                  <Icon size={29} strokeWidth={1.5} />
+                  <img src={cover} alt="" loading="lazy" />
                 </div>
                 <span>{category}</span>
                 <ArrowUpRight className="category-arrow" size={16} />

@@ -40,7 +40,6 @@ type Store = {
   setCart: React.Dispatch<React.SetStateAction<CartItem[]>>;
   toggleFavorite: (id: number) => void;
   openProduct: (product: Product) => void;
-  addQuickToCart: (product: Product) => void;
   openPanel: (panel: string) => void;
 };
 const StoreContext = createContext<Store | null>(null);
@@ -91,28 +90,6 @@ export function Storefront({ children }: { children: ReactNode }) {
     setNotice("");
     setPanel(name);
   }, []);
-  const addQuickToCart = useCallback(
-    (product: Product) => {
-      if (product.category === "Footwear") {
-        openProduct(product);
-        return;
-      }
-      setCart((items) => {
-        const existing = items.find(
-          (item) => item.product.id === product.id && item.size === "One size",
-        );
-        return existing
-          ? items.map((item) =>
-              item === existing ? { ...item, quantity: item.quantity + 1 } : item,
-            )
-          : [...items, { product, size: "One size", quantity: 1 }];
-      });
-      setNotice(`${product.name} added to your bag.`);
-      setPanel("cart");
-    },
-    [openProduct],
-  );
-
   useEffect(() => {
     try {
       const savedCart = localStorage.getItem("corecart-cart");
@@ -139,6 +116,8 @@ export function Storefront({ children }: { children: ReactNode }) {
 
   const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
   const cartSubtotal = cart.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
+  const sellerListings =
+    selected && products.filter((product) => product.seller === selected.seller).length;
   const store = useMemo(
     () => ({
       favorites,
@@ -148,19 +127,9 @@ export function Storefront({ children }: { children: ReactNode }) {
       setCart,
       toggleFavorite,
       openProduct,
-      addQuickToCart,
       openPanel,
     }),
-    [
-      favorites,
-      cart,
-      cartCount,
-      cartSubtotal,
-      toggleFavorite,
-      openProduct,
-      addQuickToCart,
-      openPanel,
-    ],
+    [favorites, cart, cartCount, cartSubtotal, toggleFavorite, openProduct, openPanel],
   );
   const navItems = [
     { label: "Home", to: "/" as const },
@@ -456,12 +425,12 @@ export function Storefront({ children }: { children: ReactNode }) {
                 </span>
               </div>
               <div className="seller-detail">
-                <span>
-                  Sold by <strong>{selected.seller}</strong>
-                </span>
-                <span>
+                <strong>Seller details</strong>
+                <span>{selected.seller}</span>
+                <span className="seller-detail-rating">
                   <Star size={13} fill="currentColor" /> {selected.sellerRating} seller rating
                 </span>
+                <span>{sellerListings} listings in this preview</span>
               </div>
               {hasSizes && (
                 <>
@@ -702,7 +671,7 @@ export function Storefront({ children }: { children: ReactNode }) {
 }
 
 export function ProductCard({ product }: { product: Product }) {
-  const { favorites, toggleFavorite, openProduct, addQuickToCart } = useStore();
+  const { favorites, toggleFavorite, openProduct } = useStore();
   const saved = favorites.includes(product.id);
   return (
     <article
@@ -752,8 +721,8 @@ export function ProductCard({ product }: { product: Product }) {
       <Button
         className="product-add-button"
         variant="outline"
-        aria-label={`Add ${product.name} to cart`}
-        onClick={() => addQuickToCart(product)}
+        aria-label={`View details and add ${product.name} to cart`}
+        onClick={() => openProduct(product)}
       >
         <ShoppingCart size={15} />
         Add to cart
