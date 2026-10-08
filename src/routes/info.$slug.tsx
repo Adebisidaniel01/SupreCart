@@ -78,7 +78,9 @@ export const Route = createFileRoute("/info/$slug")({
 
 function InfoPage() {
   const { slug } = Route.useParams();
-  const page = pages[slug] ?? pages.about;
+  const defaultPage = pages["about"];
+  if (!defaultPage) return null;
+  const page = pages[slug] ?? defaultPage;
   return (
     <main className="page-width info-page">
       <Link to="/" className="back-link">

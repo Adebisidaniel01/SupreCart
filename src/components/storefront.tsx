@@ -1,4 +1,12 @@
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import {
   ArrowRight,
@@ -32,6 +40,7 @@ type Store = {
   setCart: React.Dispatch<React.SetStateAction<CartItem[]>>;
   toggleFavorite: (id: number) => void;
   openProduct: (product: Product) => void;
+  addQuickToCart: (product: Product) => void;
   openPanel: (panel: string) => void;
 };
 const StoreContext = createContext<Store | null>(null);
@@ -64,21 +73,45 @@ export function Storefront({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
   const path = useRouterState({ select: (state) => state.location.pathname });
   const hasSizes = selected?.category === "Footwear";
-  const openProduct = (product: Product) => {
+  const openProduct = useCallback((product: Product) => {
     setSelected(product);
     setSize(product.category === "Footwear" ? "" : "One size");
     setQuantity(1);
     setNotice("");
     setPanel("product");
-  };
-  const toggleFavorite = (id: number) =>
-    setFavorites((items) =>
-      items.includes(id) ? items.filter((item) => item !== id) : [...items, id],
-    );
-  const openPanel = (name: string) => {
+  }, []);
+  const toggleFavorite = useCallback(
+    (id: number) =>
+      setFavorites((items) =>
+        items.includes(id) ? items.filter((item) => item !== id) : [...items, id],
+      ),
+    [],
+  );
+  const openPanel = useCallback((name: string) => {
     setNotice("");
     setPanel(name);
-  };
+  }, []);
+  const addQuickToCart = useCallback(
+    (product: Product) => {
+      if (product.category === "Footwear") {
+        openProduct(product);
+        return;
+      }
+      setCart((items) => {
+        const existing = items.find(
+          (item) => item.product.id === product.id && item.size === "One size",
+        );
+        return existing
+          ? items.map((item) =>
+              item === existing ? { ...item, quantity: item.quantity + 1 } : item,
+            )
+          : [...items, { product, size: "One size", quantity: 1 }];
+      });
+      setNotice(`${product.name} added to your bag.`);
+      setPanel("cart");
+    },
+    [openProduct],
+  );
 
   useEffect(() => {
     try {
@@ -115,9 +148,19 @@ export function Storefront({ children }: { children: ReactNode }) {
       setCart,
       toggleFavorite,
       openProduct,
+      addQuickToCart,
       openPanel,
     }),
-    [favorites, cart, cartCount, cartSubtotal],
+    [
+      favorites,
+      cart,
+      cartCount,
+      cartSubtotal,
+      toggleFavorite,
+      openProduct,
+      addQuickToCart,
+      openPanel,
+    ],
   );
   const navItems = [
     { label: "Home", to: "/" as const },
@@ -126,7 +169,7 @@ export function Storefront({ children }: { children: ReactNode }) {
     { label: "Footwear", to: "/shop" as const, filter: "Footwear" },
     { label: "Home & living", to: "/shop" as const, filter: "Home" },
     { label: "More", to: "/shop" as const, filter: "All" },
-  ];
+  ] as const;
 
   function addToCart() {
     if (!selected || !size) return;
@@ -157,17 +200,28 @@ export function Storefront({ children }: { children: ReactNode }) {
           className={mobileNav ? "main-nav mobile-open" : "main-nav"}
           aria-label="Main navigation"
         >
-          {navItems.map((item) => (
-            <Link
-              key={item.label}
-              to={item.to}
-              search={item.to === "/shop" ? { filter: item.filter ?? "All" } : undefined}
-              onClick={() => setMobileNav(false)}
-              className={`${path === item.to && (item.filter === "All" || path === "/") ? "nav-active" : ""}`}
-            >
-              {item.label}
-            </Link>
-          ))}
+          {navItems.map((item) =>
+            item.to === "/" ? (
+              <Link
+                key={item.label}
+                to="/"
+                onClick={() => setMobileNav(false)}
+                className={path === "/" ? "nav-active" : ""}
+              >
+                {item.label}
+              </Link>
+            ) : (
+              <Link
+                key={item.label}
+                to="/shop"
+                search={{ filter: item.filter }}
+                onClick={() => setMobileNav(false)}
+                className={path === "/shop" && item.filter === "All" ? "nav-active" : ""}
+              >
+                {item.label}
+              </Link>
+            ),
+          )}
           <Link to="/careers" onClick={() => setMobileNav(false)}>
             Careers
           </Link>
@@ -285,13 +339,15 @@ export function Storefront({ children }: { children: ReactNode }) {
           </div>
           <div className="footer-column">
             <h3>HELP & SUPPORT</h3>
-            {[
-              ["Contact us", "contact"],
-              ["Shipping", "shipping"],
-              ["Returns", "returns"],
-              ["FAQs", "faq"],
-              ["Size guide", "size"],
-            ].map(([label, slug]) => (
+            {(
+              [
+                ["Contact us", "contact"],
+                ["Shipping", "shipping"],
+                ["Returns", "returns"],
+                ["FAQs", "faq"],
+                ["Size guide", "size"],
+              ] as const
+            ).map(([label, slug]) => (
               <Link key={slug} to="/info/$slug" params={{ slug }}>
                 {label}
               </Link>
@@ -299,12 +355,14 @@ export function Storefront({ children }: { children: ReactNode }) {
           </div>
           <div className="footer-column">
             <h3>ABOUT CORECART</h3>
-            {[
-              ["Our story", "about"],
-              ["Careers", "careers"],
-              ["Privacy", "privacy"],
-              ["Terms", "terms"],
-            ].map(([label, slug]) =>
+            {(
+              [
+                ["Our story", "about"],
+                ["Careers", "careers"],
+                ["Privacy", "privacy"],
+                ["Terms", "terms"],
+              ] as const
+            ).map(([label, slug]) =>
               slug === "careers" ? (
                 <Link key={slug} to="/careers">
                   {label}
@@ -451,6 +509,11 @@ export function Storefront({ children }: { children: ReactNode }) {
           )}
           {panel === "cart" && (
             <div className="cart-content">
+              {notice && (
+                <p role="status" className="cart-confirmation">
+                  {notice}
+                </p>
+              )}
               {cart.length === 0 ? (
                 <div className="empty-state">
                   <ShoppingBag />
@@ -639,10 +702,12 @@ export function Storefront({ children }: { children: ReactNode }) {
 }
 
 export function ProductCard({ product }: { product: Product }) {
-  const { favorites, toggleFavorite, openProduct } = useStore();
+  const { favorites, toggleFavorite, openProduct, addQuickToCart } = useStore();
   const saved = favorites.includes(product.id);
   return (
-    <article className="product-card">
+    <article
+      className={`product-card product-card--${product.category.toLowerCase().replaceAll(" ", "-")}`}
+    >
       <div className="product-photo">
         <Button
           variant="ghost"
@@ -684,6 +749,15 @@ export function ProductCard({ product }: { product: Product }) {
           {product.rating} <small>({product.reviews})</small>
         </span>
       </div>
+      <Button
+        className="product-add-button"
+        variant="outline"
+        aria-label={`Add ${product.name} to cart`}
+        onClick={() => addQuickToCart(product)}
+      >
+        <ShoppingCart size={15} />
+        Add to cart
+      </Button>
     </article>
   );
 }
