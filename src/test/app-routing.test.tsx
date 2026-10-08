@@ -9,7 +9,7 @@ import { routeTree } from "@/routeTree.gen";
 describe("App routing", () => {
   const router = createRouter({ routeTree, context: { queryClient: new QueryClient() } });
 
-  it.each(["/", "/shop", "/login", "/signup", "/checkout", "/careers", "/info/contact"])(
+  it.each(["/", "/shop", "/login", "/signup", "/checkout", "/careers", "/info/contact", "/admin"])(
     "matches %s instead of falling back to not found",
     (path) => {
       const matches = router.matchRoutes(path);
