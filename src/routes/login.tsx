@@ -2,6 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState, type FormEvent } from "react";
 import { ArrowLeft, ArrowRight, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { supabase } from "@/lib/supabase";
 
 export const Route = createFileRoute("/login")({
   head: () => ({
@@ -18,9 +19,26 @@ function Login() {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
-  function signIn(event: FormEvent<HTMLFormElement>) {
+  async function signIn(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const email = String(new FormData(event.currentTarget).get("email")).trim().toLowerCase();
+    const formData = new FormData(event.currentTarget);
+    const email = String(formData.get("email")).trim().toLowerCase();
+    if (supabase) {
+      try {
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+          email,
+          password: String(formData.get("password")),
+        });
+        if (signInError) throw signInError;
+        setError("");
+        setMessage("You’re securely signed in to SupreCart.");
+      } catch (cause) {
+        console.error("Could not sign in to the SupreCart buyer account.", cause);
+        setError(cause instanceof Error ? cause.message : "Could not sign in.");
+        setMessage("");
+      }
+      return;
+    }
     const saved = localStorage.getItem("suprecart-demo-profile");
     if (!saved) {
       setError("No demo account is saved in this browser yet. Create an account to get started.");
@@ -56,7 +74,7 @@ function Login() {
           <ArrowLeft size={15} /> Back to SupreCart
         </Link>
         <div className="account-brand">
-          <span className="account-mark">C.</span>
+          <img className="account-mark" src="/suprecart-logo.png" alt="SupreCart" />
           <span>
             SUPRECART <small>YOUR MARKETPLACE</small>
           </span>
@@ -72,7 +90,11 @@ function Login() {
           <label>
             Password
             <input type="password" name="password" autoComplete="current-password" required />
-            <small>Preview only. Passwords are not checked or saved.</small>
+            <small>
+              {supabase
+                ? "Use the password you chose when you created your account."
+                : "Preview only. Passwords are not checked or saved."}
+            </small>
           </label>
           {error && (
             <p role="alert" className="form-error">
@@ -92,8 +114,10 @@ function Login() {
           New to SupreCart? <Link to="/signup">Create an account</Link>
         </p>
         <p className="demo-disclaimer">
-          <ShieldCheck size={15} /> Demo profiles live in this browser only; authentication is not
-          connected.
+          <ShieldCheck size={15} />{" "}
+          {supabase
+            ? "Your account is securely connected to SupreCart."
+            : "Demo profiles live in this browser only; authentication is not connected."}
         </p>
         {message && (
           <Button

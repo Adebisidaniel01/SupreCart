@@ -1,9 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { SlidersHorizontal, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ProductCard } from "@/components/storefront";
 import { products, categories, brands } from "@/lib/catalog";
+import { loadLiveMarketplaceProducts } from "@/lib/marketplace";
 
 export const Route = createFileRoute("/shop")({
   validateSearch: (search: Record<string, unknown>) => ({
@@ -26,10 +27,31 @@ function Shop() {
   const { filter } = Route.useSearch();
   const [sort, setSort] = useState("featured");
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const options = ["All", ...categories, ...brands];
+  const [sellerProducts, setSellerProducts] = useState<typeof products>([]);
+  const [sellerProductError, setSellerProductError] = useState("");
+  useEffect(() => {
+    let active = true;
+    void loadLiveMarketplaceProducts()
+      .then((items) => {
+        if (active) setSellerProducts(items);
+      })
+      .catch((error: unknown) => {
+        console.error("Could not load live SupreCart seller listings.", error);
+        if (active) setSellerProductError("Live seller listings could not be loaded right now.");
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+  const allProducts = useMemo(() => [...sellerProducts, ...products], [sellerProducts]);
+  const options = [
+    "All",
+    ...new Set([...categories, ...sellerProducts.map((product) => product.category)]),
+    ...new Set([...brands, ...sellerProducts.map((product) => product.brand)]),
+  ];
   const visible = useMemo(
     () =>
-      products
+      allProducts
         .filter(
           (p) =>
             filter === "All" || filter === "Brands" || p.category === filter || p.brand === filter,
@@ -37,7 +59,7 @@ function Shop() {
         .sort((a, b) =>
           sort === "low" ? a.price - b.price : sort === "high" ? b.price - a.price : a.id - b.id,
         ),
-    [filter, sort],
+    [allProducts, filter, sort],
   );
   return (
     <main className="page-width shop-main">
@@ -82,6 +104,11 @@ function Shop() {
         <strong>Made with care by independent sellers.</strong>
         <span>Paid placement</span>
       </div>
+      {sellerProductError && (
+        <p className="seller-listing-error" role="status">
+          {sellerProductError}
+        </p>
+      )}
       <div className="product-grid shop-products">
         {visible.map((p) => (
           <ProductCard key={p.id} product={p} />

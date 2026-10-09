@@ -105,7 +105,7 @@ function Admin() {
   if (loading) {
     return (
       <main className="admin-loading" role="status">
-        <span className="admin-brand-mark">C.</span>
+        <img className="admin-brand-mark" src="/suprecart-logo.png" alt="SupreCart" />
         <span>Opening your workspace…</span>
       </main>
     );
@@ -118,7 +118,7 @@ function Admin() {
           <Link to="/" className="admin-back-link">
             <ArrowLeft size={15} /> Back to SupreCart
           </Link>
-          <span className="admin-brand-mark">C.</span>
+          <img className="admin-brand-mark" src="/suprecart-logo.png" alt="SupreCart" />
           <div className="admin-lock-icon">
             <KeyRound size={20} />
           </div>
@@ -178,7 +178,7 @@ function Admin() {
             <strong>the bigger picture.</strong>
             <span>SUPRECART · ADMIN</span>
           </div>
-          <span className="admin-art-stamp">C.</span>
+          <img className="admin-art-stamp" src="/suprecart-logo.png" alt="" />
         </aside>
       </main>
     );
@@ -190,9 +190,9 @@ function Admin() {
     <main className="admin-shell">
       <aside className="admin-sidebar">
         <Link to="/" className="admin-sidebar-brand" aria-label="SupreCart home">
-          <span className="admin-brand-mark">C.</span>
+          <img className="admin-brand-mark" src="/suprecart-logo.png" alt="SupreCart" />
           <span>
-            CORE<span>CART</span>
+            SUPRECART
             <small>ADMIN STUDIO</small>
           </span>
         </Link>

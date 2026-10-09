@@ -130,7 +130,7 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-      {pathname === "/admin" ? (
+      {pathname === "/admin" || pathname.startsWith("/sellers") ? (
         <Outlet />
       ) : (
         <Storefront>

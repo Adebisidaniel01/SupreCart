@@ -1,7 +1,8 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { ArrowLeft, ArrowRight, Check, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { supabase } from "@/lib/supabase";
 
 type BuyerProfile = {
   firstName: string;
@@ -28,28 +29,111 @@ function Signup() {
   const [profile, setProfile] = useState<BuyerProfile | null>(null);
   const [code, setCode] = useState("");
   const [error, setError] = useState("");
+  const [backendMessage, setBackendMessage] = useState("");
 
-  function createProfile(event: FormEvent<HTMLFormElement>) {
+  useEffect(() => {
+    if (!supabase) return;
+    let active = true;
+    const finishVerifiedProfile = (
+      user: {
+        email?: string;
+        user_metadata?: { first_name?: string; last_name?: string; role?: string };
+      } | null,
+    ) => {
+      if (!user || !active || user.user_metadata?.role !== "buyer") return;
+      const verifiedProfile: BuyerProfile = {
+        firstName: user.user_metadata.first_name ?? "",
+        lastName: user.user_metadata.last_name ?? "",
+        email: user.email ?? "",
+        phone: "",
+        isVerified: true,
+      };
+      setProfile(verifiedProfile);
+      setStage("done");
+      setBackendMessage("Your email is verified and your buyer profile is saved to SupreCart.");
+    };
+    void supabase.auth
+      .getSession()
+      .then(({ data, error: sessionError }) => {
+        if (sessionError) {
+          console.error("Could not restore the SupreCart buyer session.", sessionError);
+          if (active) setError(sessionError.message);
+          return;
+        }
+        finishVerifiedProfile(data.session?.user ?? null);
+      })
+      .catch((cause: unknown) => {
+        console.error("Could not restore the SupreCart buyer session.", cause);
+        if (active) {
+          setError(cause instanceof Error ? cause.message : "Could not restore your account.");
+        }
+      });
+    const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+      finishVerifiedProfile(session?.user ?? null);
+    });
+    return () => {
+      active = false;
+      data.subscription.unsubscribe();
+    };
+  }, []);
+
+  async function createProfile(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const data = new FormData(event.currentTarget);
+    const formData = new FormData(event.currentTarget);
     const nextProfile = {
-      firstName: String(data.get("firstName")).trim(),
-      lastName: String(data.get("lastName")).trim(),
-      email: String(data.get("email")).trim().toLowerCase(),
-      phone: String(data.get("phone")).trim(),
+      firstName: String(formData.get("firstName")).trim(),
+      lastName: String(formData.get("lastName")).trim(),
+      email: String(formData.get("email")).trim().toLowerCase(),
+      phone: String(formData.get("phone")).trim(),
       isVerified: false,
     };
-    localStorage.setItem(profileKey, JSON.stringify(nextProfile));
     setProfile(nextProfile);
-    setStage("verify");
     setError("");
+    if (supabase) {
+      try {
+        const { data: signUpResult, error: signUpError } = await supabase.auth.signUp({
+          email: nextProfile.email,
+          password: String(formData.get("password")),
+          options: {
+            data: {
+              first_name: nextProfile.firstName,
+              last_name: nextProfile.lastName,
+              phone: nextProfile.phone,
+              role: "buyer",
+            },
+            emailRedirectTo: `${window.location.origin}/signup`,
+          },
+        });
+        if (signUpError) throw signUpError;
+        if (signUpResult.session) {
+          setStage("done");
+          setBackendMessage("Your buyer profile has been saved securely.");
+        } else {
+          setStage("verify");
+          setBackendMessage(
+            `A verification link was sent to ${nextProfile.email}. Open it to finish creating your account.`,
+          );
+        }
+      } catch (cause) {
+        console.error("Could not create the SupreCart buyer profile.", cause);
+        setError(cause instanceof Error ? cause.message : "Could not create your account.");
+        return;
+      }
+      return;
+    }
+    localStorage.setItem(profileKey, JSON.stringify(nextProfile));
+    setStage("verify");
   }
 
-  function verifyEmail(event: FormEvent<HTMLFormElement>) {
+  async function verifyEmail(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!profile) {
       setError("Please enter your account details before verifying your email.");
       setStage("details");
+      return;
+    }
+    if (supabase) {
+      setError("Use the verification link sent to your email. No code needs to be entered.");
       return;
     }
     if (code !== "424242") {
@@ -70,7 +154,7 @@ function Signup() {
           <ArrowLeft size={15} /> Back to SupreCart
         </Link>
         <div className="account-brand">
-          <span className="account-mark">C.</span>
+          <img className="account-mark" src="/suprecart-logo.png" alt="SupreCart" />
           <span>
             SUPRECART <small>YOUR MARKETPLACE</small>
           </span>
@@ -108,7 +192,11 @@ function Signup() {
                   minLength={8}
                   required
                 />
-                <small>At least 8 characters. This preview does not store your password.</small>
+                <small>
+                  {supabase
+                    ? "At least 8 characters. Use a unique password."
+                    : "At least 8 characters. This preview does not store your password."}
+                </small>
               </label>
               <Button size="lg" type="submit">
                 Create account <ArrowRight size={16} />
@@ -118,8 +206,10 @@ function Signup() {
               Already have an account? <Link to="/login">Sign in</Link>
             </p>
             <p className="demo-disclaimer">
-              <ShieldCheck size={15} /> Account details stay in this browser demo. Verification
-              email is simulated; no email is sent.
+              <ShieldCheck size={15} />{" "}
+              {supabase
+                ? "Your buyer profile is stored securely and your email will be verified before access."
+                : "Account details stay in this browser demo. Verification email is simulated; no email is sent."}
             </p>
           </>
         )}
@@ -131,33 +221,46 @@ function Signup() {
               Enter the 6-digit code to finish setting up {profile?.email}.
             </p>
             <form className="account-form" onSubmit={verifyEmail}>
-              <label>
-                Verification code
-                <input
-                  inputMode="numeric"
-                  pattern="[0-9]{6}"
-                  maxLength={6}
-                  value={code}
-                  onChange={(event) => setCode(event.target.value)}
-                  placeholder="000000"
-                  required
-                />
-              </label>
-              <p className="demo-code">
-                Preview verification code: <strong>424242</strong>
-              </p>
+              {supabase ? (
+                <p className="account-intro">
+                  Check your inbox for the SupreCart verification link. This page will finish your
+                  account setup when you return.
+                </p>
+              ) : (
+                <>
+                  <label>
+                    Verification code
+                    <input
+                      inputMode="numeric"
+                      pattern="[0-9]{6}"
+                      maxLength={6}
+                      value={code}
+                      onChange={(event) => setCode(event.target.value)}
+                      placeholder="000000"
+                      required
+                    />
+                  </label>
+                  <p className="demo-code">
+                    Preview verification code: <strong>424242</strong>
+                  </p>
+                </>
+              )}
               {error && (
                 <p role="alert" className="form-error">
                   {error}
                 </p>
               )}
-              <Button size="lg" type="submit">
-                Verify email <ArrowRight size={16} />
-              </Button>
+              {!supabase && (
+                <Button size="lg" type="submit">
+                  Verify email <ArrowRight size={16} />
+                </Button>
+              )}
             </form>
             <p className="demo-disclaimer">
-              <ShieldCheck size={15} /> This is a browser-only demonstration. No verification email
-              was sent.
+              <ShieldCheck size={15} />{" "}
+              {supabase
+                ? backendMessage
+                : "This is a browser-only demonstration. No verification email was sent."}
             </p>
           </>
         )}
@@ -169,13 +272,16 @@ function Signup() {
             <p className="eyebrow">ALL SET</p>
             <h1>You’re in, {profile?.firstName}.</h1>
             <p className="account-intro">
-              Your demo profile is verified on this browser. Go find something good.
+              {backendMessage ||
+                "Your demo profile is verified on this browser. Go find something good."}
             </p>
             <Button size="lg" onClick={() => navigate({ to: "/shop", search: { filter: "All" } })}>
               Explore the marketplace <ArrowRight size={16} />
             </Button>
             <p className="demo-disclaimer">
-              Preview account only. No real account or email verification service is connected.
+              {supabase
+                ? "Your buyer account is connected to SupreCart."
+                : "Preview account only. No real account or email verification service is connected."}
             </p>
           </div>
         )}

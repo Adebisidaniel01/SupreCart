@@ -115,12 +115,16 @@ button {
   gap: 24px;
 }
 .wordmark {
-  font-size: 29px;
-  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
   white-space: nowrap;
 }
-.wordmark span {
-  color: var(--gold);
+.wordmark img {
+  display: block;
+  width: 178px;
+  height: 48px;
+  object-fit: contain;
+  mix-blend-mode: multiply;
 }
 .main-nav {
   display: flex;
@@ -843,6 +847,10 @@ button {
 .collection-empty h2 {
   font-size: 23px;
 }
+.header .wordmark img {
+  width: 139px;
+  height: 42px;
+}
 .collection-empty p {
   color: var(--muted-foreground);
   margin-block: 15px 25px;
@@ -1491,12 +1499,15 @@ body {
   gap: 20px;
 }
 .wordmark {
-  font-size: 27px;
-  font-weight: 750;
-  letter-spacing: -0.055em;
+  display: inline-flex;
+  align-items: center;
 }
-.wordmark span {
-  color: #8d9c70;
+.wordmark img {
+  display: block;
+  width: 178px;
+  height: 48px;
+  object-fit: contain;
+  mix-blend-mode: multiply;
 }
 .main-nav {
   gap: 22px;
@@ -1853,6 +1864,10 @@ body {
 .footer .wordmark {
   letter-spacing: -0.05em;
 }
+.footer .wordmark img {
+  width: 158px;
+  height: 44px;
+}
 .footer-about > p {
   max-width: 230px;
 }
@@ -2068,6 +2083,15 @@ body {
   font-family: Georgia, serif;
   font-size: 21px;
   letter-spacing: -0.07em;
+}
+.account-mark {
+  width: 174px;
+  height: 68px;
+  padding: 0;
+  object-fit: contain;
+  border-radius: 0;
+  background: transparent;
+  mix-blend-mode: multiply;
 }
 .account-panel > .eyebrow,
 .account-success > .eyebrow {
@@ -3262,10 +3286,11 @@ body {
 }
 .home-splash .wordmark {
   color: #263b31;
-  font-size: clamp(42px, 8vw, 68px);
+  width: min(78vw, 310px);
 }
-.home-splash .wordmark span {
-  color: #627b50;
+.home-splash .wordmark img {
+  width: 100%;
+  height: auto;
 }
 .home-splash p {
   margin: 0;
@@ -3339,17 +3364,15 @@ body {
   font-size: 13px;
 }
 .admin-brand-mark {
-  display: grid;
+  display: block;
   flex: 0 0 auto;
-  place-items: center;
-  width: 42px;
-  height: 42px;
-  border-radius: 13px;
-  background: #d4ed78;
-  color: #213729;
-  font-size: 24px;
-  font-weight: 700;
-  letter-spacing: -0.12em;
+  width: 176px;
+  height: 58px;
+  object-fit: contain;
+  object-position: left center;
+  border-radius: 0;
+  background: transparent;
+  mix-blend-mode: multiply;
 }
 .admin-login {
   display: grid;
@@ -3551,13 +3574,12 @@ body {
 }
 .admin-art-stamp {
   position: absolute;
-  right: 7%;
-  bottom: 4%;
-  color: rgb(234 241 220 / 8%);
-  font-size: clamp(140px, 25vw, 330px);
-  font-weight: 700;
-  letter-spacing: -0.14em;
-  line-height: 0.8;
+  right: -10%;
+  bottom: 8%;
+  width: min(80%, 730px);
+  height: auto;
+  opacity: 0.08;
+  mix-blend-mode: screen;
 }
 .admin-shell {
   display: grid;

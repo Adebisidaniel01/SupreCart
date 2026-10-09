@@ -14,6 +14,7 @@ import { Route as AdminRouteImport } from './routes/admin'
 import { Route as CareersRouteImport } from './routes/careers'
 import { Route as CheckoutRouteImport } from './routes/checkout'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as SellersRouteImport } from './routes/sellers'
 import { Route as ShopRouteImport } from './routes/shop'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as InfoSlugRouteImport } from './routes/info.$slug'
@@ -43,6 +44,11 @@ const LoginRoute = LoginRouteImport.update({
   path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SellersRoute = SellersRouteImport.update({
+  id: '/sellers',
+  path: '/sellers',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ShopRoute = ShopRouteImport.update({
   id: '/shop',
   path: '/shop',
@@ -65,6 +71,7 @@ export interface FileRoutesByFullPath {
   '/careers': typeof CareersRoute
   '/checkout': typeof CheckoutRoute
   '/login': typeof LoginRoute
+  '/sellers': typeof SellersRoute
   '/shop': typeof ShopRoute
   '/signup': typeof SignupRoute
   '/info/$slug': typeof InfoSlugRoute
@@ -75,6 +82,7 @@ export interface FileRoutesByTo {
   '/careers': typeof CareersRoute
   '/checkout': typeof CheckoutRoute
   '/login': typeof LoginRoute
+  '/sellers': typeof SellersRoute
   '/shop': typeof ShopRoute
   '/signup': typeof SignupRoute
   '/info/$slug': typeof InfoSlugRoute
@@ -86,6 +94,7 @@ export interface FileRoutesById {
   '/careers': typeof CareersRoute
   '/checkout': typeof CheckoutRoute
   '/login': typeof LoginRoute
+  '/sellers': typeof SellersRoute
   '/shop': typeof ShopRoute
   '/signup': typeof SignupRoute
   '/info/$slug': typeof InfoSlugRoute
@@ -98,6 +107,7 @@ export interface FileRouteTypes {
     | '/careers'
     | '/checkout'
     | '/login'
+    | '/sellers'
     | '/shop'
     | '/signup'
     | '/info/$slug'
@@ -108,6 +118,7 @@ export interface FileRouteTypes {
     | '/careers'
     | '/checkout'
     | '/login'
+    | '/sellers'
     | '/shop'
     | '/signup'
     | '/info/$slug'
@@ -118,6 +129,7 @@ export interface FileRouteTypes {
     | '/careers'
     | '/checkout'
     | '/login'
+    | '/sellers'
     | '/shop'
     | '/signup'
     | '/info/$slug'
@@ -129,6 +141,7 @@ export interface RootRouteChildren {
   CareersRoute: typeof CareersRoute
   CheckoutRoute: typeof CheckoutRoute
   LoginRoute: typeof LoginRoute
+  SellersRoute: typeof SellersRoute
   ShopRoute: typeof ShopRoute
   SignupRoute: typeof SignupRoute
   InfoSlugRoute: typeof InfoSlugRoute
@@ -171,6 +184,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/sellers': {
+      id: '/sellers'
+      path: '/sellers'
+      fullPath: '/sellers'
+      preLoaderRoute: typeof SellersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/shop': {
       id: '/shop'
       path: '/shop'
@@ -201,6 +221,7 @@ const rootRouteChildren: RootRouteChildren = {
   CareersRoute: CareersRoute,
   CheckoutRoute: CheckoutRoute,
   LoginRoute: LoginRoute,
+  SellersRoute: SellersRoute,
   ShopRoute: ShopRoute,
   SignupRoute: SignupRoute,
   InfoSlugRoute: InfoSlugRoute,

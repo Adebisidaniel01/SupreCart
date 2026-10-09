@@ -50,9 +50,7 @@ export function useStore() {
 }
 export function Wordmark() {
   return (
-    <span className="wordmark">
-      Supre<span>Cart</span>
-    </span>
+    <span className="wordmark"><img src="/suprecart-logo.png" alt="SupreCart" /></span>
   );
 }
 
@@ -327,12 +325,17 @@ export function Storefront({ children }: { children: ReactNode }) {
             {(
               [
                 ["Our story", "about"],
+                ["Sell with us", "sellers"],
                 ["Careers", "careers"],
                 ["Privacy", "privacy"],
                 ["Terms", "terms"],
               ] as const
             ).map(([label, slug]) =>
-              slug === "careers" ? (
+              slug === "sellers" ? (
+                <Link key={slug} to="/sellers">
+                  {label}
+                </Link>
+              ) : slug === "careers" ? (
                 <Link key={slug} to="/careers">
                   {label}
                 </Link>
