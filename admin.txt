@@ -1,0 +1,15 @@
+SupreCart admin setup
+====================
+
+Local admin credentials and the session secret are stored in the ignored
+project-root .env file. Do not commit that file or copy its values into source.
+
+For deployment, configure ADMIN_USERNAME, ADMIN_PASSWORD, and
+ADMIN_SESSION_SECRET in your hosting provider's server-side secret manager.
+Never use client-side VITE_ variables for admin secrets.
+
+The admin session secret must be a unique random value of at least 32
+characters.
+
+Dashboard figures and activity are illustrative until live finance, account,
+and analytics services are connected.

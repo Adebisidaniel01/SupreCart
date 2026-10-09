@@ -5,9 +5,9 @@ import { Button } from "@/components/ui/button";
 const pages: Record<string, { title: string; eyebrow: string; body: string[] }> = {
   about: {
     title: "Good finds, good people.",
-    eyebrow: "ABOUT CORECART",
+    eyebrow: "ABOUT SUPRECART",
     body: [
-      "CoreCart is a buyer-first marketplace bringing independent sellers and thoughtful finds together in one easy place.",
+      "SupreCart is a buyer-first marketplace bringing independent sellers and thoughtful finds together in one easy place.",
       "From everyday style and footwear to home, tech, accessories and beauty, we’re here to make discovering something great feel simple.",
       "Our seller and product details are preview content while the marketplace is being prepared for launch.",
     ],
@@ -40,7 +40,7 @@ const pages: Record<string, { title: string; eyebrow: string; body: string[] }> 
     title: "The essentials, answered.",
     eyebrow: "FREQUENTLY ASKED QUESTIONS",
     body: [
-      "Is CoreCart live? The storefront is currently a product and buyer-experience preview.",
+      "Is SupreCart live? The storefront is currently a product and buyer-experience preview.",
       "Can I place an order? You can explore the checkout preview, but orders and payments are not processed.",
       "Are sellers and ratings real? Seller names, ratings and products shown here are sample marketplace content.",
     ],
@@ -57,7 +57,7 @@ const pages: Record<string, { title: string; eyebrow: string; body: string[] }> 
     title: "A marketplace in preview.",
     eyebrow: "TERMS",
     body: [
-      "CoreCart is currently a demonstration storefront. Product descriptions, prices, seller information and ratings are illustrative and may not represent items available for purchase.",
+      "SupreCart is currently a demonstration storefront. Product descriptions, prices, seller information and ratings are illustrative and may not represent items available for purchase.",
       "No order, payment, delivery, subscription or seller transaction is created through this preview.",
     ],
   },
@@ -72,7 +72,7 @@ const pages: Record<string, { title: string; eyebrow: string; body: string[] }> 
 };
 
 export const Route = createFileRoute("/info/$slug")({
-  head: () => ({ meta: [{ title: "Marketplace information — CoreCart" }] }),
+  head: () => ({ meta: [{ title: "Marketplace information — SupreCart" }] }),
   component: InfoPage,
 });
 
@@ -84,7 +84,7 @@ function InfoPage() {
   return (
     <main className="page-width info-page">
       <Link to="/" className="back-link">
-        <ArrowLeft size={15} /> Back to CoreCart
+        <ArrowLeft size={15} /> Back to SupreCart
       </Link>
       <section className="info-card">
         <p className="eyebrow">{page.eyebrow}</p>

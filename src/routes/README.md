@@ -19,11 +19,3 @@ is `src/routes/__root.tsx`.
 | `__root.tsx` | app shell — wraps every page; preserve `<Outlet />` |
 
 `routeTree.gen.ts` is auto-generated. Don't edit it by hand.
-
-## Admin dashboard
-
-The `/admin` route checks passwords on the server and uses a signed, HTTP-only
-session cookie. Configure `ADMIN_PASSWORD` and `ADMIN_SESSION_SECRET` as
-server-side environment secrets; the session secret must be at least 32
-characters. Never use a `VITE_` prefix for either secret. Dashboard metrics are
-illustrative until live finance, account, and analytics services are connected.

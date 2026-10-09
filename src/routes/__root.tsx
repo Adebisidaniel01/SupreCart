@@ -80,17 +80,17 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "CoreCart — Good finds, all in one place" },
+      { title: "SupreCart — Good finds, all in one place" },
       {
         name: "description",
         content:
           "Discover independent sellers and considered finds across fashion, footwear, home, tech, beauty and more.",
       },
-      { name: "author", content: "CoreCart" },
-      { property: "og:title", content: "CoreCart — Good finds, all in one place" },
+      { name: "author", content: "SupreCart" },
+      { property: "og:title", content: "SupreCart — Good finds, all in one place" },
       {
         property: "og:description",
-        content: "Discover your kind of good across the CoreCart marketplace.",
+        content: "Discover your kind of good across the SupreCart marketplace.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },

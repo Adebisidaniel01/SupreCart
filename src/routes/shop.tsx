@@ -11,11 +11,11 @@ export const Route = createFileRoute("/shop")({
   }),
   head: () => ({
     meta: [
-      { title: "Shop the marketplace — CoreCart" },
+      { title: "Shop the marketplace — SupreCart" },
       {
         name: "description",
         content:
-          "Browse thoughtfully selected products from independent sellers across the CoreCart marketplace.",
+          "Browse thoughtfully selected products from independent sellers across the SupreCart marketplace.",
       },
     ],
   }),
@@ -43,7 +43,7 @@ function Shop() {
     <main className="page-width shop-main">
       <div className="shop-heading">
         <div>
-          <p className="eyebrow">THE CORECART MARKETPLACE</p>
+          <p className="eyebrow">THE SUPRECART MARKETPLACE</p>
           <h1>
             {filter === "All" ? "Shop everything" : filter === "Brands" ? "Brands to know" : filter}
           </h1>

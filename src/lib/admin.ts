@@ -4,7 +4,7 @@ import { z } from "zod";
 
 const sessionLifetime = 60 * 60 * 8;
 
-function getServerSecret(name: "ADMIN_PASSWORD" | "ADMIN_SESSION_SECRET") {
+function getServerSecret(name: "ADMIN_USERNAME" | "ADMIN_PASSWORD" | "ADMIN_SESSION_SECRET") {
   const secret = process.env[name];
   if (!secret) {
     throw new Error(`${name} must be configured as a server-side environment secret.`);
@@ -17,7 +17,7 @@ function getServerSecret(name: "ADMIN_PASSWORD" | "ADMIN_SESSION_SECRET") {
 
 function useAdminSession() {
   return useSession<{ authenticated?: boolean }>({
-    name: "corecart_admin",
+    name: "suprecart_admin",
     password: getServerSecret("ADMIN_SESSION_SECRET"),
     maxAge: sessionLifetime,
     cookie: {
@@ -49,11 +49,19 @@ export const checkAdminSession = createServerFn().handler(async () => {
 });
 
 export const signInToAdmin = createServerFn({ method: "POST" })
-  .validator(z.object({ password: z.string().min(1).max(256) }))
+  .validator(
+    z.object({
+      username: z.string().min(1).max(256),
+      password: z.string().min(1).max(256),
+    }),
+  )
   .handler(async ({ data }) => {
     setResponseHeader("Cache-Control", "no-store");
+    const username = getServerSecret("ADMIN_USERNAME");
     const password = getServerSecret("ADMIN_PASSWORD");
-    if (!constantTimeEqual(data.password, password)) return false;
+    const validUsername = constantTimeEqual(data.username, username);
+    const validPassword = constantTimeEqual(data.password, password);
+    if (!validUsername || !validPassword) return false;
 
     const session = await useAdminSession();
     await session.update({ authenticated: true });

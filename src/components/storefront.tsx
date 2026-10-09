@@ -51,7 +51,7 @@ export function useStore() {
 export function Wordmark() {
   return (
     <span className="wordmark">
-      Core<span>Cart</span>
+      Supre<span>Cart</span>
     </span>
   );
 }
@@ -92,12 +92,12 @@ export function Storefront({ children }: { children: ReactNode }) {
   }, []);
   useEffect(() => {
     try {
-      const savedCart = localStorage.getItem("corecart-cart");
-      const savedFavorites = localStorage.getItem("corecart-favorites");
+      const savedCart = localStorage.getItem("suprecart-cart");
+      const savedFavorites = localStorage.getItem("suprecart-favorites");
       if (savedCart) setCart(JSON.parse(savedCart) as CartItem[]);
       if (savedFavorites) setFavorites(JSON.parse(savedFavorites) as number[]);
     } catch (error) {
-      console.error("Could not restore the saved CoreCart preview basket.", error);
+      console.error("Could not restore the saved SupreCart preview basket.", error);
       setNotice("Your saved basket could not be restored in this browser.");
     }
     setReady(true);
@@ -106,10 +106,10 @@ export function Storefront({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!ready) return;
     try {
-      localStorage.setItem("corecart-cart", JSON.stringify(cart));
-      localStorage.setItem("corecart-favorites", JSON.stringify(favorites));
+      localStorage.setItem("suprecart-cart", JSON.stringify(cart));
+      localStorage.setItem("suprecart-favorites", JSON.stringify(favorites));
     } catch (error) {
-      console.error("Could not save the CoreCart preview basket in this browser.", error);
+      console.error("Could not save the SupreCart preview basket in this browser.", error);
       setNotice("Your browser could not save this basket. Keep this tab open to preserve it.");
     }
   }, [cart, favorites, ready]);
@@ -162,7 +162,7 @@ export function Storefront({ children }: { children: ReactNode }) {
         <span>A marketplace with more to love</span>
       </div>
       <header className="header page-width">
-        <Link to="/" aria-label="CoreCart home">
+        <Link to="/" aria-label="SupreCart home">
           <Wordmark />
         </Link>
         <nav
@@ -266,12 +266,12 @@ export function Storefront({ children }: { children: ReactNode }) {
       <footer className="footer">
         <div className="footer-main page-width">
           <div className="footer-about">
-            <Link to="/" aria-label="CoreCart home">
+            <Link to="/" aria-label="SupreCart home">
               <Wordmark />
             </Link>
             <p>
               A little bit of everything, from sellers worth knowing. Find your kind of good at
-              CoreCart.
+              SupreCart.
             </p>
             <div className="socials">
               <a href="https://x.com" target="_blank" rel="noreferrer" aria-label="X">
@@ -323,7 +323,7 @@ export function Storefront({ children }: { children: ReactNode }) {
             ))}
           </div>
           <div className="footer-column">
-            <h3>ABOUT CORECART</h3>
+            <h3>ABOUT SUPRECART</h3>
             {(
               [
                 ["Our story", "about"],
@@ -375,7 +375,7 @@ export function Storefront({ children }: { children: ReactNode }) {
         </div>
         <div className="footer-bottom page-width">
           <p>
-            © 2026 CoreCart. All rights reserved.{" "}
+            © 2026 SupreCart. All rights reserved.{" "}
             <span>
               For more inquiries, contact <a href="tel:080800800800">080-800800800</a>.
             </span>

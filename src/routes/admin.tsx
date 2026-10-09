@@ -21,8 +21,8 @@ type AdminDashboard = Awaited<ReturnType<typeof getAdminDashboard>>;
 export const Route = createFileRoute("/admin")({
   head: () => ({
     meta: [
-      { title: "Admin dashboard — CoreCart" },
-      { name: "description", content: "Private CoreCart marketplace administration dashboard." },
+      { title: "Admin dashboard — SupreCart" },
+      { name: "description", content: "Private SupreCart marketplace administration dashboard." },
     ],
   }),
   component: Admin,
@@ -30,6 +30,7 @@ export const Route = createFileRoute("/admin")({
 
 function Admin() {
   const [dashboard, setDashboard] = useState<AdminDashboard | null>(null);
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(true);
@@ -44,7 +45,7 @@ function Admin() {
           if (active) setDashboard(data);
         }
       } catch (error) {
-        console.error("Could not restore the CoreCart admin session.", error);
+        console.error("Could not restore the SupreCart admin session.", error);
         if (active) {
           setMessage(
             error instanceof Error
@@ -67,15 +68,16 @@ function Admin() {
     setSubmitting(true);
     setMessage("");
     try {
-      const success = await signInToAdmin({ data: { password } });
+      const success = await signInToAdmin({ data: { username, password } });
       if (!success) {
-        setMessage("That password didn’t match. Please try again.");
+        setMessage("That username and password didn’t match. Please try again.");
         return;
       }
+      setUsername("");
       setPassword("");
       setDashboard(await getAdminDashboard());
     } catch (error) {
-      console.error("Could not sign in to the CoreCart admin dashboard.", error);
+      console.error("Could not sign in to the SupreCart admin dashboard.", error);
       setMessage(
         error instanceof Error
           ? error.message
@@ -93,7 +95,7 @@ function Admin() {
       await signOutOfAdmin();
       setDashboard(null);
     } catch (error) {
-      console.error("Could not sign out of the CoreCart admin dashboard.", error);
+      console.error("Could not sign out of the SupreCart admin dashboard.", error);
       setMessage("Sign-out could not be completed. Please try again.");
     } finally {
       setSubmitting(false);
@@ -114,13 +116,13 @@ function Admin() {
       <main className="admin-login">
         <section className="admin-login-card">
           <Link to="/" className="admin-back-link">
-            <ArrowLeft size={15} /> Back to CoreCart
+            <ArrowLeft size={15} /> Back to SupreCart
           </Link>
           <span className="admin-brand-mark">C.</span>
           <div className="admin-lock-icon">
             <KeyRound size={20} />
           </div>
-          <p className="admin-kicker">CORECART · PRIVATE WORKSPACE</p>
+          <p className="admin-kicker">SUPRECART · PRIVATE WORKSPACE</p>
           <h1>
             Good to have you <span>back.</span>
           </h1>
@@ -128,6 +130,17 @@ function Admin() {
             Sign in with your admin password to open the marketplace overview.
           </p>
           <form className="admin-login-form" onSubmit={handleSignIn}>
+            <label htmlFor="admin-username">Admin username</label>
+            <input
+              id="admin-username"
+              name="username"
+              type="text"
+              autoComplete="username"
+              value={username}
+              onChange={(event) => setUsername(event.target.value)}
+              placeholder="Enter your username"
+              required
+            />
             <label htmlFor="admin-password">Admin password</label>
             <input
               id="admin-password"
@@ -152,7 +165,7 @@ function Admin() {
             <ShieldCheck size={15} /> Protected by a secure, server-verified session.
           </p>
           <p className="admin-setup-note">
-            Configure <code>ADMIN_PASSWORD</code> and a 32+ character{" "}
+            Configure <code>ADMIN_USERNAME</code>, <code>ADMIN_PASSWORD</code>, and a 32+ character{" "}
             <code>ADMIN_SESSION_SECRET</code> in your server environment.
           </p>
         </section>
@@ -163,7 +176,7 @@ function Admin() {
             <Sparkles size={17} />
             <p>Built for</p>
             <strong>the bigger picture.</strong>
-            <span>CORECART · ADMIN</span>
+            <span>SUPRECART · ADMIN</span>
           </div>
           <span className="admin-art-stamp">C.</span>
         </aside>
@@ -176,7 +189,7 @@ function Admin() {
   return (
     <main className="admin-shell">
       <aside className="admin-sidebar">
-        <Link to="/" className="admin-sidebar-brand" aria-label="CoreCart home">
+        <Link to="/" className="admin-sidebar-brand" aria-label="SupreCart home">
           <span className="admin-brand-mark">C.</span>
           <span>
             CORE<span>CART</span>
@@ -344,7 +357,7 @@ function Admin() {
             </div>
           </section>
           <footer className="admin-footer">
-            <span>CORECART ADMIN STUDIO</span>
+            <span>SUPRECART ADMIN STUDIO</span>
             <span>Preview mode · No live data connected</span>
           </footer>
         </div>

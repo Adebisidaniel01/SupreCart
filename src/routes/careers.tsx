@@ -5,10 +5,10 @@ import { Button } from "@/components/ui/button";
 export const Route = createFileRoute("/careers")({
   head: () => ({
     meta: [
-      { title: "Careers — CoreCart" },
+      { title: "Careers — SupreCart" },
       {
         name: "description",
-        content: "There are no open positions at CoreCart right now. Check back later.",
+        content: "There are no open positions at SupreCart right now. Check back later.",
       },
     ],
   }),
@@ -19,13 +19,13 @@ function Careers() {
   return (
     <main className="careers-page">
       <Link to="/" className="back-link">
-        <ArrowLeft size={15} /> Back to CoreCart
+        <ArrowLeft size={15} /> Back to SupreCart
       </Link>
       <section className="careers-card">
         <div className="career-icon">
           <BriefcaseBusiness size={25} />
         </div>
-        <p className="eyebrow">CAREERS AT CORECART</p>
+        <p className="eyebrow">CAREERS AT SUPRECART</p>
         <h1>
           Good people.
           <br />

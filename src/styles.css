@@ -3273,13 +3273,42 @@ body {
   font-family: Georgia, serif;
   font-size: clamp(15px, 2.4vw, 20px);
 }
+.home-splash-loader {
+  width: 96px;
+  height: 2px;
+  margin-top: 17px;
+  overflow: hidden;
+  background: rgb(59 81 56 / 18%);
+}
+.home-splash-loader > span {
+  display: block;
+  width: 100%;
+  height: 100%;
+  transform: scaleX(0);
+  transform-origin: left;
+  background: #fffefa;
+  animation: home-splash-progress 1.65s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+.home-splash-caption {
+  margin-top: 2px;
+  color: #50664a;
+  font-family: "DM Mono", monospace;
+  font-size: 8px;
+  letter-spacing: 0.14em;
+}
+@keyframes home-splash-progress {
+  to {
+    transform: scaleX(1);
+  }
+}
 @keyframes home-splash-fade {
   0%,
-  82% {
+  83% {
     opacity: 1;
   }
   100% {
     opacity: 0;
+    transform: scale(1.025);
   }
 }
 @media (prefers-reduced-motion: reduce) {

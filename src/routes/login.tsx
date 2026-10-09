@@ -6,8 +6,8 @@ import { Button } from "@/components/ui/button";
 export const Route = createFileRoute("/login")({
   head: () => ({
     meta: [
-      { title: "Sign in — CoreCart" },
-      { name: "description", content: "Sign in to your CoreCart buyer account." },
+      { title: "Sign in — SupreCart" },
+      { name: "description", content: "Sign in to your SupreCart buyer account." },
     ],
   }),
   component: Login,
@@ -21,7 +21,7 @@ function Login() {
   function signIn(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const email = String(new FormData(event.currentTarget).get("email")).trim().toLowerCase();
-    const saved = localStorage.getItem("corecart-demo-profile");
+    const saved = localStorage.getItem("suprecart-demo-profile");
     if (!saved) {
       setError("No demo account is saved in this browser yet. Create an account to get started.");
       return;
@@ -53,12 +53,12 @@ function Login() {
     <main className="account-page">
       <div className="account-panel">
         <Link to="/" className="back-link">
-          <ArrowLeft size={15} /> Back to CoreCart
+          <ArrowLeft size={15} /> Back to SupreCart
         </Link>
         <div className="account-brand">
           <span className="account-mark">C.</span>
           <span>
-            CORECART <small>YOUR MARKETPLACE</small>
+            SUPRECART <small>YOUR MARKETPLACE</small>
           </span>
         </div>
         <p className="eyebrow">WELCOME BACK</p>
@@ -89,7 +89,7 @@ function Login() {
           </Button>
         </form>
         <p className="account-switch">
-          New to CoreCart? <Link to="/signup">Create an account</Link>
+          New to SupreCart? <Link to="/signup">Create an account</Link>
         </p>
         <p className="demo-disclaimer">
           <ShieldCheck size={15} /> Demo profiles live in this browser only; authentication is not

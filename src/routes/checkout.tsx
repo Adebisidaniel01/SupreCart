@@ -78,11 +78,11 @@ function createReference(prefix: string) {
 export const Route = createFileRoute("/checkout")({
   head: () => ({
     meta: [
-      { title: "Checkout preview — CoreCart" },
+      { title: "Checkout preview — SupreCart" },
       {
         name: "description",
         content:
-          "Review your itemized receipt, tax and delivery fees in the CoreCart checkout preview.",
+          "Review your itemized receipt, tax and delivery fees in the SupreCart checkout preview.",
       },
     ],
   }),
@@ -150,15 +150,15 @@ function Checkout() {
           trackingNumber: createReference("CC-TRACK"),
         })),
       };
-      const savedOrders = localStorage.getItem("corecart-preview-orders");
+      const savedOrders = localStorage.getItem("suprecart-preview-orders");
       const orders = savedOrders ? (JSON.parse(savedOrders) as PreviewOrder[]) : [];
-      localStorage.setItem("corecart-preview-orders", JSON.stringify([orderPreview, ...orders]));
+      localStorage.setItem("suprecart-preview-orders", JSON.stringify([orderPreview, ...orders]));
       setOrder(orderPreview);
       setCart([]);
       setStep("complete");
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (error) {
-      console.error("Could not save the CoreCart preview order.", error);
+      console.error("Could not save the SupreCart preview order.", error);
       setOrderError("We couldn’t save your demo order in this browser. Please try again.");
     }
   }
@@ -185,7 +185,7 @@ function Checkout() {
       </Link>
       <div className="checkout-heading">
         <div>
-          <p className="eyebrow">THE CORECART MARKETPLACE</p>
+          <p className="eyebrow">THE SUPRECART MARKETPLACE</p>
           <h1>{step === "complete" ? "Preview order receipt" : "Checkout"}</h1>
           <p className="shop-intro">
             Demo checkout only. No real order is placed or payment collected.

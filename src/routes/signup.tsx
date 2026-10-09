@@ -10,13 +10,13 @@ type BuyerProfile = {
   phone: string;
   isVerified: boolean;
 };
-const profileKey = "corecart-demo-profile";
+const profileKey = "suprecart-demo-profile";
 
 export const Route = createFileRoute("/signup")({
   head: () => ({
     meta: [
-      { title: "Create your account — CoreCart" },
-      { name: "description", content: "Create a CoreCart buyer account." },
+      { title: "Create your account — SupreCart" },
+      { name: "description", content: "Create a SupreCart buyer account." },
     ],
   }),
   component: Signup,
@@ -67,12 +67,12 @@ function Signup() {
     <main className="account-page">
       <div className="account-panel">
         <Link to="/" className="back-link">
-          <ArrowLeft size={15} /> Back to CoreCart
+          <ArrowLeft size={15} /> Back to SupreCart
         </Link>
         <div className="account-brand">
           <span className="account-mark">C.</span>
           <span>
-            CORECART <small>YOUR MARKETPLACE</small>
+            SUPRECART <small>YOUR MARKETPLACE</small>
           </span>
         </div>
         {stage === "details" && (

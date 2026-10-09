@@ -23,9 +23,13 @@ function HomeSplash() {
   if (!visible) return null;
 
   return (
-    <div className="home-splash" role="status" aria-label="Loading CoreCart">
+    <div className="home-splash" role="status" aria-label="Loading SupreCart">
       <Wordmark />
-      <p>Find your kind of good.</p>
+      <p>Good finds. Good things ahead.</p>
+      <span className="home-splash-loader" aria-hidden="true">
+        <span />
+      </span>
+      <span className="home-splash-caption">INDEPENDENT FINDS, ALL IN ONE PLACE</span>
     </div>
   );
 }
@@ -33,7 +37,7 @@ function HomeSplash() {
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "CoreCart — Good finds, all in one place" },
+      { title: "SupreCart — Good finds, all in one place" },
       {
         name: "description",
         content:
