@@ -25,6 +25,24 @@ npm run dev
 
 ## Seller portal and shared marketplace database
 
-The seller application, seller dashboard, and buyer marketplace use one Supabase project. Follow the setup and financial-safety notes in [seller-portal/README.md](./seller-portal/README.md), configure `.env.local` from [.env.example](./.env.example), and run the shared database migration in [supabase/migrations/20261009000000_marketplace.sql](./supabase/migrations/20261009000000_marketplace.sql). The buyer-facing `/shop` lists published products from approved sellers after the database is configured.
+The seller application, seller dashboard, and buyer marketplace use one Supabase project. Follow the setup and financial-safety notes in [seller-portal/README.md](./seller-portal/README.md), configure `.env.local` from [.env.example](./.env.example), and run the shared database migrations in timestamp order:
+
+1. [supabase/migrations/20261009000000_marketplace.sql](./supabase/migrations/20261009000000_marketplace.sql)
+2. [supabase/migrations/20261009120000_fix_views.sql](./supabase/migrations/20261009120000_fix_views.sql)
+
+The second migration updates the seller-related views to use invoker permissions so queries are subject to the querying user's grants and row-level security (RLS). The buyer-facing `/shop` lists published products from approved sellers after the database is configured.
 
 Seller withdrawals are recorded as requests, not transferred funds. Connect and verify payment processing, order reconciliation, and payout review before using the system for real transactions.
+
+### Supabase setup and troubleshooting notes
+
+Use these notes when configuring Supabase for a new local checkout or diagnosing the connection:
+
+- **URL and key were entered in the wrong fields:** `VITE_SUPABASE_URL` must contain the project's HTTPS base URL, for example `https://<project-ref>.supabase.co`. `VITE_SUPABASE_ANON_KEY` must contain the project's anon/publishable key. Do not put a key in the URL field, and never expose a service-role key in a `VITE_` variable. The client warns if the URL contains a path such as `/rest/v1/` and uses only the origin, but the base URL is the correct setting.
+- **Environment changes did not appear to take effect:** put the values in the repository-root `.env.local`, then stop and restart the relevant Vite development server. The main app and standalone seller portal both use these shared Supabase variables.
+- **The SQL migration reported “Success, no rows returned”:** this is expected for migrations made up of schema changes, policies, grants, and functions. They generally do not return a result table. A success response means the SQL ran; it does not by itself confirm application-level access or resolve every Supabase security warning.
+- **The migration reported `policy "Buyers manage own profile" ... already exists`:** this means the initial marketplace migration (or at least that policy statement) had already been applied. Do not remove the existing policy manually. If the goal is only to fix the view-security warning, run [supabase/migrations/20261009120000_fix_views.sql](./supabase/migrations/20261009120000_fix_views.sql), not the initial migration again. The initial migration in this repository now drops and recreates its named policies so it can be re-run safely when necessary.
+- **Auth connectivity was checked separately:** a successful Supabase Auth response confirmed that the configured project URL and key could reach Auth. That check did not prove that marketplace tables and views existed; those are created by the marketplace migration.
+- **Supabase flagged `public.public_seller_profiles` and `public.seller_product_ratings` as SECURITY DEFINER views:** the original view definitions used `security_invoker = false`, causing them to run with the view owner's permissions instead of the querying user's. The repository migration was corrected to use `security_invoker = true`, and the follow-up migration re-creates both views with that option while preserving their `SELECT` grants. Run the follow-up migration against the hosted project to apply the fix there, then re-check the Supabase security/advisor finding and test the views as the intended roles. Until that hosted step is confirmed, treat the live database fix as pending.
+
+For an existing Supabase project that already ran the marketplace migration, run only the follow-up migration in the Supabase SQL Editor or your normal migration workflow; do not re-run the entire initial migration just to change the views. For a new project, run both migrations in timestamp order. With invoker-security views, access is also constrained by the querying role's permissions and the underlying tables' RLS policies, so validate the intended anonymous and authenticated read paths after applying the change.

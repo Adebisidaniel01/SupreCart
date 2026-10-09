@@ -122,7 +122,7 @@ create index if not exists order_items_seller_idx on public.order_items (seller_
 create index if not exists reviews_seller_product_idx on public.reviews (seller_id, product_id);
 create index if not exists payout_requests_seller_idx on public.payout_requests (seller_id, status);
 
-create or replace view public.public_seller_profiles with (security_invoker = false) as
+create or replace view public.public_seller_profiles with (security_invoker = true) as
   select id, first_name, last_name
   from public.seller_applications
   where status = 'approved';
@@ -136,24 +136,31 @@ alter table public.order_items enable row level security;
 alter table public.reviews enable row level security;
 alter table public.payout_requests enable row level security;
 
+drop policy if exists "Buyers manage own profile" on public.buyer_profiles;
 create policy "Buyers manage own profile" on public.buyer_profiles
   for all to authenticated using ((select auth.uid()) = id) with check ((select auth.uid()) = id);
+drop policy if exists "Sellers read own application" on public.seller_applications;
 create policy "Sellers read own application" on public.seller_applications
   for select to authenticated using ((select auth.uid()) = id);
+drop policy if exists "Sellers submit own application" on public.seller_applications;
 create policy "Sellers submit own application" on public.seller_applications
   for insert to authenticated with check ((select auth.uid()) = id and status = 'pending');
+drop policy if exists "Sellers update own pending application" on public.seller_applications;
 create policy "Sellers update own pending application" on public.seller_applications
   for update to authenticated using ((select auth.uid()) = id and status = 'pending')
   with check ((select auth.uid()) = id and status = 'pending');
+drop policy if exists "Sellers manage own documents" on public.seller_documents;
 create policy "Sellers manage own documents" on public.seller_documents
   for all to authenticated using ((select auth.uid()) = seller_id)
   with check ((select auth.uid()) = seller_id);
+drop policy if exists "Anyone can view published products" on public.products;
 create policy "Anyone can view published products" on public.products
   for select to anon, authenticated using (
     published and exists (
       select 1 from public.public_seller_profiles s where s.id = seller_id
     )
   );
+drop policy if exists "Approved sellers manage own products" on public.products;
 create policy "Approved sellers manage own products" on public.products
   for all to authenticated using (
     (select auth.uid()) = seller_id and exists (
@@ -164,16 +171,21 @@ create policy "Approved sellers manage own products" on public.products
       select 1 from public.seller_applications s where s.id = seller_id and s.status = 'approved'
     )
   );
+drop policy if exists "Buyers read own orders" on public.orders;
 create policy "Buyers read own orders" on public.orders
   for select to authenticated using ((select auth.uid()) = buyer_id);
+drop policy if exists "Sellers read orders with their items" on public.orders;
 create policy "Sellers read orders with their items" on public.orders
   for select to authenticated using (
-    exists (select 1 from public.order_items i where i.order_id = orders.id and i.seller_id = (select auth.uid()))
+  exists (select 1 from public.order_items i where i.order_id = orders.id and i.seller_id = (select auth.uid()))
   );
+drop policy if exists "Sellers read own order items" on public.order_items;
 create policy "Sellers read own order items" on public.order_items
   for select to authenticated using ((select auth.uid()) = seller_id);
+drop policy if exists "Sellers read reviews for their products" on public.reviews;
 create policy "Sellers read reviews for their products" on public.reviews
   for select to authenticated using ((select auth.uid()) = seller_id);
+drop policy if exists "Buyers submit review for own delivered item" on public.reviews;
 create policy "Buyers submit review for own delivered item" on public.reviews
   for insert to authenticated with check (
     (select auth.uid()) = buyer_id
@@ -185,10 +197,11 @@ create policy "Buyers submit review for own delivered item" on public.reviews
         and o.status = 'delivered'
     )
   );
+drop policy if exists "Sellers read own payout requests" on public.payout_requests;
 create policy "Sellers read own payout requests" on public.payout_requests
   for select to authenticated using ((select auth.uid()) = seller_id);
 
-create or replace view public.seller_product_ratings with (security_invoker = false) as
+create or replace view public.seller_product_ratings with (security_invoker = true) as
   select product_id, seller_id, count(*)::integer as review_count, avg(rating)::numeric(3,2) as average_rating
   from public.reviews group by product_id, seller_id;
 
@@ -243,18 +256,22 @@ values
   ('product-images', 'product-images', true, 10485760, array['image/jpeg','image/png','image/webp'])
 on conflict (id) do nothing;
 
+drop policy if exists "Sellers upload their own application docs" on storage.objects;
 create policy "Sellers upload their own application docs" on storage.objects
   for insert to authenticated with check (
     bucket_id = 'seller-documents' and (storage.foldername(name))[1] = (select auth.uid())::text
   );
+drop policy if exists "Sellers read their own application docs" on storage.objects;
 create policy "Sellers read their own application docs" on storage.objects
   for select to authenticated using (
     bucket_id = 'seller-documents' and (storage.foldername(name))[1] = (select auth.uid())::text
   );
+drop policy if exists "Approved sellers upload product images" on storage.objects;
 create policy "Approved sellers upload product images" on storage.objects
   for insert to authenticated with check (
     bucket_id = 'product-images' and (storage.foldername(name))[1] = (select auth.uid())::text
     and exists (select 1 from public.seller_applications s where s.id = (select auth.uid()) and s.status = 'approved')
   );
+drop policy if exists "Public can read product images" on storage.objects;
 create policy "Public can read product images" on storage.objects
   for select to anon, authenticated using (bucket_id = 'product-images');
