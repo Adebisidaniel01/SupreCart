@@ -53,6 +53,27 @@ type SellerStats = {
 const fileTypes = ["image/jpeg", "image/png", "application/pdf"];
 const productImageTypes = ["image/jpeg", "image/png", "image/webp"];
 const marketplaceUrl = import.meta.env["VITE_MARKETPLACE_URL"] || "/";
+const configuredAuthRedirectUrl = import.meta.env["VITE_SELLER_AUTH_REDIRECT_URL"]?.trim();
+
+function sellerAuthRedirectUrl() {
+  if (configuredAuthRedirectUrl) {
+    const redirectUrl = new URL(configuredAuthRedirectUrl);
+    if (
+      redirectUrl.protocol !== "https:" &&
+      !(
+        redirectUrl.protocol === "http:" &&
+        ["localhost", "127.0.0.1"].includes(redirectUrl.hostname)
+      )
+    ) {
+      throw new Error("Seller auth redirect URL must use HTTPS, except for localhost development.");
+    }
+    return redirectUrl.toString();
+  }
+
+  const callbackPath = window.location.pathname.startsWith("/sellers") ? "/sellers" : "/";
+  return new URL(callbackPath, window.location.origin).toString();
+}
+
 type ApplicationDraft = {
   firstName: string;
   middleName: string;
@@ -131,6 +152,7 @@ export default function SellerPortal() {
   const [error, setError] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [loadingScreen, setLoadingScreen] = useState(true);
+  const [confirmationEmail, setConfirmationEmail] = useState("");
   const creatingApplication = useRef(false);
 
   const loadSellerData = useCallback(async (activeSession: Session) => {
@@ -319,13 +341,13 @@ export default function SellerPortal() {
         password: String(form.get("password")),
         options: {
           data: { first_name: draft.firstName, last_name: draft.lastName, role: "seller" },
-          emailRedirectTo: `${window.location.origin}/sellers`,
+          emailRedirectTo: sellerAuthRedirectUrl(),
         },
       });
       if (signUpError) throw signUpError;
       if (!data.session) {
         setNotice(
-          `Check ${email} to verify your email. After verifying, return here and sign in to finish your application.`,
+          `Check ${email} and open the verification link in this browser. You’ll return to SupreCart Seller Studio and your application will finish automatically.`,
         );
         setScreen("login");
         return;
@@ -348,8 +370,9 @@ export default function SellerPortal() {
     setError("");
     try {
       const form = new FormData(event.currentTarget);
+      const email = String(form.get("email")).trim().toLowerCase();
       const { data, error: signInError } = await supabase.auth.signInWithPassword({
-        email: String(form.get("email")).trim().toLowerCase(),
+        email,
         password: String(form.get("password")),
       });
       if (signInError) throw signInError;
@@ -358,9 +381,35 @@ export default function SellerPortal() {
       await createApplication(data.session);
     } catch (cause) {
       console.error("Could not sign in to the SupreCart seller portal.", cause);
-      setError(cause instanceof Error ? cause.message : "Could not sign in.");
+      const nextError = cause instanceof Error ? cause.message : "Could not sign in.";
+      if (nextError.toLowerCase().includes("email not confirmed")) {
+        const email = String(new FormData(event.currentTarget).get("email")).trim().toLowerCase();
+        setConfirmationEmail(email);
+        setNotice("Your seller account exists, but it still needs email confirmation.");
+      }
+      setError(nextError);
     } finally {
       setSubmitting(false);
+    }
+  }
+
+  async function resendConfirmationEmail(email: string) {
+    if (!supabase) {
+      setError("Account service is temporarily unavailable. Please try again later.");
+      return;
+    }
+    setError("");
+    setNotice("");
+    try {
+      const { error: resendError } = await supabase.auth.resend({ type: "signup", email });
+      if (resendError) throw resendError;
+      setNotice(`A new confirmation email was sent to ${email}. Open it to confirm your account.`);
+      setConfirmationEmail(email);
+    } catch (cause) {
+      console.error("Could not resend a seller confirmation email.", cause);
+      setError(
+        cause instanceof Error ? cause.message : "Could not send a fresh confirmation email.",
+      );
     }
   }
 
@@ -370,15 +419,18 @@ export default function SellerPortal() {
       return setError("Account service is temporarily unavailable. Please try again later.");
     const email = String(new FormData(event.currentTarget).get("email")).trim().toLowerCase();
     setError("");
-    const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/sellers`,
-    });
-    if (resetError) {
-      console.error("Could not send a seller password reset email.", resetError);
-      setError(resetError.message);
-      return;
+    try {
+      const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: sellerAuthRedirectUrl(),
+      });
+      if (resetError) throw resetError;
+      setNotice(
+        "If that address belongs to a seller account, a password reset link is on its way.",
+      );
+    } catch (cause) {
+      console.error("Could not send a seller password reset email.", cause);
+      setError(cause instanceof Error ? cause.message : "Could not send a password reset email.");
     }
-    setNotice("If that address belongs to a seller account, a password reset link is on its way.");
   }
 
   async function signOut() {
@@ -603,8 +655,10 @@ export default function SellerPortal() {
               submitting={submitting}
               error={error}
               notice={notice}
+              confirmationEmail={confirmationEmail}
               onSubmit={signIn}
               onReset={requestPasswordReset}
+              onResendConfirmation={() => void resendConfirmationEmail(confirmationEmail)}
               onApply={() => {
                 setScreen("apply");
                 setError("");
@@ -777,15 +831,19 @@ function SignInPanel({
   submitting,
   error,
   notice,
+  confirmationEmail,
   onSubmit,
   onReset,
+  onResendConfirmation,
   onApply,
 }: {
   submitting: boolean;
   error: string;
   notice: string;
+  confirmationEmail: string;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
   onReset: (event: FormEvent<HTMLFormElement>) => void;
+  onResendConfirmation: () => void;
   onApply: () => void;
 }) {
   return (
@@ -817,6 +875,15 @@ function SignInPanel({
             <p className="seller-form-notice seller-field-full" role="status">
               {notice}
             </p>
+          )}
+          {error.toLowerCase().includes("email not confirmed") && confirmationEmail && (
+            <button
+              type="button"
+              className="seller-secondary-button seller-field-full"
+              onClick={onResendConfirmation}
+            >
+              Resend confirmation email
+            </button>
           )}
           <button
             className="seller-primary-button seller-field-full"
