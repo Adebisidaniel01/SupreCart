@@ -46,3 +46,49 @@ Use these notes when configuring Supabase for a new local checkout or diagnosing
 - **Supabase flagged `public.public_seller_profiles` and `public.seller_product_ratings` as SECURITY DEFINER views:** the original view definitions used `security_invoker = false`, causing them to run with the view owner's permissions instead of the querying user's. The repository migration was corrected to use `security_invoker = true`, and the follow-up migration re-creates both views with that option while preserving their `SELECT` grants. Run the follow-up migration against the hosted project to apply the fix there, then re-check the Supabase security/advisor finding and test the views as the intended roles. Until that hosted step is confirmed, treat the live database fix as pending.
 
 For an existing Supabase project that already ran the marketplace migration, run only the follow-up migration in the Supabase SQL Editor or your normal migration workflow; do not re-run the entire initial migration just to change the views. For a new project, run both migrations in timestamp order. With invoker-security views, access is also constrained by the querying role's permissions and the underlying tables' RLS policies, so validate the intended anonymous and authenticated read paths after applying the change.
+
+## Third-party services and verification providers
+
+The project is currently wired to the following providers and services:
+
+- **Supabase** — shared database, authentication, storage buckets, and RLS-backed marketplace tables.
+- **Twilio** — email and phone verification / messaging integration for account verification flows and contact workflows.
+- **Lovable** — project scaffolding and editor workflow used during build and iteration.
+- **Vite** — local development server, build tooling, and frontend bundling.
+- **Tailwind CSS** — styling system used across storefront and seller portal UI.
+- **React + TanStack Router + TanStack Start** — frontend application structure and routing.
+- **GitHub** — repository hosting and version control.
+
+### Payment / premium services note
+
+The following are not yet enabled as live production services in this repo unless you explicitly add them later:
+
+- Stripe / Paystack / Flutterwave / other payment processing providers for seller payout settlement and buyer checkout.
+- SMTP or transactional email providers beyond the default Supabase/Auth configuration.
+- Any premium analytics or monitoring tool you decide to add later.
+
+Use this section as the source of truth for which services are integrated now and which ones are waiting for future activation. Twilio is currently the verification provider for email and phone-related flows in this app setup.
+
+## Twilio verification setup checklist
+
+Use this checklist when you are ready to turn on Twilio-based email and phone verification for the user flows.
+
+1. Create a Twilio account and purchase a phone number if you want SMS verification or message sending.
+2. Open your Twilio console and copy your **Account SID**, **Auth Token**, and **Phone Number**.
+3. Create a Verify Service in Twilio and copy its **Service SID**. This is the value used for OTP email/phone verification.
+4. If you are using a messaging service for SMS, copy the **Messaging Service SID** as well.
+5. Set the values in `.env.local` using the variables in [.env.example](./.env.example):
+   - `TWILIO_ACCOUNT_SID`
+   - `TWILIO_AUTH_TOKEN`
+   - `TWILIO_PHONE_NUMBER`
+   - `TWILIO_VERIFY_SERVICE_SID`
+   - `TWILIO_MESSAGING_SERVICE_SID`
+   - `TWILIO_EMAIL_FROM`
+6. Configure the app to call Twilio Verify for OTP/email and phone validation flows, instead of relying only on Supabase's default email confirmation.
+7. Add the Twilio webhook or callback endpoints you need for any verification or message confirmation flows. Keep them behind secure auth where required.
+8. Test the verification flow with a real mobile number and a real email address before going live.
+9. For premium or production use, consider a dedicated email sending domain, alerting, and rate-limit monitoring to avoid delivery issues and abuse.
+
+### Future premium services
+
+Any additional paid services you decide to add later should be tracked here in the same way so you always know what is already live, what is in testing, and what is waiting to be paid for.

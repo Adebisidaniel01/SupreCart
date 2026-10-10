@@ -2053,6 +2053,104 @@ body {
 .account-panel {
   padding: 10px 9% 25px 4%;
 }
+.account-dashboard .account-brand {
+  margin-bottom: 27px;
+}
+.account-dashboard-heading,
+.account-dashboard-section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.account-dashboard-heading {
+  margin-bottom: 22px;
+}
+.account-dashboard-heading .account-intro {
+  margin-bottom: 0;
+}
+.account-dashboard-heading .button {
+  flex-shrink: 0;
+  gap: 7px;
+}
+.account-dashboard-card {
+  margin-bottom: 16px;
+  padding: 17px;
+  border: 1px solid #e4e5dd;
+  border-radius: 8px;
+  background: #fffefa;
+}
+.account-dashboard-card h2 {
+  margin: 0 0 14px;
+  font-size: 15px;
+  letter-spacing: -0.02em;
+}
+.account-dashboard-card dl {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+}
+.account-dashboard-card dl > div {
+  display: grid;
+  grid-template-columns: minmax(110px, 0.7fr) 1.3fr;
+  gap: 10px;
+  font-size: 11px;
+}
+.account-dashboard-card dt {
+  color: #777d72;
+}
+.account-dashboard-card dd {
+  margin: 0;
+  color: #29342b;
+  overflow-wrap: anywhere;
+}
+.account-verification {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.account-verification svg {
+  color: #738267;
+}
+.account-dashboard-section-heading h2 {
+  margin-bottom: 0;
+}
+.account-dashboard-section-heading > span {
+  display: grid;
+  place-items: center;
+  min-width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #eef1e8;
+  color: #58634e;
+  font-size: 10px;
+  font-weight: 700;
+}
+.account-order-list {
+  display: grid;
+  gap: 10px;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+.account-order-list li {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 8px;
+  color: #58634e;
+  font-size: 10px;
+}
+.account-order-list li svg {
+  color: #738267;
+}
+.account-order-list time {
+  grid-column: 2 / -1;
+  color: #777d72;
+}
+.account-dashboard > .button {
+  gap: 8px;
+}
 .account-panel > .back-link {
   margin-bottom: 35px;
 }

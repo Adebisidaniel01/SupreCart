@@ -179,7 +179,7 @@ export default function SellerPortal() {
   const createApplication = useCallback(
     async (activeSession: Session) => {
       if (!supabase)
-        throw new Error("Seller registration needs a Supabase project. See the setup guide.");
+        throw new Error("Account service is temporarily unavailable. Please try again later.");
       if (!activeSession.user.email_confirmed_at) {
         setNotice(
           "Please verify your email using the link we sent before we submit your application.",
@@ -289,7 +289,7 @@ export default function SellerPortal() {
   async function register(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!supabase)
-      return setError("Seller registration is not configured. Follow the Supabase setup guide.");
+      return setError("Account service is temporarily unavailable. Please try again later.");
     setSubmitting(true);
     setError("");
     setNotice("");
@@ -342,7 +342,7 @@ export default function SellerPortal() {
   async function signIn(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!supabase)
-      return setError("Seller sign-in is not configured. Follow the Supabase setup guide.");
+      return setError("Account service is temporarily unavailable. Please try again later.");
     setSubmitting(true);
     setError("");
     try {
@@ -366,7 +366,7 @@ export default function SellerPortal() {
   async function requestPasswordReset(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!supabase)
-      return setError("Seller sign-in is not configured. Follow the Supabase setup guide.");
+      return setError("Account service is temporarily unavailable. Please try again later.");
     const email = String(new FormData(event.currentTarget).get("email")).trim().toLowerCase();
     setError("");
     const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
@@ -536,15 +536,6 @@ export default function SellerPortal() {
         </aside>
 
         <section className="seller-content" id="seller-content">
-          {!supabase && (
-            <div className="seller-config-note" role="status">
-              <strong>Connect your shared Supabase database to get started.</strong>
-              <span>
-                Set the project URL and anon key in <code>.env.local</code>, then run the SQL setup
-                in <code>seller-portal/README.md</code>.
-              </span>
-            </div>
-          )}
           {busy ? (
             <div className="seller-state-panel">
               <span className="seller-spinner" />
