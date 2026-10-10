@@ -29,8 +29,11 @@ The seller application, seller dashboard, and buyer marketplace use one Supabase
 
 1. [supabase/migrations/20261009000000_marketplace.sql](./supabase/migrations/20261009000000_marketplace.sql)
 2. [supabase/migrations/20261009120000_fix_views.sql](./supabase/migrations/20261009120000_fix_views.sql)
+3. [supabase/migrations/20261010100000_chat_delivery.sql](./supabase/migrations/20261010100000_chat_delivery.sql)
 
-The second migration updates the seller-related views to use invoker permissions so queries are subject to the querying user's grants and row-level security (RLS). The buyer-facing `/shop` lists published products from approved sellers after the database is configured.
+The second migration updates the seller-related views to use invoker permissions so queries are subject to the querying user's grants and row-level security (RLS). The third migration adds product chats, read receipts, private voice-note storage, buyer delivery addresses, Kwara delivery settings, and editable pickup stations. The buyer-facing `/shop` lists published products from approved sellers after the database is configured.
+
+The pickup stations included in the chat/delivery migration are clearly labeled test locations; replace their sample addresses before using pickup in real operations. The doorstep fee defaults to ₦0 for testing and can be changed by an authorized project operator in `public.delivery_settings`.
 
 Seller withdrawals are recorded as requests, not transferred funds. Connect and verify payment processing, order reconciliation, and payout review before using the system for real transactions.
 
@@ -45,7 +48,14 @@ Use these notes when configuring Supabase for a new local checkout or diagnosing
 - **Auth connectivity was checked separately:** a successful Supabase Auth response confirmed that the configured project URL and key could reach Auth. That check did not prove that marketplace tables and views existed; those are created by the marketplace migration.
 - **Supabase flagged `public.public_seller_profiles` and `public.seller_product_ratings` as SECURITY DEFINER views:** the original view definitions used `security_invoker = false`, causing them to run with the view owner's permissions instead of the querying user's. The repository migration was corrected to use `security_invoker = true`, and the follow-up migration re-creates both views with that option while preserving their `SELECT` grants. Run the follow-up migration against the hosted project to apply the fix there, then re-check the Supabase security/advisor finding and test the views as the intended roles. Until that hosted step is confirmed, treat the live database fix as pending.
 
-For an existing Supabase project that already ran the marketplace migration, run only the follow-up migration in the Supabase SQL Editor or your normal migration workflow; do not re-run the entire initial migration just to change the views. For a new project, run both migrations in timestamp order. With invoker-security views, access is also constrained by the querying role's permissions and the underlying tables' RLS policies, so validate the intended anonymous and authenticated read paths after applying the change.
+For an existing Supabase project that already ran the marketplace migration, run only the follow-up migration in the Supabase SQL Editor or your normal migration workflow to fix the views; do not re-run the entire initial migration just to change the views. For a new project, run all migrations in timestamp order. With invoker-security views, access is also constrained by the querying role's permissions and the underlying tables' RLS policies, so validate the intended anonymous and authenticated read paths after applying the change.
+
+### Chat, location, checkout, and cookies
+
+- Buyers can start a conversation from a **live Supabase product** before or after purchase; buyers and sellers can continue it from `/messages`. Conversations are private to their participants. Text chat, realtime updates, read receipts, and voice notes are stored through Supabase. Voice notes have a 25 MB file-size cap and no application-imposed duration limit.
+- Doorstep delivery captures a Kwara LGA, community, street address, optional landmark, and optional browser GPS coordinates. Pickup checkout uses active rows in `public.pickup_stations`.
+- The app's checkout is still a preview: it does not create an order, send an order to a seller, or collect payment. Delivery selection, address storage, fees, and station details are currently test/setup features, not a live dispatch system.
+- The cookie banner records only the visitor's accept/reject choice in a first-party preference cookie. Optional analytics/marketing cookies are not currently installed; accepting does not enable a third-party tracker.
 
 ## Third-party services and verification providers
 

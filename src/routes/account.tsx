@@ -112,7 +112,8 @@ function BuyerAccount() {
       })
       .catch((cause: unknown) => {
         console.error("Could not load the SupreCart buyer account data.", cause);
-        if (active) setError(cause instanceof Error ? cause.message : "Could not load your account.");
+        if (active)
+          setError(cause instanceof Error ? cause.message : "Could not load your account.");
       })
       .finally(() => {
         if (active) setLoading(false);
@@ -223,6 +224,13 @@ function BuyerAccount() {
 
             <Button size="lg" onClick={() => navigate({ to: "/shop", search: { filter: "All" } })}>
               Explore the marketplace <ArrowRight size={16} />
+            </Button>
+            <Button
+              size="lg"
+              variant="outline"
+              onClick={() => navigate({ to: "/messages", search: { productId: undefined } })}
+            >
+              Messages
             </Button>
           </>
         )}

@@ -63,6 +63,8 @@ export async function loadLiveMarketplaceProducts(): Promise<Product[]> {
       seller: sellers.get(product.seller_id) ?? "SupreCart seller",
       sellerRating: averageRating,
       image: client.storage.from("product-images").getPublicUrl(product.image_path).data.publicUrl,
+      marketplaceProductId: product.id,
+      sellerId: product.seller_id,
     };
   });
 }

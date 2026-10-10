@@ -15,6 +15,7 @@ import { Route as AdminRouteImport } from './routes/admin'
 import { Route as CareersRouteImport } from './routes/careers'
 import { Route as CheckoutRouteImport } from './routes/checkout'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as MessagesRouteImport } from './routes/messages'
 import { Route as SellersRouteImport } from './routes/sellers'
 import { Route as ShopRouteImport } from './routes/shop'
 import { Route as SignupRouteImport } from './routes/signup'
@@ -50,6 +51,11 @@ const LoginRoute = LoginRouteImport.update({
   path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
+const MessagesRoute = MessagesRouteImport.update({
+  id: '/messages',
+  path: '/messages',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SellersRoute = SellersRouteImport.update({
   id: '/sellers',
   path: '/sellers',
@@ -78,6 +84,7 @@ export interface FileRoutesByFullPath {
   '/careers': typeof CareersRoute
   '/checkout': typeof CheckoutRoute
   '/login': typeof LoginRoute
+  '/messages': typeof MessagesRoute
   '/sellers': typeof SellersRoute
   '/shop': typeof ShopRoute
   '/signup': typeof SignupRoute
@@ -90,6 +97,7 @@ export interface FileRoutesByTo {
   '/careers': typeof CareersRoute
   '/checkout': typeof CheckoutRoute
   '/login': typeof LoginRoute
+  '/messages': typeof MessagesRoute
   '/sellers': typeof SellersRoute
   '/shop': typeof ShopRoute
   '/signup': typeof SignupRoute
@@ -103,6 +111,7 @@ export interface FileRoutesById {
   '/careers': typeof CareersRoute
   '/checkout': typeof CheckoutRoute
   '/login': typeof LoginRoute
+  '/messages': typeof MessagesRoute
   '/sellers': typeof SellersRoute
   '/shop': typeof ShopRoute
   '/signup': typeof SignupRoute
@@ -117,6 +126,7 @@ export interface FileRouteTypes {
     | '/careers'
     | '/checkout'
     | '/login'
+    | '/messages'
     | '/sellers'
     | '/shop'
     | '/signup'
@@ -129,6 +139,7 @@ export interface FileRouteTypes {
     | '/careers'
     | '/checkout'
     | '/login'
+    | '/messages'
     | '/sellers'
     | '/shop'
     | '/signup'
@@ -141,6 +152,7 @@ export interface FileRouteTypes {
     | '/careers'
     | '/checkout'
     | '/login'
+    | '/messages'
     | '/sellers'
     | '/shop'
     | '/signup'
@@ -154,6 +166,7 @@ export interface RootRouteChildren {
   CareersRoute: typeof CareersRoute
   CheckoutRoute: typeof CheckoutRoute
   LoginRoute: typeof LoginRoute
+  MessagesRoute: typeof MessagesRoute
   SellersRoute: typeof SellersRoute
   ShopRoute: typeof ShopRoute
   SignupRoute: typeof SignupRoute
@@ -204,6 +217,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/messages': {
+      id: '/messages'
+      path: '/messages'
+      fullPath: '/messages'
+      preLoaderRoute: typeof MessagesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/sellers': {
       id: '/sellers'
       path: '/sellers'
@@ -242,6 +262,7 @@ const rootRouteChildren: RootRouteChildren = {
   CareersRoute: CareersRoute,
   CheckoutRoute: CheckoutRoute,
   LoginRoute: LoginRoute,
+  MessagesRoute: MessagesRoute,
   SellersRoute: SellersRoute,
   ShopRoute: ShopRoute,
   SignupRoute: SignupRoute,

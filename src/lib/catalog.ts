@@ -15,6 +15,8 @@ export type Product = {
   seller: string;
   sellerRating: string;
   image: string;
+  marketplaceProductId?: string;
+  sellerId?: string;
   label?: string;
 };
 

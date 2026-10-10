@@ -9,12 +9,20 @@ import { routeTree } from "@/routeTree.gen";
 describe("App routing", () => {
   const router = createRouter({ routeTree, context: { queryClient: new QueryClient() } });
 
-  it.each(["/", "/shop", "/login", "/signup", "/checkout", "/careers", "/info/contact", "/admin"])(
-    "matches %s instead of falling back to not found",
-    (path) => {
-      const matches = router.matchRoutes(path);
+  it.each([
+    "/",
+    "/shop",
+    "/login",
+    "/signup",
+    "/account",
+    "/messages",
+    "/checkout",
+    "/careers",
+    "/info/contact",
+    "/admin",
+  ])("matches %s instead of falling back to not found", (path) => {
+    const matches = router.matchRoutes(path);
 
-      expect(matches.at(-1)?.routeId).not.toBe(rootRouteId);
-    },
-  );
+    expect(matches.at(-1)?.routeId).not.toBe(rootRouteId);
+  });
 });

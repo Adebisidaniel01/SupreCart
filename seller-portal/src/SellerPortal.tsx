@@ -8,6 +8,7 @@ import {
   CircleDollarSign,
   Clock3,
   LogOut,
+  MessageCircle,
   PackagePlus,
   ShieldCheck,
   Star,
@@ -529,6 +530,11 @@ export default function SellerPortal() {
           <a className="seller-side-link" href="#seller-payouts">
             <CircleDollarSign size={16} /> Payouts
           </a>
+          {session && (
+            <a className="seller-side-link" href={`${marketplaceUrl.replace(/\/$/, "")}/messages`}>
+              <MessageCircle size={16} /> Messages
+            </a>
+          )}
           <div className="seller-sidebar-foot">
             <ShieldCheck size={16} />
             <span>Your information is protected by SupreCart.</span>

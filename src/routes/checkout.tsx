@@ -1,11 +1,12 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import {
   ArrowLeft,
   ArrowRight,
   Check,
   ClipboardList,
   MapPin,
+  LocateFixed,
   PackageCheck,
   ReceiptText,
   ShieldCheck,
@@ -14,17 +15,27 @@ import {
 import { Button } from "@/components/ui/button";
 import { useStore } from "@/components/storefront";
 import { money, type Product } from "@/lib/catalog";
+import { supabase } from "@/lib/supabase";
 
+type DeliveryMethod = "doorstep" | "pickup";
 type ShippingDetails = {
   firstName: string;
   lastName: string;
   email: string;
   phone: string;
-  address: string;
-  city: string;
-  state: string;
+  method: DeliveryMethod;
+  lga: string;
+  community: string;
+  streetAddress: string;
+  landmark: string;
+  latitude: number | null;
+  longitude: number | null;
+  pickupStationId: string;
+  pickupStationName: string;
+  pickupStationAddress: string;
   note: string;
 };
+type PickupStation = { id: string; name: string; address: string; lga: string };
 type ReceiptLine = {
   product: Product;
   size: string;
@@ -41,33 +52,30 @@ type PreviewOrder = {
   deliveryFee: number;
   total: number;
   deliveryState: string;
+  deliveryMethod: DeliveryMethod;
+  deliveryDestination: string;
   shipments: { seller: string; trackingNumber: string }[];
 };
 
 const VAT_RATE = 0.075;
-const DELIVERY_BY_STATE: Record<string, number> = {
-  lagos: 2500,
-  "federal capital territory": 3500,
-  fct: 3500,
-  ogun: 3500,
-  oyo: 3500,
-  osun: 3500,
-  ekiti: 4500,
-  edo: 4500,
-  delta: 4500,
-  rivers: 4500,
-  kano: 5500,
-  kaduna: 5500,
-  enugu: 5500,
-  anambra: 5500,
-  abia: 5500,
-  plateau: 5500,
-  default: 6500,
-};
-
-function deliveryPerSeller(state: string) {
-  return DELIVERY_BY_STATE[state.trim().toLowerCase()] ?? DELIVERY_BY_STATE["default"] ?? 0;
-}
+const KWARA_LGAS = [
+  "Asa",
+  "Baruten",
+  "Edu",
+  "Ekiti",
+  "Ifelodun",
+  "Ilorin East",
+  "Ilorin South",
+  "Ilorin West",
+  "Irepodun",
+  "Isin",
+  "Kaiama",
+  "Moro",
+  "Offa",
+  "Oke Ero",
+  "Oyun",
+  "Pategi",
+];
 
 function createReference(prefix: string) {
   const token = globalThis.crypto?.randomUUID?.().replaceAll("-", "").slice(0, 12).toUpperCase();
@@ -96,30 +104,128 @@ function Checkout() {
   const [details, setDetails] = useState<ShippingDetails | null>(null);
   const [order, setOrder] = useState<PreviewOrder | null>(null);
   const [orderError, setOrderError] = useState("");
+  const [deliveryMethod, setDeliveryMethod] = useState<DeliveryMethod>("doorstep");
+  const [doorstepFee, setDoorstepFee] = useState<number | null>(null);
+  const [pickupStations, setPickupStations] = useState<PickupStation[]>([]);
+  const [location, setLocation] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [locationMessage, setLocationMessage] = useState("");
+  const [loadingDeliveryOptions, setLoadingDeliveryOptions] = useState(true);
+  const [deliveryOptionsError, setDeliveryOptionsError] = useState("");
+  const [savingAddress, setSavingAddress] = useState(false);
 
   const sellers = [...new Set(cart.map((item) => item.product.seller))];
-  const deliveryFee = details ? deliveryPerSeller(details.state) * sellers.length : 0;
+  const deliveryFee =
+    details?.method === "doorstep" && doorstepFee !== null ? doorstepFee * sellers.length : 0;
   const vat = cart.reduce(
     (sum, item) => sum + Math.round(item.product.price * item.quantity * VAT_RATE),
     0,
   );
   const total = cartSubtotal + vat + deliveryFee;
 
-  function submitDelivery(event: FormEvent<HTMLFormElement>) {
+  useEffect(() => {
+    if (!supabase) {
+      setDeliveryOptionsError("Delivery options are unavailable. Supabase is not configured.");
+      setLoadingDeliveryOptions(false);
+      return;
+    }
+    let active = true;
+    void Promise.all([
+      supabase.from("delivery_settings").select("doorstep_fee").eq("singleton", true).single(),
+      supabase
+        .from("pickup_stations")
+        .select("id, name, address, lga")
+        .eq("is_active", true)
+        .order("lga")
+        .order("name"),
+    ])
+      .then(([settingsResult, stationsResult]) => {
+        if (settingsResult.error) throw settingsResult.error;
+        if (stationsResult.error) throw stationsResult.error;
+        if (!active) return;
+        setDoorstepFee(Number(settingsResult.data.doorstep_fee));
+        setPickupStations((stationsResult.data ?? []) as PickupStation[]);
+        setDeliveryOptionsError("");
+      })
+      .catch((cause: unknown) => {
+        console.error("Could not load SupreCart delivery options.", cause);
+        if (active) {
+          setDeliveryOptionsError(
+            cause instanceof Error
+              ? `Delivery options could not be loaded: ${cause.message}`
+              : "Delivery options could not be loaded.",
+          );
+        }
+      })
+      .finally(() => {
+        if (active) setLoadingDeliveryOptions(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  async function submitDelivery(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const data = new FormData(event.currentTarget);
-    setDetails({
+    if (deliveryOptionsError) {
+      setOrderError("Resolve the delivery options error before continuing.");
+      return;
+    }
+    const method = String(data.get("deliveryMethod")) as DeliveryMethod;
+    const station = pickupStations.find((item) => item.id === String(data.get("pickupStationId")));
+    if (method === "pickup" && !station) {
+      setOrderError("Choose an active pickup station.");
+      return;
+    }
+    const nextDetails: ShippingDetails = {
       firstName: String(data.get("firstName")).trim(),
       lastName: String(data.get("lastName")).trim(),
-      email: String(data.get("email")).trim(),
+      email: String(data.get("email")).trim().toLowerCase(),
       phone: String(data.get("phone")).trim(),
-      address: String(data.get("address")).trim(),
-      city: String(data.get("city")).trim(),
-      state: String(data.get("state")).trim(),
+      method,
+      lga: String(data.get("lga") ?? "").trim(),
+      community: String(data.get("community") ?? "").trim(),
+      streetAddress: String(data.get("streetAddress") ?? "").trim(),
+      landmark: String(data.get("landmark") ?? "").trim(),
+      latitude: location?.latitude ?? null,
+      longitude: location?.longitude ?? null,
+      pickupStationId: station?.id ?? "",
+      pickupStationName: station?.name ?? "",
+      pickupStationAddress: station?.address ?? "",
       note: String(data.get("note")).trim(),
-    });
-    setStep("receipt");
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    };
+    setSavingAddress(true);
+    setOrderError("");
+    try {
+      if (method === "doorstep" && supabase) {
+        const { data: userResult, error: userError } = await supabase.auth.getUser();
+        if (userError) throw userError;
+        if (userResult.user) {
+          const { error: addressError } = await supabase.from("buyer_addresses").insert({
+            buyer_id: userResult.user.id,
+            first_name: nextDetails.firstName,
+            last_name: nextDetails.lastName,
+            email: nextDetails.email,
+            phone: nextDetails.phone,
+            lga: nextDetails.lga,
+            community: nextDetails.community,
+            street_address: nextDetails.streetAddress,
+            landmark: nextDetails.landmark,
+            latitude: nextDetails.latitude,
+            longitude: nextDetails.longitude,
+          });
+          if (addressError) throw addressError;
+        }
+      }
+      setDetails(nextDetails);
+      setStep("receipt");
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    } catch (cause) {
+      console.error("Could not save SupreCart delivery details.", cause);
+      setOrderError(cause instanceof Error ? cause.message : "Could not save delivery details.");
+    } finally {
+      setSavingAddress(false);
+    }
   }
 
   function confirmPreviewOrder() {
@@ -144,7 +250,12 @@ function Checkout() {
         vat,
         deliveryFee,
         total,
-        deliveryState: details.state,
+        deliveryState: "Kwara",
+        deliveryMethod: details.method,
+        deliveryDestination:
+          details.method === "pickup"
+            ? `${details.pickupStationName} — ${details.pickupStationAddress}`
+            : `${details.streetAddress}, ${details.community}, ${details.lga}, Kwara${details.landmark ? ` · Near ${details.landmark}` : ""}`,
         shipments: sellers.map((seller) => ({
           seller,
           trackingNumber: createReference("CC-TRACK"),
@@ -215,10 +326,48 @@ function Checkout() {
               <div className="checkout-card-title">
                 <MapPin size={19} />
                 <div>
-                  <h2>Where should we send it?</h2>
-                  <p>Delivery cost is estimated from your destination state.</p>
+                  <h2>Choose how to receive your order</h2>
+                  <p>Delivery is currently available in Kwara State only.</p>
                 </div>
               </div>
+              {deliveryOptionsError && (
+                <p className="form-error" role="alert">
+                  {deliveryOptionsError}
+                </p>
+              )}
+              <fieldset className="delivery-method-options" disabled={loadingDeliveryOptions}>
+                <legend>Delivery option</legend>
+                <label>
+                  <input
+                    type="radio"
+                    name="deliveryMethod"
+                    value="doorstep"
+                    checked={deliveryMethod === "doorstep"}
+                    onChange={() => setDeliveryMethod("doorstep")}
+                  />
+                  <span>
+                    <strong>Doorstep delivery</strong>
+                    <small>
+                      {doorstepFee === null
+                        ? "Loading fee…"
+                        : `${money(doorstepFee)} per seller shipment`}
+                    </small>
+                  </span>
+                </label>
+                <label>
+                  <input
+                    type="radio"
+                    name="deliveryMethod"
+                    value="pickup"
+                    checked={deliveryMethod === "pickup"}
+                    onChange={() => setDeliveryMethod("pickup")}
+                  />
+                  <span>
+                    <strong>Pick up from a station</strong>
+                    <small>Collect your order from a SupreCart pickup location</small>
+                  </span>
+                </label>
+              </fieldset>
               <div className="field-pair">
                 <label>
                   First name
@@ -239,35 +388,99 @@ function Checkout() {
                   <input type="tel" name="phone" autoComplete="tel" placeholder="+234" required />
                 </label>
               </div>
-              <label>
-                Street address
-                <input name="address" autoComplete="street-address" required />
-              </label>
-              <div className="field-pair">
+              {deliveryMethod === "doorstep" ? (
+                <>
+                  <div className="field-pair">
+                    <label>
+                      Kwara LGA
+                      <select name="lga" required defaultValue="">
+                        <option value="" disabled>
+                          Select your LGA
+                        </option>
+                        {KWARA_LGAS.map((lga) => (
+                          <option key={lga}>{lga}</option>
+                        ))}
+                      </select>
+                    </label>
+                    <label>
+                      Community / area
+                      <input name="community" autoComplete="address-level2" required />
+                    </label>
+                  </div>
+                  <label>
+                    Street address
+                    <input name="streetAddress" autoComplete="street-address" required />
+                  </label>
+                  <label>
+                    Nearby landmark <span className="optional-label">Optional</span>
+                    <input name="landmark" placeholder="A nearby landmark to help the rider" />
+                  </label>
+                  <div className="location-picker">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        if (!navigator.geolocation) {
+                          setLocationMessage("Your browser does not provide location access.");
+                          return;
+                        }
+                        setLocationMessage("Getting your location…");
+                        navigator.geolocation.getCurrentPosition(
+                          ({ coords }) => {
+                            setLocation({ latitude: coords.latitude, longitude: coords.longitude });
+                            setLocationMessage("Map pin added to your delivery address.");
+                          },
+                          (error) => {
+                            setLocationMessage(
+                              error.code === error.PERMISSION_DENIED
+                                ? "Location permission was denied. You can enter the address manually."
+                                : "Could not get your location. You can enter the address manually.",
+                            );
+                          },
+                          { enableHighAccuracy: true, timeout: 12000, maximumAge: 30000 },
+                        );
+                      }}
+                    >
+                      <LocateFixed size={16} />{" "}
+                      {location ? "Update map pin" : "Use my location (optional)"}
+                    </Button>
+                    {locationMessage && <span role="status">{locationMessage}</span>}
+                  </div>
+                </>
+              ) : (
                 <label>
-                  City
-                  <input name="city" autoComplete="address-level2" required />
+                  Pickup station
+                  <select name="pickupStationId" required defaultValue="">
+                    <option value="" disabled>
+                      Select a pickup station
+                    </option>
+                    {pickupStations.map((station) => (
+                      <option key={station.id} value={station.id}>
+                        {station.name} — {station.lga}
+                      </option>
+                    ))}
+                  </select>
+                  {pickupStations.length === 0 && (
+                    <small>No active pickup stations are configured yet.</small>
+                  )}
                 </label>
-                <label>
-                  State
-                  <input
-                    name="state"
-                    autoComplete="address-level1"
-                    placeholder="e.g. Lagos"
-                    required
-                  />
-                </label>
-              </div>
+              )}
               <label>
-                Delivery note <span className="optional-label">Optional</span>
+                {deliveryMethod === "pickup" ? "Pickup note" : "Delivery note"}{" "}
+                <span className="optional-label">Optional</span>
                 <textarea
                   name="note"
                   rows={3}
                   placeholder="Anything the delivery person should know?"
                 />
               </label>
-              <Button size="lg" type="submit">
-                Generate receipt <ArrowRight size={16} />
+              {orderError && (
+                <p role="alert" className="form-error">
+                  {orderError}
+                </p>
+              )}
+              <Button size="lg" type="submit" disabled={savingAddress || loadingDeliveryOptions}>
+                {savingAddress ? "Saving details…" : "Review receipt"} <ArrowRight size={16} />
               </Button>
             </form>
           )}
@@ -285,12 +498,19 @@ function Checkout() {
                   {details.firstName} {details.lastName}
                 </strong>
                 <span>
-                  {details.address}, {details.city}, {details.state}
+                  {details.method === "pickup"
+                    ? `${details.pickupStationName}, ${details.pickupStationAddress}`
+                    : `${details.streetAddress}, ${details.community}, ${details.lga}, Kwara`}
                 </span>
                 <span>
                   {details.email} · {details.phone}
                 </span>
                 {details.note && <span>Delivery note: {details.note}</span>}
+                {details.method === "doorstep" && details.latitude !== null && (
+                  <span>
+                    Map pin: {details.latitude.toFixed(5)}, {details.longitude?.toFixed(5)}
+                  </span>
+                )}
               </div>
               <div className="receipt-lines">
                 {cart.map((item) => {
@@ -317,8 +537,10 @@ function Checkout() {
                 })}
               </div>
               <p className="delivery-explainer">
-                <Truck size={15} /> Delivery to {details.state} is charged per seller shipment (
-                {sellers.length} {sellers.length === 1 ? "seller" : "sellers"}).
+                <Truck size={15} />{" "}
+                {details.method === "pickup"
+                  ? "Pickup selected. No doorstep delivery fee is included."
+                  : `Doorstep delivery in Kwara is charged per seller shipment (${sellers.length} ${sellers.length === 1 ? "seller" : "sellers"}).`}
               </p>
               <div className="checkout-actions">
                 <Button variant="outline" onClick={() => setStep("delivery")}>
@@ -334,8 +556,8 @@ function Checkout() {
                 </p>
               )}
               <p className="payment-preview">
-                Preview estimates only: VAT is shown at 7.5%. Delivery rates are demo rates and will
-                need confirmation before launch. No payment will be collected.
+                Preview estimates only: VAT is shown at 7.5%. Doorstep delivery fee is editable in
+                Supabase delivery settings. No payment will be collected.
               </p>
             </div>
           )}
@@ -350,6 +572,13 @@ function Checkout() {
                 These sample references are stored in this browser only. No order was sent to a
                 seller and no parcel is being shipped.
               </p>
+              <div className="reference-card">
+                <span>
+                  <MapPin size={15} />{" "}
+                  {order.deliveryMethod === "pickup" ? "Pickup station" : "Delivery address"}
+                </span>
+                <strong>{order.deliveryDestination}</strong>
+              </div>
               <div className="reference-card">
                 <span>
                   <ClipboardList size={15} /> Batch number
@@ -427,7 +656,9 @@ function Checkout() {
             vat={step === "complete" && order ? order.vat : vat}
             deliveryFee={step === "complete" && order ? order.deliveryFee : deliveryFee}
             total={step === "complete" && order ? order.total : total}
-            deliveryState={step === "complete" && order ? order.deliveryState : details?.state}
+            deliveryState={
+              step === "complete" && order ? order.deliveryState : details ? "Kwara" : undefined
+            }
           />
           <p className="demo-disclaimer">
             <ShieldCheck size={15} /> Demo estimate only: tax and delivery rates must be confirmed

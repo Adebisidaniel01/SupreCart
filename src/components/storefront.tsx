@@ -18,6 +18,7 @@ import {
   Menu,
   Minus,
   Music2,
+  MessageCircle,
   Plus,
   Search,
   ShoppingBag,
@@ -50,7 +51,9 @@ export function useStore() {
 }
 export function Wordmark() {
   return (
-    <span className="wordmark"><img src="/suprecart-logo.png" alt="SupreCart" /></span>
+    <span className="wordmark">
+      <img src="/suprecart-logo.png" alt="SupreCart" />
+    </span>
   );
 }
 
@@ -192,6 +195,12 @@ export function Storefront({ children }: { children: ReactNode }) {
           <Link to="/careers" onClick={() => setMobileNav(false)}>
             Careers
           </Link>
+          <Link className="auth-nav-link" to="/login" onClick={() => setMobileNav(false)}>
+            Sign in
+          </Link>
+          <Link className="auth-nav-link auth-nav-primary" to="/signup" onClick={() => setMobileNav(false)}>
+            Create account
+          </Link>
         </nav>
         <div className="header-tools">
           <Button
@@ -228,6 +237,11 @@ export function Storefront({ children }: { children: ReactNode }) {
           <Button variant="ghost" size="icon" title="Account" aria-label="Account" asChild>
             <Link to="/login">
               <UserRound />
+            </Link>
+          </Button>
+          <Button variant="ghost" size="icon" title="Messages" aria-label="Messages" asChild>
+            <Link to="/messages" search={{ productId: undefined }}>
+              <MessageCircle />
             </Link>
           </Button>
           <Button
@@ -474,6 +488,21 @@ export function Storefront({ children }: { children: ReactNode }) {
               <Button size="lg" className="w-full" disabled={!size} onClick={addToCart}>
                 <ShoppingBag /> Add to bag · {money(selected.price * quantity)}
               </Button>
+              {selected.marketplaceProductId && selected.sellerId && (
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => {
+                    setPanel("");
+                    void navigate({
+                      to: "/messages",
+                      search: { productId: selected.marketplaceProductId },
+                    });
+                  }}
+                >
+                  <MessageCircle size={17} /> Message seller
+                </Button>
+              )}
               <p className="sample-note">
                 Preview catalogue. Orders and payments are not processed.
               </p>
