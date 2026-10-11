@@ -17,6 +17,14 @@ import {
 } from "lucide-react";
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "../../src/lib/supabase";
+import {
+  clearDemoAccount,
+  findDemoAccount,
+  getDemoAccounts,
+  readDemoAccount,
+  saveDemoAccount,
+  type DemoAccount,
+} from "../../src/lib/demo-accounts";
 import "./seller.css";
 
 type SellerApplication = {
@@ -146,6 +154,7 @@ export default function SellerPortal() {
   const [application, setApplication] = useState<SellerApplication | null>(null);
   const [stats, setStats] = useState<SellerStats | null>(null);
   const [screen, setScreen] = useState<"login" | "apply">("apply");
+  const [demoAccount, setDemoAccount] = useState<DemoAccount | null>(null);
   const [busy, setBusy] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [notice, setNotice] = useState("");
@@ -258,6 +267,12 @@ export default function SellerPortal() {
 
   useEffect(() => {
     const timer = window.setTimeout(() => setLoadingScreen(false), 1050);
+    const localDemoAccount = readDemoAccount("seller");
+    if (localDemoAccount) {
+      setDemoAccount(localDemoAccount);
+      setBusy(false);
+      return () => window.clearTimeout(timer);
+    }
     const client = supabase;
     if (!client) {
       setBusy(false);
@@ -364,16 +379,30 @@ export default function SellerPortal() {
 
   async function signIn(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!supabase)
-      return setError("Account service is temporarily unavailable. Please try again later.");
     setSubmitting(true);
     setError("");
     try {
       const form = new FormData(event.currentTarget);
       const email = String(form.get("email")).trim().toLowerCase();
+      const localDemoAccount = findDemoAccount(email, "seller");
+      if (localDemoAccount) {
+        saveDemoAccount(localDemoAccount);
+        setDemoAccount(localDemoAccount);
+        setNotice("");
+        setBusy(false);
+        return;
+      }
+      const password = String(form.get("password"));
+      if (import.meta.env.DEV && !password) {
+        throw new Error(
+          "Enter a listed demo seller email, or provide a password for a Supabase account.",
+        );
+      }
+      if (!supabase)
+        return setError("Account service is temporarily unavailable. Please try again later.");
       const { data, error: signInError } = await supabase.auth.signInWithPassword({
         email,
-        password: String(form.get("password")),
+        password,
       });
       if (signInError) throw signInError;
       setSession(data.session);
@@ -434,6 +463,15 @@ export default function SellerPortal() {
   }
 
   async function signOut() {
+    if (demoAccount) {
+      clearDemoAccount();
+      setDemoAccount(null);
+      setApplication(null);
+      setStats(null);
+      setSubmitted(false);
+      setScreen("login");
+      return;
+    }
     if (!supabase) return;
     const { error: signOutError } = await supabase.auth.signOut();
     if (signOutError) {
@@ -538,7 +576,7 @@ export default function SellerPortal() {
           <Store size={15} /> SELLER STUDIO
         </span>
         <div className="seller-header-actions">
-          {session ? (
+          {session || demoAccount ? (
             <button type="button" className="seller-text-button" onClick={() => void signOut()}>
               <LogOut size={15} /> Sign out
             </button>
@@ -621,6 +659,28 @@ export default function SellerPortal() {
                 Go to seller sign in <ArrowRight size={16} />
               </button>
             </div>
+          ) : demoAccount ? (
+            <SellerDashboard
+              application={{
+                id: demoAccount.email,
+                first_name: demoAccount.name.split(/\s+/)[0] ?? demoAccount.name,
+                middle_name: null,
+                last_name: demoAccount.name.split(/\s+/).slice(1).join(" "),
+                email: demoAccount.email,
+                product_description: "Development-only demo seller",
+                status: "approved",
+              }}
+              stats={{ orders: [], items: [], products: [], ratings: [], committedPayouts: 0 }}
+              earnings={0}
+              balance={0}
+              soldCount={0}
+              error=""
+              notice=""
+              submitting={false}
+              demoMode
+              onAddProduct={addProduct}
+              onRequestPayout={requestPayout}
+            />
           ) : session && application ? (
             application.status === "approved" ? (
               <SellerDashboard
@@ -864,7 +924,17 @@ function SignInPanel({
           </label>
           <label className="seller-field-full">
             Password
-            <input name="password" type="password" autoComplete="current-password" required />
+            <input
+              name="password"
+              type="password"
+              autoComplete="current-password"
+              required={!import.meta.env.DEV}
+            />
+            {import.meta.env.DEV && (
+              <small>
+                For a listed demo seller, leave this blank. Otherwise use your Supabase password.
+              </small>
+            )}
           </label>
           {error && (
             <p className="seller-form-error seller-field-full" role="alert">
@@ -893,6 +963,17 @@ function SignInPanel({
             {submitting ? "Signing in…" : "Sign in"} <ArrowRight size={16} />
           </button>
         </form>
+        {import.meta.env.DEV && (
+          <p className="seller-form-notice">
+            Local demo sellers (no password or email verification):
+            {getDemoAccounts("seller").map((account) => (
+              <span key={account.email}>
+                <br />
+                {account.name} — {account.email}
+              </span>
+            ))}
+          </p>
+        )}
         <form className="seller-reset-form" onSubmit={onReset}>
           <label>
             Email
@@ -947,6 +1028,7 @@ function SellerDashboard({
   error,
   notice,
   submitting,
+  demoMode = false,
   onAddProduct,
   onRequestPayout,
 }: {
@@ -958,6 +1040,7 @@ function SellerDashboard({
   error: string;
   notice: string;
   submitting: boolean;
+  demoMode?: boolean;
   onAddProduct: (event: FormEvent<HTMLFormElement>) => void;
   onRequestPayout: (event: FormEvent<HTMLFormElement>) => void;
 }) {
@@ -970,23 +1053,35 @@ function SellerDashboard({
   return (
     <div className="seller-dashboard">
       <div className="seller-dashboard-topline">
-        <p className="seller-eyebrow">YOUR SELLER STUDIO</p>
+        <p className="seller-eyebrow">{demoMode ? "LOCAL DEMO DASHBOARD" : "YOUR SELLER STUDIO"}</p>
         <span className="seller-approved">
-          <BadgeCheck size={14} /> VERIFIED SELLER
+          <BadgeCheck size={14} /> {demoMode ? "DEMO ACCOUNT" : "VERIFIED SELLER"}
         </span>
       </div>
+      {demoMode && (
+        <p className="seller-form-notice" role="status">
+          Development-only preview. No Supabase account, products, orders, or financial records are
+          connected to this demo.
+        </p>
+      )}
       <div className="seller-dashboard-heading">
         <div>
           <h1>Good to see you, {application.first_name}.</h1>
-          <p>Here’s how your shop is doing today.</p>
+          <p>
+            {demoMode
+              ? "Demo metrics only — real seller data is not loaded."
+              : "Here’s how your shop is doing today."}
+          </p>
         </div>
-        <button
-          className="seller-primary-button"
-          type="button"
-          onClick={() => setProductFormOpen((open) => !open)}
-        >
-          <PackagePlus size={16} /> Add a product
-        </button>
+        {!demoMode && (
+          <button
+            className="seller-primary-button"
+            type="button"
+            onClick={() => setProductFormOpen((open) => !open)}
+          >
+            <PackagePlus size={16} /> Add a product
+          </button>
+        )}
       </div>
       {error && (
         <p className="seller-form-error" role="alert">
@@ -1037,15 +1132,17 @@ function SellerDashboard({
             <p className="seller-eyebrow">YOUR CATALOGUE</p>
             <h2>Products</h2>
           </div>
-          <button
-            type="button"
-            className="seller-outline-button"
-            onClick={() => setProductFormOpen((open) => !open)}
-          >
-            <PackagePlus size={15} /> Add product
-          </button>
+          {!demoMode && (
+            <button
+              type="button"
+              className="seller-outline-button"
+              onClick={() => setProductFormOpen((open) => !open)}
+            >
+              <PackagePlus size={15} /> Add product
+            </button>
+          )}
         </div>
-        {productFormOpen && (
+        {productFormOpen && !demoMode && (
           <form className="seller-product-form" onSubmit={onAddProduct}>
             <label>
               Product name
@@ -1109,15 +1206,21 @@ function SellerDashboard({
           ) : (
             <div className="seller-empty-products">
               <PackagePlus size={21} />
-              <strong>Your first product is waiting.</strong>
-              <span>Add a product to start building your storefront.</span>
-              <button
-                type="button"
-                className="seller-switch-link"
-                onClick={() => setProductFormOpen(true)}
-              >
-                Add your first product <ArrowRight size={14} />
-              </button>
+              <strong>{demoMode ? "No demo products" : "Your first product is waiting."}</strong>
+              <span>
+                {demoMode
+                  ? "This test account has no saved catalogue."
+                  : "Add a product to start building your storefront."}
+              </span>
+              {!demoMode && (
+                <button
+                  type="button"
+                  className="seller-switch-link"
+                  onClick={() => setProductFormOpen(true)}
+                >
+                  Add your first product <ArrowRight size={14} />
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -1139,16 +1242,18 @@ function SellerDashboard({
               payment is made.
             </span>
           </div>
-          <button
-            type="button"
-            className="seller-primary-button"
-            onClick={() => setPayoutFormOpen((open) => !open)}
-            disabled={balance <= 0}
-          >
-            Request funds <ArrowRight size={15} />
-          </button>
+          {!demoMode && (
+            <button
+              type="button"
+              className="seller-primary-button"
+              onClick={() => setPayoutFormOpen((open) => !open)}
+              disabled={balance <= 0}
+            >
+              Request funds <ArrowRight size={15} />
+            </button>
+          )}
         </div>
-        {payoutFormOpen && (
+        {payoutFormOpen && !demoMode && (
           <form className="seller-payout-form" onSubmit={onRequestPayout}>
             <label>
               Amount (NGN)
@@ -1160,8 +1265,10 @@ function SellerDashboard({
           </form>
         )}
         <p className="seller-finance-note">
-          <ShieldCheck size={14} /> A payout request does not transfer funds. SupreCart reviews
-          requests and pays to your verified bank account.
+          <ShieldCheck size={14} />
+          {demoMode
+            ? "Demo balances are not real and cannot be withdrawn."
+            : "A payout request does not transfer funds. SupreCart reviews requests and pays to your verified bank account."}
         </p>
       </section>
     </div>

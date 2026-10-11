@@ -4,6 +4,7 @@ import type { User } from "@supabase/supabase-js";
 import { ArrowLeft, ArrowRight, LogOut, Package, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/lib/supabase";
+import { clearDemoAccount, readDemoAccount, type DemoAccount } from "@/lib/demo-accounts";
 
 type BuyerProfile = {
   first_name: string;
@@ -32,12 +33,19 @@ export const Route = createFileRoute("/account")({
 function BuyerAccount() {
   const navigate = useNavigate();
   const [user, setUser] = useState<User | null>(null);
+  const [demoAccount, setDemoAccount] = useState<DemoAccount | null>(null);
   const [profile, setProfile] = useState<BuyerProfile | null>(null);
   const [orders, setOrders] = useState<BuyerOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   useEffect(() => {
+    const localDemoAccount = readDemoAccount("buyer");
+    if (localDemoAccount) {
+      setDemoAccount(localDemoAccount);
+      setLoading(false);
+      return;
+    }
     if (!supabase) {
       setError("Account service is temporarily unavailable. Please try again later.");
       setLoading(false);
@@ -81,6 +89,13 @@ function BuyerAccount() {
   }, [navigate]);
 
   useEffect(() => {
+    if (demoAccount) {
+      setProfile(null);
+      setOrders([]);
+      setError("");
+      setLoading(false);
+      return;
+    }
     if (!supabase || !user) return;
     if (user.user_metadata["role"] === "seller") {
       void navigate({ to: "/sellers" });
@@ -122,9 +137,15 @@ function BuyerAccount() {
     return () => {
       active = false;
     };
-  }, [navigate, user]);
+  }, [demoAccount, navigate, user]);
 
   async function signOut() {
+    if (demoAccount) {
+      clearDemoAccount();
+      setDemoAccount(null);
+      await navigate({ to: "/login" });
+      return;
+    }
     if (!supabase) return;
     const { error: signOutError } = await supabase.auth.signOut();
     if (signOutError) {
@@ -136,7 +157,8 @@ function BuyerAccount() {
     await navigate({ to: "/login" });
   }
 
-  const firstName = profile?.first_name || user?.user_metadata["first_name"] || "there";
+  const firstName =
+    demoAccount?.name || profile?.first_name || user?.user_metadata["first_name"] || "there";
   const emailVerified = Boolean(user?.email_confirmed_at);
 
   return (
@@ -156,6 +178,11 @@ function BuyerAccount() {
             <p className="eyebrow">YOUR ACCOUNT</p>
             <h1>Good to see you, {firstName}.</h1>
             <p className="account-intro">Your SupreCart profile and activity.</p>
+            {demoAccount && (
+              <p className="demo-disclaimer" role="status">
+                Local demo account — email verification and Supabase data are bypassed for testing.
+              </p>
+            )}
           </div>
           <Button variant="outline" onClick={() => void signOut()}>
             <LogOut size={15} /> Sign out
@@ -176,24 +203,34 @@ function BuyerAccount() {
                 <div>
                   <dt>Name</dt>
                   <dd>
-                    {[profile?.first_name, profile?.middle_name, profile?.last_name]
-                      .filter(Boolean)
-                      .join(" ") || firstName}
+                    {demoAccount?.name ||
+                      [profile?.first_name, profile?.middle_name, profile?.last_name]
+                        .filter(Boolean)
+                        .join(" ") ||
+                      firstName}
                   </dd>
                 </div>
                 <div>
                   <dt>Email</dt>
-                  <dd>{user?.email}</dd>
+                  <dd>{demoAccount?.email || user?.email}</dd>
                 </div>
                 <div>
                   <dt>Phone</dt>
-                  <dd>{profile?.phone || user?.user_metadata["phone"] || "Not added"}</dd>
+                  <dd>
+                    {demoAccount
+                      ? "Demo data only"
+                      : profile?.phone || user?.user_metadata["phone"] || "Not added"}
+                  </dd>
                 </div>
                 <div>
                   <dt>Email verification</dt>
                   <dd className="account-verification">
                     <ShieldCheck size={15} />
-                    {emailVerified ? "Verified" : "Awaiting confirmation"}
+                    {demoAccount
+                      ? "Skipped for local testing"
+                      : emailVerified
+                        ? "Verified"
+                        : "Awaiting confirmation"}
                   </dd>
                 </div>
               </dl>

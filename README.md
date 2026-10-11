@@ -51,6 +51,10 @@ Use these notes when configuring Supabase for a new local checkout or diagnosing
 
 For an existing Supabase project that already ran the marketplace migration, run only the follow-up migration in the Supabase SQL Editor or your normal migration workflow to fix the views; do not re-run the entire initial migration just to change the views. For a new project, run all migrations in timestamp order. With invoker-security views, access is also constrained by the querying role's permissions and the underlying tables' RLS policies, so validate the intended anonymous and authenticated read paths after applying the change.
 
+### Local demo accounts
+
+For local data testing only, the buyer login and seller portal accept the eight demo email addresses in `src/lib/demo-accounts.ts` without a password or email verification. They are browser-local demo identities, not Supabase users or database rows; buyer orders and seller financial/product data are not created. The seller demo dashboard is read-only and labeled as demo data. This behavior is compiled out of production builds and must not be used to authenticate real users. Remove the fixture when email delivery is working and real Supabase accounts can be used.
+
 ### Chat, location, checkout, and cookies
 
 - Buyers can start a conversation from a **live Supabase product** before or after purchase; buyers and sellers can continue it from `/messages`. Conversations are private to their participants. Text chat, realtime updates, read receipts, and voice notes are stored through Supabase. Voice notes have a 25 MB file-size cap and no application-imposed duration limit.

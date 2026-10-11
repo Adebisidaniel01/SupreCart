@@ -3,6 +3,7 @@ import { useState, type FormEvent } from "react";
 import { ArrowLeft, ArrowRight, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/lib/supabase";
+import { findDemoAccount, getDemoAccounts, saveDemoAccount } from "@/lib/demo-accounts";
 
 export const Route = createFileRoute("/login")({
   head: () => ({
@@ -22,6 +23,17 @@ function Login() {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
     const email = String(formData.get("email")).trim().toLowerCase();
+    const demoAccount = findDemoAccount(email, "buyer");
+    if (demoAccount) {
+      saveDemoAccount(demoAccount);
+      await navigate({ to: "/account" });
+      return;
+    }
+    const password = String(formData.get("password"));
+    if (import.meta.env.DEV && !password) {
+      setError("Enter a listed demo buyer email, or provide a password for a Supabase account.");
+      return;
+    }
     if (!supabase) {
       setError("Account service is temporarily unavailable. Please try again later.");
       return;
@@ -29,7 +41,7 @@ function Login() {
     try {
       const { error: signInError } = await supabase.auth.signInWithPassword({
         email,
-        password: String(formData.get("password")),
+        password,
       });
       if (signInError) throw signInError;
       setError("");
@@ -62,9 +74,32 @@ function Login() {
           </label>
           <label>
             Password
-            <input type="password" name="password" autoComplete="current-password" required />
-            <small>Use the password you chose when you created your account.</small>
+            <input
+              type="password"
+              name="password"
+              autoComplete="current-password"
+              required={!import.meta.env.DEV}
+            />
+            <small>
+              {import.meta.env.DEV
+                ? "For a listed local demo buyer, leave this blank. Otherwise use your Supabase password."
+                : "Use the password you chose when you created your account."}
+            </small>
           </label>
+          {import.meta.env.DEV && (
+            <div className="demo-disclaimer">
+              <ShieldCheck size={15} />
+              <span>
+                Local demo accounts (no password or email verification):
+                {getDemoAccounts("buyer").map((account) => (
+                  <span key={account.email}>
+                    <br />
+                    {account.name} — {account.email}
+                  </span>
+                ))}
+              </span>
+            </div>
+          )}
           {error && (
             <p role="alert" className="form-error">
               {error}
