@@ -75,7 +75,7 @@ function Index() {
           </p>
           <div className="hero-actions">
             <Button size="lg" asChild>
-              <Link to="/shop" search={{ filter: "All" }}>
+              <Link to="/shop" search={{ filter: "All", query: "" }}>
                 Explore the marketplace
               </Link>
             </Button>
@@ -89,13 +89,30 @@ function Index() {
           <span>Good finds, from sellers worth knowing.</span>
         </div>
       </section>
+      <section className="home-value-strip" aria-label="Why shop SupreCart">
+        <div>
+          <span>01</span>
+          <strong>Independent sellers</strong>
+          <p>Find brands and makers beyond the usual.</p>
+        </div>
+        <div>
+          <span>02</span>
+          <strong>Easy to explore</strong>
+          <p>Move from fashion to home and more in one place.</p>
+        </div>
+        <div>
+          <span>03</span>
+          <strong>Always something new</strong>
+          <p>Keep discovering new things worth knowing.</p>
+        </div>
+      </section>
       <section className="category-section" id="categories">
         <div className="section-heading">
           <div>
             <p className="eyebrow">A little bit of everything</p>
             <h2>Explore the marketplace</h2>
           </div>
-          <Link to="/shop" search={{ filter: "All" }} className="view-all">
+          <Link to="/shop" search={{ filter: "All", query: "" }} className="view-all">
             All categories <ArrowRight size={14} />
           </Link>
         </div>
@@ -107,7 +124,7 @@ function Index() {
               <Link
                 key={category}
                 to="/shop"
-                search={{ filter: category }}
+                search={{ filter: category, query: "" }}
                 className={`category category-card category-tone-${i}`}
               >
                 <div>
@@ -120,10 +137,14 @@ function Index() {
           })}
         </div>
       </section>
-      <section className="sponsored-grid" aria-label="Sponsored seller collections">
-        <Link to="/shop" search={{ filter: "Home" }} className="sponsored-card sponsored-home">
+      <section className="sponsored-grid home-edits" aria-label="Marketplace edits">
+        <Link
+          to="/shop"
+          search={{ filter: "Home", query: "" }}
+          className="sponsored-card sponsored-home"
+        >
           <span className="sponsored-label">
-            <Sparkles size={13} /> SPONSORED · FORM & FIELD
+            <Sparkles size={13} /> THE HOME EDIT
           </span>
           <strong>
             Make room
@@ -133,11 +154,14 @@ function Index() {
           <span className="sponsored-card-link">
             Explore home <ArrowRight size={14} />
           </span>
-          <span className="ad-disclosure">Paid placement</span>
         </Link>
-        <Link to="/shop" search={{ filter: "Beauty" }} className="sponsored-card sponsored-beauty">
+        <Link
+          to="/shop"
+          search={{ filter: "Beauty", query: "" }}
+          className="sponsored-card sponsored-beauty"
+        >
           <span className="sponsored-label">
-            <Sparkles size={13} /> SPONSORED · SEREIN
+            <Sparkles size={13} /> EVERYDAY BEAUTY
           </span>
           <strong>
             A softer kind
@@ -147,16 +171,15 @@ function Index() {
           <span className="sponsored-card-link">
             Explore beauty <ArrowRight size={14} />
           </span>
-          <span className="ad-disclosure">Paid placement</span>
         </Link>
       </section>
       <section className="bestsellers">
         <div className="section-heading">
           <div>
-            <p className="eyebrow">Picked by the community</p>
-            <h2>Good finds, loved often</h2>
+            <p className="eyebrow">A few good finds</p>
+            <h2>Worth a closer look</h2>
           </div>
-          <Link to="/shop" search={{ filter: "All" }} className="view-all">
+          <Link to="/shop" search={{ filter: "All", query: "" }} className="view-all">
             Shop everything <ArrowRight size={14} />
           </Link>
         </div>
@@ -166,19 +189,19 @@ function Index() {
           ))}
         </div>
       </section>
-      <section className="sponsored-banner">
+      <section className="sponsored-banner home-maker-banner">
         <div>
           <span className="sponsored-label">
-            <Sparkles size={13} /> SPONSORED COLLECTION
+            <Sparkles size={13} /> MADE BY INDEPENDENT SELLERS
           </span>
           <h2>
             Meet the makers
             <br />
             behind the good stuff.
           </h2>
-          <p>Discover independent brands and products picked for you.</p>
+          <p>Meet the people and small businesses behind the good finds.</p>
           <Button variant="outline" asChild>
-            <Link to="/shop" search={{ filter: "All" }}>
+            <Link to="/shop" search={{ filter: "All", query: "" }}>
               Discover the edit <ArrowRight />
             </Link>
           </Button>
@@ -190,7 +213,6 @@ function Index() {
           <br />
           by design
         </div>
-        <span className="ad-disclosure">Paid placement</span>
       </section>
       <section className="bestsellers latest-finds">
         <div className="section-heading">
@@ -198,7 +220,7 @@ function Index() {
             <p className="eyebrow">More reasons to browse</p>
             <h2>Fresh from the marketplace</h2>
           </div>
-          <Link to="/shop" search={{ filter: "All" }} className="view-all">
+          <Link to="/shop" search={{ filter: "All", query: "" }} className="view-all">
             See all <ArrowRight size={14} />
           </Link>
         </div>

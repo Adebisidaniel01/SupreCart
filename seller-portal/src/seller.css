@@ -619,6 +619,94 @@
   border-radius: 9px;
   background: #fff;
 }
+.seller-order-list {
+  display: grid;
+  gap: 9px;
+}
+.seller-order-list article {
+  display: grid;
+  grid-template-columns: auto 1fr auto auto;
+  align-items: center;
+  gap: 12px;
+  min-height: 54px;
+  padding: 10px 13px;
+  border: 1px solid #e6ebe4;
+  border-radius: 8px;
+  background: #fff;
+  color: #647168;
+  font-size: 10px;
+}
+.seller-order-list article > svg {
+  color: #678472;
+}
+.seller-order-list article > strong {
+  color: #28382d;
+}
+.seller-order-status {
+  padding: 5px 8px;
+  border-radius: 20px;
+  background: #f0f2eb;
+  color: #5d6b5b;
+  font-size: 9px;
+  text-transform: capitalize;
+}
+.seller-order-status.status-delivered {
+  background: #eaf4eb;
+  color: #31734a;
+}
+.seller-settings-card {
+  display: grid;
+  gap: 18px;
+  padding: 19px;
+  border: 1px solid #e4e9e3;
+  border-radius: 10px;
+  background: #fff;
+}
+.seller-settings-card > div {
+  display: grid;
+  gap: 5px;
+}
+.seller-settings-card > div > strong {
+  color: #293b30;
+  font-size: 13px;
+}
+.seller-settings-card > div > span,
+.seller-settings-note {
+  color: #778279;
+  font-size: 10px;
+  line-height: 1.6;
+}
+.seller-settings-note {
+  margin: 0;
+}
+.seller-settings-form {
+  display: grid;
+  max-width: 540px;
+  gap: 15px;
+}
+.seller-settings-form label {
+  display: grid;
+  gap: 7px;
+  color: #4f5d53;
+  font-size: 10px;
+  font-weight: 650;
+}
+.seller-settings-form input {
+  min-height: 41px;
+  padding: 9px 11px;
+  border: 1px solid #dfe6de;
+  border-radius: 6px;
+  background: #fbfcfa;
+  color: #26382d;
+}
+.seller-settings-form small {
+  color: #879187;
+  font-size: 9px;
+  font-weight: 400;
+}
+.seller-settings-form .seller-primary-button {
+  width: max-content;
+}
 .seller-section-heading {
   margin-bottom: 18px;
 }
@@ -915,6 +1003,18 @@
   }
 }
 @media (max-width: 760px) {
+  .seller-order-list article {
+    grid-template-columns: auto 1fr auto;
+  }
+  .seller-order-list time {
+    grid-column: 2 / -1;
+  }
+  .seller-settings-card {
+    padding: 14px;
+  }
+  .seller-settings-form .seller-primary-button {
+    width: 100%;
+  }
   .seller-header {
     height: 65px;
     padding-inline: 17px;

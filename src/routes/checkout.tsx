@@ -282,7 +282,7 @@ function Checkout() {
         <h1>Good finds are waiting.</h1>
         <p>Add a few things to your bag before heading to checkout.</p>
         <Button asChild>
-          <Link to="/shop" search={{ filter: "All" }}>
+          <Link to="/shop" search={{ filter: "All", query: "" }}>
             Explore the marketplace <ArrowRight size={16} />
           </Link>
         </Button>
@@ -291,7 +291,7 @@ function Checkout() {
 
   return (
     <main className="page-width checkout-main">
-      <Link to="/shop" search={{ filter: "All" }} className="back-link">
+      <Link to="/shop" search={{ filter: "All", query: "" }} className="back-link">
         <ArrowLeft size={15} /> Back to shopping
       </Link>
       <div className="checkout-heading">
@@ -604,7 +604,7 @@ function Checkout() {
                 total={order.total}
                 deliveryState={order.deliveryState}
               />
-              <Button onClick={() => navigate({ to: "/shop", search: { filter: "All" } })}>
+              <Button onClick={() => navigate({ to: "/shop", search: { filter: "All", query: "" } })}>
                 Keep exploring <ArrowRight size={16} />
               </Button>
             </div>

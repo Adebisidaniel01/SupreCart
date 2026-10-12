@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } fro
 import type { User } from "@supabase/supabase-js";
 import { ArrowLeft, CheckCheck, MessageCircle, Mic, Send, Square, Store } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import { readDemoAccount } from "@/lib/demo-accounts";
 
 type Conversation = {
   id: string;
@@ -194,6 +195,11 @@ function Messages() {
         if (sessionError) throw sessionError;
         const currentUser = data.session?.user;
         if (!currentUser) {
+          if (readDemoAccount("buyer") || readDemoAccount("seller")) {
+            throw new Error(
+              "Local demo identities do not have Supabase sessions, so they cannot send or receive messages. Use Supabase buyer and seller accounts to test chat.",
+            );
+          }
           await navigate({ to: "/login" });
           return;
         }
@@ -305,9 +311,22 @@ function Messages() {
           if (active) setError(cause instanceof Error ? cause.message : "Could not refresh chat.");
         });
       })
-      .subscribe();
+      .subscribe((status) => {
+        if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+          setError(
+            "Live chat updates are unavailable. SupreCart will keep checking for new messages.",
+          );
+        }
+      });
+    const refreshTimer = window.setInterval(() => {
+      void loadMessages(activeId, user).catch((cause: unknown) => {
+        console.error("Could not poll SupreCart messages.", cause);
+        if (active) setError(cause instanceof Error ? cause.message : "Could not refresh chat.");
+      });
+    }, 8000);
     return () => {
       active = false;
+      window.clearInterval(refreshTimer);
       void client.removeChannel(channel);
     };
   }, [activeId, loadMessages, user]);
@@ -320,17 +339,19 @@ function Messages() {
     if (!body) return;
     setSending(true);
     setError("");
-    const { error: sendError } = await supabase
-      .from("chat_messages")
-      .insert({ conversation_id: activeConversation.id, sender_id: user.id, body });
-    setSending(false);
-    if (sendError) {
-      console.error("Could not send the SupreCart message.", sendError);
-      setError(sendError.message);
-      return;
+    try {
+      const { error: sendError } = await supabase
+        .from("chat_messages")
+        .insert({ conversation_id: activeConversation.id, sender_id: user.id, body });
+      if (sendError) throw sendError;
+      form.reset();
+      await loadMessages(activeConversation.id, user);
+    } catch (cause) {
+      console.error("Could not send the SupreCart message.", cause);
+      setError(cause instanceof Error ? cause.message : "Could not send this message.");
+    } finally {
+      setSending(false);
     }
-    form.reset();
-    await loadMessages(activeConversation.id, user);
   }
 
   async function uploadVoiceNote(blob: Blob) {
@@ -462,7 +483,7 @@ function Messages() {
               <MessageCircle size={21} />
               <strong>No conversations yet</strong>
               <span>Open a live product and choose “Message seller” to start a chat.</span>
-              <Link to="/shop" search={{ filter: "All" }}>
+              <Link to="/shop" search={{ filter: "All", query: "" }}>
                 Browse products
               </Link>
             </div>

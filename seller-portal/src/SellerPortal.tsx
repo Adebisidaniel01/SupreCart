@@ -11,6 +11,7 @@ import {
   MessageCircle,
   PackagePlus,
   ShieldCheck,
+  Settings,
   Star,
   Store,
   Upload,
@@ -51,7 +52,7 @@ type SellerProduct = {
 type Rating = { product_id: string; review_count: number; average_rating: number };
 
 type SellerStats = {
-  orders: { id: string; status: string }[];
+  orders: { id: string; status: string; created_at: string }[];
   items: { quantity: number; seller_net: number; product_id: string; order_id: string }[];
   products: SellerProduct[];
   ratings: Rating[];
@@ -180,7 +181,7 @@ export default function SellerPortal() {
     }
     const [ordersResult, itemsResult, productsResult, ratingsResult, payoutsResult] =
       await Promise.all([
-        supabase.from("orders").select("id, status"),
+        supabase.from("orders").select("id, status, created_at"),
         supabase.from("order_items").select("quantity, seller_net, product_id, order_id"),
         supabase
           .from("products")
@@ -547,6 +548,50 @@ export default function SellerPortal() {
     }
   }
 
+  async function updateSellerAccount(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (demoAccount) {
+      setError("Demo seller accounts cannot change Supabase account settings.");
+      return;
+    }
+    if (!supabase || !session) {
+      setError("Sign in with a Supabase seller account to update account settings.");
+      return;
+    }
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
+    const email = String(form.get("email")).trim().toLowerCase();
+    const password = String(form.get("password"));
+    if (!email && !password) {
+      setError("Enter a new email address or password to save a change.");
+      return;
+    }
+    setSubmitting(true);
+    setError("");
+    setNotice("");
+    const update: { email?: string; password?: string } = {};
+    if (email && email !== session.user.email) update.email = email;
+    if (password) update.password = password;
+    if (!Object.keys(update).length) {
+      setError("No account settings have changed.");
+      setSubmitting(false);
+      return;
+    }
+    const { error: updateError } = await supabase.auth.updateUser(update);
+    if (updateError) {
+      console.error("Could not update seller account settings.", updateError);
+      setError(updateError.message);
+    } else {
+      setNotice(
+        update.email
+          ? "Check your inbox to confirm the new email address. The current address remains active until confirmation."
+          : "Your password has been changed.",
+      );
+      formElement.reset();
+    }
+    setSubmitting(false);
+  }
+
   const deliveredOrderIds = useMemo(
     () =>
       new Set(
@@ -617,9 +662,17 @@ export default function SellerPortal() {
           <a className="seller-side-link" href="#seller-products">
             <PackagePlus size={16} /> Products
           </a>
+          <a className="seller-side-link" href="#seller-orders">
+            <Box size={16} /> Orders
+          </a>
           <a className="seller-side-link" href="#seller-payouts">
             <CircleDollarSign size={16} /> Payouts
           </a>
+          {session && (
+            <a className="seller-side-link" href="#seller-settings">
+              <Settings size={16} /> Account settings
+            </a>
+          )}
           {session && (
             <a className="seller-side-link" href={`${marketplaceUrl.replace(/\/$/, "")}/messages`}>
               <MessageCircle size={16} /> Messages
@@ -680,6 +733,7 @@ export default function SellerPortal() {
               demoMode
               onAddProduct={addProduct}
               onRequestPayout={requestPayout}
+              onUpdateAccount={updateSellerAccount}
             />
           ) : session && application ? (
             application.status === "approved" ? (
@@ -694,6 +748,7 @@ export default function SellerPortal() {
                 submitting={submitting}
                 onAddProduct={addProduct}
                 onRequestPayout={requestPayout}
+                onUpdateAccount={updateSellerAccount}
               />
             ) : (
               <ApplicationStatus status={application.status} name={application.first_name} />
@@ -1031,6 +1086,7 @@ function SellerDashboard({
   demoMode = false,
   onAddProduct,
   onRequestPayout,
+  onUpdateAccount,
 }: {
   application: SellerApplication;
   stats: SellerStats | null;
@@ -1043,6 +1099,7 @@ function SellerDashboard({
   demoMode?: boolean;
   onAddProduct: (event: FormEvent<HTMLFormElement>) => void;
   onRequestPayout: (event: FormEvent<HTMLFormElement>) => void;
+  onUpdateAccount: (event: FormEvent<HTMLFormElement>) => void;
 }) {
   const [productFormOpen, setProductFormOpen] = useState(false);
   const [payoutFormOpen, setPayoutFormOpen] = useState(false);
@@ -1225,6 +1282,35 @@ function SellerDashboard({
           )}
         </div>
       </section>
+      <section className="seller-dashboard-section" id="seller-orders">
+        <div className="seller-section-heading">
+          <div>
+            <p className="seller-eyebrow">FULFILMENT</p>
+            <h2>Orders</h2>
+          </div>
+          <span className="seller-payout-balance">{stats?.orders.length ?? 0} orders</span>
+        </div>
+        {(stats?.orders ?? []).length ? (
+          <div className="seller-order-list">
+            {(stats?.orders ?? []).map((order) => (
+              <article key={order.id}>
+                <PackagePlus size={17} />
+                <strong>Order {order.id.slice(0, 8)}</strong>
+                <span className={`seller-order-status status-${order.status}`}>{order.status}</span>
+                <time dateTime={order.created_at}>
+                  {new Date(order.created_at).toLocaleDateString()}
+                </time>
+              </article>
+            ))}
+          </div>
+        ) : (
+          <p className="seller-settings-note">
+            {demoMode
+              ? "Demo sellers have no real orders connected."
+              : "Orders containing your products will appear here after a buyer places an order."}
+          </p>
+        )}
+      </section>
       <section className="seller-dashboard-section seller-finance-section" id="seller-payouts">
         <div className="seller-section-heading">
           <div>
@@ -1270,6 +1356,67 @@ function SellerDashboard({
             ? "Demo balances are not real and cannot be withdrawn."
             : "A payout request does not transfer funds. SupreCart reviews requests and pays to your verified bank account."}
         </p>
+      </section>
+      <section className="seller-dashboard-section" id="seller-settings">
+        <div className="seller-section-heading">
+          <div>
+            <p className="seller-eyebrow">PROFILE & SECURITY</p>
+            <h2>Account settings</h2>
+          </div>
+        </div>
+        <div className="seller-settings-card">
+          <div>
+            <strong>{demoMode ? "Local demo seller" : application.email}</strong>
+            <span>
+              {demoMode
+                ? "This local identity is not a Supabase account."
+                : `${application.first_name} ${application.last_name} · ${application.status} application`}
+            </span>
+          </div>
+          {demoMode ? (
+            <p className="seller-settings-note">
+              Settings changes are disabled for demo identities. Use a Supabase account to test
+              persistent profile and security settings.
+            </p>
+          ) : (
+            <form className="seller-settings-form" onSubmit={onUpdateAccount}>
+              <label>
+                Email address
+                <input
+                  type="email"
+                  name="email"
+                  defaultValue={application.email}
+                  autoComplete="email"
+                  placeholder="Leave unchanged to keep current email"
+                />
+                <small>Email updates require confirmation from the new address.</small>
+              </label>
+              <label>
+                New password
+                <input
+                  type="password"
+                  name="password"
+                  minLength={10}
+                  autoComplete="new-password"
+                  placeholder="At least 10 characters"
+                />
+              </label>
+              {error && (
+                <p className="seller-form-error" role="alert">
+                  {error}
+                </p>
+              )}
+              {notice && (
+                <p className="seller-form-notice" role="status">
+                  {notice}
+                </p>
+              )}
+              <button className="seller-primary-button" type="submit" disabled={submitting}>
+                {submitting ? "Saving settings…" : "Save account settings"}
+              </button>
+            </form>
+          )}
+        </div>
       </section>
     </div>
   );

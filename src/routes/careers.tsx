@@ -40,7 +40,7 @@ function Careers() {
           <span>In the meantime, there’s plenty of good to discover across the marketplace.</span>
         </div>
         <Button asChild>
-          <Link to="/shop" search={{ filter: "All" }}>
+          <Link to="/shop" search={{ filter: "All", query: "" }}>
             Explore the marketplace <ArrowRight size={16} />
           </Link>
         </Button>

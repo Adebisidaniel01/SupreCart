@@ -184,7 +184,7 @@ export function Storefront({ children }: { children: ReactNode }) {
               <Link
                 key={item.label}
                 to="/shop"
-                search={{ filter: item.filter }}
+                search={{ filter: item.filter, query: "" }}
                 onClick={() => setMobileNav(false)}
                 className={path === "/shop" && item.filter === "All" ? "nav-active" : ""}
               >
@@ -198,10 +198,32 @@ export function Storefront({ children }: { children: ReactNode }) {
           <Link className="auth-nav-link" to="/login" onClick={() => setMobileNav(false)}>
             Sign in
           </Link>
-          <Link className="auth-nav-link auth-nav-primary" to="/signup" onClick={() => setMobileNav(false)}>
+          <Link
+            className="auth-nav-link auth-nav-primary"
+            to="/signup"
+            onClick={() => setMobileNav(false)}
+          >
             Create account
           </Link>
         </nav>
+        <form
+          className="header-search"
+          role="search"
+          onSubmit={(event) => {
+            event.preventDefault();
+            void navigate({ to: "/shop", search: { filter: "All", query: query.trim() } });
+          }}
+        >
+          <Search size={17} aria-hidden="true" />
+          <input
+            type="search"
+            aria-label="Search products"
+            placeholder="Search products, brands, sellers..."
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+          />
+          <button type="submit">Search</button>
+        </form>
         <div className="header-tools">
           <Button
             variant="ghost"
@@ -312,7 +334,11 @@ export function Storefront({ children }: { children: ReactNode }) {
             <h3>DISCOVER</h3>
             {["All finds", "Clothing", "Footwear", "Home", "Electronics", "Beauty"].map(
               (label, index) => (
-                <Link key={label} to="/shop" search={{ filter: index === 0 ? "All" : label }}>
+                <Link
+                  key={label}
+                  to="/shop"
+                  search={{ filter: index === 0 ? "All" : label, query: "" }}
+                >
                   {label}
                 </Link>
               ),
@@ -522,7 +548,7 @@ export function Storefront({ children }: { children: ReactNode }) {
                   <Button
                     onClick={() => {
                       setPanel("");
-                      navigate({ to: "/shop", search: { filter: "All" } });
+                      navigate({ to: "/shop", search: { filter: "All", query: "" } });
                     }}
                   >
                     Explore the marketplace <ArrowRight />

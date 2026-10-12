@@ -9,6 +9,7 @@ import { loadLiveMarketplaceProducts } from "@/lib/marketplace";
 export const Route = createFileRoute("/shop")({
   validateSearch: (search: Record<string, unknown>) => ({
     filter: typeof search["filter"] === "string" ? search["filter"] : "All",
+    query: typeof search["query"] === "string" ? search["query"] : "",
   }),
   head: () => ({
     meta: [
@@ -24,7 +25,7 @@ export const Route = createFileRoute("/shop")({
 });
 
 function Shop() {
-  const { filter } = Route.useSearch();
+  const { filter, query } = Route.useSearch();
   const [sort, setSort] = useState("featured");
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [sellerProducts, setSellerProducts] = useState<typeof products>([]);
@@ -54,12 +55,19 @@ function Shop() {
       allProducts
         .filter(
           (p) =>
-            filter === "All" || filter === "Brands" || p.category === filter || p.brand === filter,
+            (filter === "All" ||
+              filter === "Brands" ||
+              p.category === filter ||
+              p.brand === filter) &&
+            (!query ||
+              `${p.name} ${p.brand} ${p.category} ${p.seller}`
+                .toLowerCase()
+                .includes(query.toLowerCase())),
         )
         .sort((a, b) =>
           sort === "low" ? a.price - b.price : sort === "high" ? b.price - a.price : a.id - b.id,
         ),
-    [allProducts, filter, sort],
+    [allProducts, filter, query, sort],
   );
   return (
     <main className="page-width shop-main">
@@ -69,7 +77,9 @@ function Shop() {
           <h1>
             {filter === "All" ? "Shop everything" : filter === "Brands" ? "Brands to know" : filter}
           </h1>
-          <p className="shop-intro">Good finds, from sellers worth knowing.</p>
+          <p className="shop-intro">
+            {query ? `Showing results for “${query}”.` : "Good finds, from sellers worth knowing."}
+          </p>
         </div>
         <span>{visible.length} finds</span>
       </div>
@@ -90,7 +100,7 @@ function Shop() {
         <div className="filter-options">
           {options.map((x) => (
             <Button asChild key={x} variant={filter === x ? "default" : "outline"}>
-              <Link to="/shop" search={{ filter: x }}>
+              <Link to="/shop" search={{ filter: x, query: query }}>
                 {x}
               </Link>
             </Button>

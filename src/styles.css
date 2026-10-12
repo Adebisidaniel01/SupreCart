@@ -891,6 +891,9 @@ button {
   .header-tools {
     gap: 0;
   }
+  .header-search {
+    max-width: 260px;
+  }
   .wordmark {
     font-size: 25px;
   }
@@ -1534,8 +1537,51 @@ body {
   gap: 22px;
   font-size: 12px;
 }
+.main-nav .auth-nav-link {
+  display: none;
+}
 .main-nav a {
   white-space: nowrap;
+}
+.header-search {
+  display: flex;
+  min-width: 180px;
+  max-width: 340px;
+  height: 39px;
+  flex: 1 1 250px;
+  align-items: center;
+  gap: 9px;
+  padding: 0 8px 0 12px;
+  border: 1px solid #e0e2db;
+  border-radius: 7px;
+  background: #f8f8f4;
+  color: #6e786d;
+}
+.header-search input {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: #24342b;
+  font: inherit;
+  font-size: 11px;
+}
+.header-search input::placeholder {
+  color: #899087;
+}
+.header-search button {
+  flex: 0 0 auto;
+  padding: 6px 9px;
+  border: 0;
+  border-radius: 5px;
+  background: #263b31;
+  color: white;
+  font-size: 10px;
+  font-weight: 650;
+}
+.header-search button:hover {
+  background: #435a46;
 }
 .header-tools {
   flex-shrink: 0;
@@ -1633,6 +1679,44 @@ body {
 }
 .category-section {
   margin-top: 36px;
+}
+.home-value-strip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-top: 18px;
+  padding: 18px 22px;
+  border: 1px solid #e3e5dc;
+  border-radius: 11px;
+  background: #f7f7f1;
+}
+.home-value-strip > div {
+  padding: 3px 22px;
+  border-right: 1px solid #e1e4d9;
+}
+.home-value-strip > div:first-child {
+  padding-left: 0;
+}
+.home-value-strip > div:last-child {
+  padding-right: 0;
+  border-right: 0;
+}
+.home-value-strip > div > span {
+  color: #829168;
+  font-family: "DM Mono", monospace;
+  font-size: 9px;
+  letter-spacing: 0.08em;
+}
+.home-value-strip strong {
+  display: block;
+  margin-top: 5px;
+  color: #304035;
+  font-size: 12px;
+}
+.home-value-strip p {
+  margin: 5px 0 0;
+  color: #747b70;
+  font-size: 10px;
+  line-height: 1.5;
 }
 .marketplace-categories {
   grid-template-columns: repeat(6, minmax(0, 1fr));
@@ -2168,6 +2252,154 @@ body {
 .account-order-list time {
   grid-column: 2 / -1;
   color: #777d72;
+}
+.account-dashboard-layout {
+  display: block;
+  max-width: 1060px;
+}
+.account-dashboard-layout > .account-aside {
+  display: none;
+}
+.account-dashboard {
+  padding: 10px 0 35px;
+}
+.account-section-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin: 8px 0 22px;
+  padding: 7px;
+  border: 1px solid #e6e8e0;
+  border-radius: 9px;
+  background: #f5f6f1;
+}
+.account-section-nav > button,
+.account-section-nav > a {
+  display: inline-flex;
+  min-height: 38px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #59645a;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 650;
+  cursor: pointer;
+}
+.account-section-nav > button:hover,
+.account-section-nav > a:hover,
+.account-section-nav > button.active {
+  background: #fff;
+  color: #2c513a;
+  box-shadow: 0 1px 4px rgb(33 45 34 / 9%);
+}
+.account-section-nav svg {
+  color: #75856d;
+}
+.account-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+.account-summary-card {
+  display: grid;
+  gap: 9px;
+  padding: 18px;
+  border: 1px solid #e4e5dd;
+  border-radius: 8px;
+  background: #fffefa;
+}
+.account-summary-card > span {
+  color: #7d867b;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.11em;
+}
+.account-summary-card > strong {
+  color: #293b2f;
+  font-size: 28px;
+}
+.account-summary-card > button,
+.account-dashboard-section-heading > button {
+  display: inline-flex;
+  width: max-content;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #466149;
+  font: inherit;
+  font-size: 10px;
+  font-weight: 650;
+}
+.account-success-note {
+  padding: 11px 13px;
+  border: 1px solid #dce8d7;
+  border-radius: 6px;
+  background: #f1f7ed;
+  color: #3d6045;
+  font-size: 11px;
+}
+.account-address-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.account-address-card {
+  padding: 14px;
+  border: 1px solid #e8e9e2;
+  border-radius: 7px;
+  background: #fff;
+}
+.account-address-card > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.account-address-card > div > span {
+  padding: 4px 6px;
+  border-radius: 4px;
+  background: #edf3e9;
+  color: #476345;
+  font-size: 8px;
+  font-weight: 700;
+}
+.account-address-card p {
+  margin: 10px 0 5px;
+  color: #4f5a50;
+  font-size: 11px;
+  line-height: 1.6;
+}
+.account-address-card small {
+  color: #858b82;
+  font-size: 9px;
+  line-height: 1.6;
+}
+.account-danger-link {
+  display: block;
+  margin-top: 12px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #a0443e;
+  font: inherit;
+  font-size: 10px;
+  cursor: pointer;
+}
+.account-checkbox {
+  display: flex !important;
+  align-items: center;
+  gap: 8px !important;
+}
+.account-checkbox input {
+  width: 15px;
+  min-height: 15px;
 }
 .account-dashboard > .button {
   gap: 8px;
@@ -3263,6 +3495,9 @@ body {
   .main-nav {
     gap: 12px;
   }
+  .header-search {
+    display: none;
+  }
   .main-nav > a:last-child {
     display: none;
   }
@@ -3323,8 +3558,26 @@ body {
   .main-nav > a:last-child {
     display: flex;
   }
+  .main-nav .auth-nav-link {
+    display: flex;
+  }
   .marketplace-hero {
     height: 480px;
+  }
+  .account-dashboard-layout {
+    margin-top: 20px;
+    padding-inline: 16px;
+  }
+  .account-dashboard {
+    padding-top: 0;
+  }
+  .account-section-nav {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .account-summary-grid,
+  .account-address-list {
+    grid-template-columns: 1fr;
   }
   .marketplace-hero::after {
     background: linear-gradient(
@@ -4731,6 +4984,23 @@ body {
   background: none;
   color: #758176;
   font-size: 16px;
+}
+@media (max-width: 640px) {
+  .home-value-strip {
+    grid-template-columns: 1fr;
+    gap: 0;
+    padding: 7px 16px;
+  }
+  .home-value-strip > div,
+  .home-value-strip > div:first-child,
+  .home-value-strip > div:last-child {
+    padding: 12px 0;
+    border-right: 0;
+    border-bottom: 1px solid #e1e4d9;
+  }
+  .home-value-strip > div:last-child {
+    border-bottom: 0;
+  }
 }
 @media (max-width: 1000px) {
   .admin-shell {

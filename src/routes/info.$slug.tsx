@@ -93,7 +93,7 @@ function InfoPage() {
           <p key={paragraph}>{paragraph}</p>
         ))}
         <Button asChild>
-          <Link to="/shop" search={{ filter: "All" }}>
+          <Link to="/shop" search={{ filter: "All", query: "" }}>
             Explore the marketplace <ArrowRight size={16} />
           </Link>
         </Button>
