@@ -62,55 +62,57 @@ function Index() {
           ))}
         </div>
         <div className="hero-copy">
-          <span className="eyebrow hero-eyebrow">A marketplace with more to love</span>
+          <span className="eyebrow hero-eyebrow">THE MARKETPLACE FOR GOOD FINDS</span>
           <h1>
-            Find your kind
+            Good things,
             <br />
-            of good.
+            <em>found here.</em>
           </h1>
           <p>
-            Fresh finds from independent sellers.
+            A little bit of everything, from sellers worth knowing.
             <br />
-            Style, home, tech and everything between.
+            Your next favourite thing is closer than you think.
           </p>
           <div className="hero-actions">
             <Button size="lg" asChild>
               <Link to="/shop" search={{ filter: "All", query: "" }}>
-                Explore the marketplace
+                Start exploring <ArrowRight size={15} />
               </Link>
             </Button>
             <Button variant="outline" size="lg" asChild>
-              <a href="#categories">Browse categories</a>
+              <a href="#categories">
+                Browse categories <ArrowUpRight size={15} />
+              </a>
             </Button>
           </div>
         </div>
         <div className="hero-note">
           <Sparkles size={16} />
-          <span>Good finds, from sellers worth knowing.</span>
+          <span>Fresh finds. Independent sellers.</span>
         </div>
       </section>
       <section className="home-value-strip" aria-label="Why shop SupreCart">
         <div>
           <span>01</span>
-          <strong>Independent sellers</strong>
-          <p>Find brands and makers beyond the usual.</p>
+          <strong>Independent by nature</strong>
+          <p>Discover products from small businesses and sellers.</p>
         </div>
         <div>
           <span>02</span>
-          <strong>Easy to explore</strong>
-          <p>Move from fashion to home and more in one place.</p>
+          <strong>More to explore</strong>
+          <p>From style and beauty to home, tech and more.</p>
         </div>
         <div>
           <span>03</span>
-          <strong>Always something new</strong>
-          <p>Keep discovering new things worth knowing.</p>
+          <strong>Find your next favourite</strong>
+          <p>Take a look around and see what catches your eye.</p>
         </div>
       </section>
       <section className="category-section" id="categories">
         <div className="section-heading">
           <div>
-            <p className="eyebrow">A little bit of everything</p>
-            <h2>Explore the marketplace</h2>
+            <p className="eyebrow">START WITH WHAT YOU LOVE</p>
+            <h2>Good things, by category</h2>
           </div>
           <Link to="/shop" search={{ filter: "All", query: "" }} className="view-all">
             All categories <ArrowRight size={14} />
@@ -176,8 +178,8 @@ function Index() {
       <section className="bestsellers">
         <div className="section-heading">
           <div>
-            <p className="eyebrow">A few good finds</p>
-            <h2>Worth a closer look</h2>
+            <p className="eyebrow">THE SUPRECART EDIT</p>
+            <h2>Finds worth a closer look</h2>
           </div>
           <Link to="/shop" search={{ filter: "All", query: "" }} className="view-all">
             Shop everything <ArrowRight size={14} />
@@ -192,17 +194,17 @@ function Index() {
       <section className="sponsored-banner home-maker-banner">
         <div>
           <span className="sponsored-label">
-            <Sparkles size={13} /> MADE BY INDEPENDENT SELLERS
+            <Sparkles size={13} /> A MARKETPLACE WITH MORE TO LOVE
           </span>
           <h2>
-            Meet the makers
+            Find good.
             <br />
-            behind the good stuff.
+            Share good.
           </h2>
-          <p>Meet the people and small businesses behind the good finds.</p>
+          <p>Browse, find a new favourite, and support independent sellers along the way.</p>
           <Button variant="outline" asChild>
             <Link to="/shop" search={{ filter: "All", query: "" }}>
-              Discover the edit <ArrowRight />
+              Explore SupreCart <ArrowRight />
             </Link>
           </Button>
         </div>

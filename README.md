@@ -53,7 +53,7 @@ For an existing Supabase project that already ran the marketplace migration, run
 
 ### Local demo accounts
 
-For local data testing only, the buyer login and seller portal accept the eight demo email addresses in `src/lib/demo-accounts.ts` without a password or email verification. They are browser-local demo identities, not Supabase users or database rows; buyer orders and seller financial/product data are not created. The seller demo dashboard is read-only and labeled as demo data. This behavior is compiled out of production builds and must not be used to authenticate real users. Remove the fixture when email delivery is working and real Supabase accounts can be used.
+For local data testing only, the buyer login and seller portal accept the eight demo email addresses in `src/lib/demo-accounts.ts` without a password or email verification. These are browser-local identities, not Supabase users or database rows. Buyer and seller dashboards show fictional sample orders, product metrics, and NGN values for interface testing only; they do not represent real purchases, payouts, or financial records. Demo profile name and phone edits are stored in local browser storage and do not change Supabase data or login credentials. This behavior is compiled out of production builds and must not be used to authenticate real users.
 
 ### Chat, location, checkout, and cookies
 

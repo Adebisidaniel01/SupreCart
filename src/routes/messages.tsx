@@ -3,7 +3,14 @@ import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } fro
 import type { User } from "@supabase/supabase-js";
 import { ArrowLeft, CheckCheck, MessageCircle, Mic, Send, Square, Store } from "lucide-react";
 import { supabase } from "@/lib/supabase";
-import { readDemoAccount } from "@/lib/demo-accounts";
+import { findDemoAccount, readDemoAccount, type DemoAccount } from "@/lib/demo-accounts";
+import {
+  getDemoChatConversations,
+  readDemoChatMessages,
+  saveDemoChatMessages,
+  type DemoChatConversation,
+  type DemoChatMessage,
+} from "@/lib/demo-messages";
 
 type Conversation = {
   id: string;
@@ -29,9 +36,16 @@ type ChatReceipt = { message_id: string };
 
 const MAX_VOICE_NOTE_BYTES = 25 * 1024 * 1024;
 
+function parseDemoRole(role: unknown): DemoAccount["role"] | undefined {
+  if (role === "buyer" || role === "seller") return role;
+  return undefined;
+}
+
 export const Route = createFileRoute("/messages")({
   validateSearch: (search: Record<string, unknown>) => ({
     productId: typeof search["productId"] === "string" ? search["productId"] : undefined,
+    demoEmail: typeof search["demoEmail"] === "string" ? search["demoEmail"] : undefined,
+    demoRole: parseDemoRole(search["demoRole"]),
   }),
   head: () => ({
     meta: [
@@ -43,7 +57,7 @@ export const Route = createFileRoute("/messages")({
 });
 
 function Messages() {
-  const { productId } = Route.useSearch();
+  const { productId, demoEmail, demoRole } = Route.useSearch();
   const navigate = useNavigate();
   const [user, setUser] = useState<User | null>(null);
   const [isSeller, setIsSeller] = useState(false);
@@ -55,6 +69,8 @@ function Messages() {
   const [recording, setRecording] = useState(false);
   const [error, setError] = useState("");
   const [sending, setSending] = useState(false);
+  const [demoAccount, setDemoAccount] = useState<DemoAccount | null>(null);
+  const [demoConversations, setDemoConversations] = useState<DemoChatConversation[]>([]);
   const recorder = useRef<MediaRecorder | null>(null);
   const stream = useRef<MediaStream | null>(null);
   const audioChunks = useRef<Blob[]>([]);
@@ -62,6 +78,99 @@ function Messages() {
     () => conversations.find((conversation) => conversation.id === activeId) ?? null,
     [activeId, conversations],
   );
+  const activeDemoConversation = useMemo(
+    () => demoConversations.find((conversation) => conversation.id === activeId) ?? null,
+    [activeId, demoConversations],
+  );
+  const visibleConversations = demoAccount
+    ? demoConversations.map((conversation) => ({
+        id: conversation.id,
+        productName: conversation.productName,
+        peerName:
+          demoAccount.role === "buyer" ? conversation.seller.name : conversation.buyer.name,
+      }))
+    : conversations;
+  const visibleMessages = activeDemoConversation && demoAccount
+    ? activeDemoConversation.messages.map((message) => ({
+        id: message.id,
+        body: message.body,
+        audioUrl: undefined,
+        createdAt: message.createdAt,
+        own: message.senderEmail === demoAccount.email,
+        read: message.readBy.includes(
+          demoAccount.role === "buyer"
+            ? activeDemoConversation.seller.email
+            : activeDemoConversation.buyer.email,
+        ),
+      }))
+    : messages.map((message) => ({
+        id: message.id,
+        body: message.body,
+        audioUrl: message.audio_url,
+        createdAt: message.created_at,
+        own: message.sender_id === user?.id,
+        read: readIds.has(message.id),
+      }));
+
+  useEffect(() => {
+    let active = true;
+    if (!demoEmail && !demoRole) return () => {
+      active = false;
+    };
+    const initializeDemo = async () => {
+      const explicitAccount =
+        demoEmail && demoRole ? findDemoAccount(demoEmail, demoRole) : undefined;
+      if ((demoEmail || demoRole) && !explicitAccount) {
+        setError("This local demo account is not available.");
+        setLoading(false);
+        return;
+      }
+      if (!explicitAccount || !active) return;
+      const loaded = getDemoChatConversations(explicitAccount);
+      setDemoAccount(explicitAccount);
+      setDemoConversations(loaded);
+      if (loaded[0]) setActiveId(loaded[0].id);
+      setIsSeller(explicitAccount.role === "seller");
+      setError("");
+      setLoading(false);
+    };
+    void initializeDemo().catch((cause: unknown) => {
+      console.error("Could not initialize local demo messaging.", cause);
+      if (!active) return;
+      setError(cause instanceof Error ? cause.message : "Could not load demo messages.");
+      setLoading(false);
+    });
+    return () => {
+      active = false;
+    };
+  }, [demoEmail, demoRole]);
+
+  useEffect(() => {
+    if (!demoAccount || !activeDemoConversation) return;
+    const incoming = activeDemoConversation.messages.filter(
+      (message) => message.senderEmail !== demoAccount.email,
+    );
+    const unread = incoming.filter((message) => !message.readBy.includes(demoAccount.email));
+    if (!unread.length) return;
+    const updated = activeDemoConversation.messages.map((message) =>
+      unread.some((unreadMessage) => unreadMessage.id === message.id)
+        ? { ...message, readBy: [...message.readBy, demoAccount.email] }
+        : message,
+    );
+    try {
+      saveDemoChatMessages(activeDemoConversation.id, updated);
+      setDemoConversations((current) =>
+        current.map((conversation) =>
+          conversation.id === activeDemoConversation.id
+            ? { ...conversation, messages: updated }
+            : conversation,
+        ),
+      );
+    } catch (cause) {
+      console.error("Could not save the local demo read receipt.", cause);
+      setError(cause instanceof Error ? cause.message : "Could not update the demo read receipt.");
+    }
+  }, [activeDemoConversation, demoAccount]);
 
   const loadConversations = useCallback(
     async (activeUser: User, sellerMode: boolean) => {
@@ -182,6 +291,7 @@ function Messages() {
   );
 
   useEffect(() => {
+    if (demoAccount || demoEmail || demoRole) return;
     if (!supabase) {
       setError("Messaging service is temporarily unavailable.");
       setLoading(false);
@@ -195,10 +305,16 @@ function Messages() {
         if (sessionError) throw sessionError;
         const currentUser = data.session?.user;
         if (!currentUser) {
-          if (readDemoAccount("buyer") || readDemoAccount("seller")) {
-            throw new Error(
-              "Local demo identities do not have Supabase sessions, so they cannot send or receive messages. Use Supabase buyer and seller accounts to test chat.",
-            );
+          const localAccount = readDemoAccount("buyer") ?? readDemoAccount("seller");
+          if (localAccount) {
+            const loaded = getDemoChatConversations(localAccount);
+            if (active) {
+              setDemoAccount(localAccount);
+              setDemoConversations(loaded);
+              if (loaded[0]) setActiveId(loaded[0].id);
+              setIsSeller(localAccount.role === "seller");
+            }
+            return;
           }
           await navigate({ to: "/login" });
           return;
@@ -226,7 +342,7 @@ function Messages() {
     return () => {
       active = false;
     };
-  }, [loadConversations, navigate]);
+  }, [demoAccount, demoEmail, demoRole, loadConversations, navigate]);
 
   const loadMessages = useCallback(async (conversationId: string, currentUser: User) => {
     const client = supabase;
@@ -333,10 +449,39 @@ function Messages() {
 
   async function sendText(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!supabase || !activeConversation || !user) return;
     const form = event.currentTarget;
     const body = String(new FormData(form).get("message")).trim();
     if (!body) return;
+    if (demoAccount && activeDemoConversation) {
+      setSending(true);
+      setError("");
+      try {
+        const message: DemoChatMessage = {
+          id: crypto.randomUUID(),
+          senderEmail: demoAccount.email,
+          body,
+          createdAt: new Date().toISOString(),
+          readBy: [demoAccount.email],
+        };
+        const updated = [...activeDemoConversation.messages, message];
+        saveDemoChatMessages(activeDemoConversation.id, updated);
+        setDemoConversations((current) =>
+          current.map((conversation) =>
+            conversation.id === activeDemoConversation.id
+              ? { ...conversation, messages: updated }
+              : conversation,
+          ),
+        );
+        form.reset();
+      } catch (cause) {
+        console.error("Could not save the local demo message.", cause);
+        setError(cause instanceof Error ? cause.message : "Could not save this demo message.");
+      } finally {
+        setSending(false);
+      }
+      return;
+    }
+    if (!supabase || !activeConversation || !user) return;
     setSending(true);
     setError("");
     try {
@@ -472,13 +617,13 @@ function Messages() {
               <p className="eyebrow">YOUR MARKETPLACE</p>
               <h1>Messages</h1>
             </div>
-            <span>{conversations.length}</span>
+            <span>{visibleConversations.length}</span>
           </div>
           <p className="messages-inbox-note">
             {isSeller ? "Chats about your products" : "Talk directly with product sellers"}
           </p>
           {loading && <p className="messages-empty">Loading conversations…</p>}
-          {!loading && conversations.length === 0 && (
+          {!loading && visibleConversations.length === 0 && (
             <div className="messages-empty">
               <MessageCircle size={21} />
               <strong>No conversations yet</strong>
@@ -489,7 +634,7 @@ function Messages() {
             </div>
           )}
           <div className="conversation-list">
-            {conversations.map((conversation) => (
+            {visibleConversations.map((conversation) => (
               <button
                 type="button"
                 key={conversation.id}
@@ -506,46 +651,62 @@ function Messages() {
           </div>
         </aside>
         <section className="messages-conversation" aria-label="Conversation">
-          {activeConversation ? (
+          {activeConversation || activeDemoConversation ? (
             <>
               <header className="conversation-header">
-                <span className="conversation-avatar">{activeConversation.peerName.charAt(0)}</span>
+                <span className="conversation-avatar">
+                  {(activeDemoConversation
+                    ? demoAccount?.role === "buyer"
+                      ? activeDemoConversation.seller.name
+                      : activeDemoConversation.buyer.name
+                    : activeConversation?.peerName
+                  )?.charAt(0)}
+                </span>
                 <div>
-                  <strong>{activeConversation.peerName}</strong>
-                  <span>About {activeConversation.productName}</span>
+                  <strong>
+                    {activeDemoConversation
+                      ? demoAccount?.role === "buyer"
+                        ? activeDemoConversation.seller.name
+                        : activeDemoConversation.buyer.name
+                      : activeConversation?.peerName}
+                  </strong>
+                  <span>
+                    About {activeDemoConversation
+                      ? activeDemoConversation.productName
+                      : activeConversation?.productName}
+                  </span>
                 </div>
               </header>
               <div className="message-list" aria-live="polite">
-                {messages.length === 0 && (
+                {visibleMessages.length === 0 && (
                   <div className="messages-empty">
                     <MessageCircle size={22} />
                     <strong>Start the conversation</strong>
                     <span>Ask a question or send a voice note about this product.</span>
                   </div>
                 )}
-                {messages.map((message) => {
-                  const own = message.sender_id === user?.id;
+                {visibleMessages.map((message) => {
                   return (
                     <article
                       key={message.id}
-                      className={`chat-message ${own ? "own-message" : "received-message"}`}
+                      className={`chat-message ${message.own ? "own-message" : "received-message"}`}
                     >
                       {message.body && <p>{message.body}</p>}
-                      {message.audio_url && (
-                        <audio controls preload="none" src={message.audio_url}>
+                      {message.audioUrl && (
+                        <audio controls preload="none" src={message.audioUrl}>
                           Your browser does not support audio playback.
                         </audio>
                       )}
                       <footer>
-                        <time dateTime={message.created_at}>
-                          {new Date(message.created_at).toLocaleTimeString([], {
+                        <time dateTime={message.createdAt}>
+                          {new Date(message.createdAt).toLocaleTimeString([], {
                             hour: "2-digit",
                             minute: "2-digit",
                           })}
                         </time>
-                        {own && (
-                          <span aria-label={readIds.has(message.id) ? "Read" : "Sent"}>
-                            {readIds.has(message.id) ? <CheckCheck size={14} /> : "Sent"}
+                        {message.own && (
+                          <span aria-label={message.read ? "Read" : "Sent"}>
+                            {message.read ? <CheckCheck size={14} /> : "Sent"}
                           </span>
                         )}
                       </footer>
@@ -573,7 +734,7 @@ function Messages() {
                   className={`message-icon-button ${recording ? "recording" : ""}`}
                   onClick={() => void toggleRecording()}
                   aria-label={recording ? "Stop voice note recording" : "Record voice note"}
-                  disabled={sending}
+                  disabled={sending || Boolean(demoAccount)}
                 >
                   {recording ? <Square size={17} /> : <Mic size={18} />}
                 </button>
@@ -583,7 +744,9 @@ function Messages() {
                 </button>
               </form>
               <p className="voice-note-hint">
-                {recording
+                {demoAccount
+                  ? "Demo messages are saved in this browser. Voice notes require a Supabase account."
+                  : recording
                   ? "Recording… press stop when finished. Maximum upload size: 25 MB."
                   : "Voice notes have no time limit and a 25 MB upload cap."}
               </p>
@@ -598,7 +761,9 @@ function Messages() {
         </section>
       </div>
       <p className="messages-privacy-note">
-        Messages and voice notes are visible only to the buyer and seller in the conversation.
+        {demoAccount
+          ? "Local demo messages are saved only in this browser and are not shared with other devices or accounts."
+          : "Messages and voice notes are visible only to the buyer and seller in the conversation."}
       </p>
       <input className="sr-only" type="file" aria-hidden="true" tabIndex={-1} />
     </main>

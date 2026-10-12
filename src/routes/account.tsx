@@ -15,6 +15,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/lib/supabase";
 import { clearDemoAccount, readDemoAccount, type DemoAccount } from "@/lib/demo-accounts";
+import { getDemoOrders, getDemoProfile, saveDemoProfile } from "@/lib/demo-orders";
 
 type BuyerProfile = {
   first_name: string;
@@ -28,6 +29,9 @@ type BuyerOrder = {
   id: string;
   status: string;
   created_at: string;
+  total?: number;
+  items?: string;
+  delivery?: string;
 };
 
 type BuyerAddress = {
@@ -60,6 +64,7 @@ function BuyerAccount() {
   const [user, setUser] = useState<User | null>(null);
   const [demoAccount, setDemoAccount] = useState<DemoAccount | null>(null);
   const [profile, setProfile] = useState<BuyerProfile | null>(null);
+  const [demoProfile, setDemoProfile] = useState({ name: "", phone: "" });
   const [orders, setOrders] = useState<BuyerOrder[]>([]);
   const [addresses, setAddresses] = useState<BuyerAddress[]>([]);
   const [section, setSection] = useState<AccountSection>("overview");
@@ -72,6 +77,7 @@ function BuyerAccount() {
     const localDemoAccount = readDemoAccount("buyer");
     if (localDemoAccount) {
       setDemoAccount(localDemoAccount);
+      setDemoProfile(getDemoProfile(localDemoAccount.email, localDemoAccount.name));
       setLoading(false);
       return;
     }
@@ -120,7 +126,7 @@ function BuyerAccount() {
   useEffect(() => {
     if (demoAccount) {
       setProfile(null);
-      setOrders([]);
+      setOrders(getDemoOrders(demoAccount.email));
       setError("");
       setLoading(false);
       return;
@@ -179,26 +185,47 @@ function BuyerAccount() {
 
   async function saveProfile(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!supabase || !user || demoAccount) return;
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
+    if (demoAccount) {
+      const name = String(form.get("name")).trim();
+      const phone = String(form.get("phone")).trim();
+      if (!name) {
+        setError("Enter your name before saving.");
+        return;
+      }
+      saveDemoProfile(demoAccount.email, { name, phone });
+      setDemoProfile({ name, phone });
+      setNotice("Demo profile saved in this browser only; no Supabase account was changed.");
+      setError("");
+      return;
+    }
+    if (!supabase || !user) return;
     setSaving(true);
     setError("");
     setNotice("");
-    const form = new FormData(event.currentTarget);
-    const firstName = String(form.get("first_name")).trim();
-    const middleName = String(form.get("middle_name")).trim();
-    const lastName = String(form.get("last_name")).trim();
-    const phone = String(form.get("phone")).trim();
-    const { error: updateError } = await supabase.from("buyer_profiles").upsert({
-      id: user.id,
-      first_name: firstName,
-      middle_name: middleName || null,
-      last_name: lastName,
-      phone: phone || null,
-    });
-    if (updateError) {
-      console.error("Could not update the SupreCart buyer profile.", updateError);
-      setError(updateError.message);
-    } else {
+    try {
+      const firstName = String(form.get("first_name")).trim();
+      const middleName = String(form.get("middle_name")).trim();
+      const lastName = String(form.get("last_name")).trim();
+      const phone = String(form.get("phone")).trim();
+      const email = String(form.get("email")).trim().toLowerCase();
+      const password = String(form.get("password"));
+      const authUpdate: { email?: string; password?: string } = {};
+      if (email && email !== user.email?.toLowerCase()) authUpdate.email = email;
+      if (password) authUpdate.password = password;
+      if (Object.keys(authUpdate).length) {
+        const { error: authError } = await supabase.auth.updateUser(authUpdate);
+        if (authError) throw authError;
+      }
+      const { error: updateError } = await supabase.from("buyer_profiles").upsert({
+        id: user.id,
+        first_name: firstName,
+        middle_name: middleName || null,
+        last_name: lastName,
+        phone: phone || null,
+      });
+      if (updateError) throw updateError;
       setProfile({
         first_name: firstName,
         middle_name: middleName || null,
@@ -206,9 +233,19 @@ function BuyerAccount() {
         phone: phone || null,
         created_at: profile?.created_at ?? new Date().toISOString(),
       });
-      setNotice("Your profile details have been saved.");
+      setNotice(
+        authUpdate.email
+          ? "Profile saved. Check the new email inbox to confirm the address change."
+          : authUpdate.password
+            ? "Profile and password saved."
+            : "Your profile details have been saved.",
+      );
+    } catch (cause) {
+      console.error("Could not save SupreCart buyer account settings.", cause);
+      setError(cause instanceof Error ? cause.message : "Could not save your account settings.");
+    } finally {
+      setSaving(false);
     }
-    setSaving(false);
   }
 
   async function addAddress(event: FormEvent<HTMLFormElement>) {
@@ -300,7 +337,7 @@ function BuyerAccount() {
   }
 
   const firstName =
-    demoAccount?.name || profile?.first_name || user?.user_metadata["first_name"] || "there";
+    demoProfile.name || profile?.first_name || user?.user_metadata["first_name"] || "there";
   const emailVerified = Boolean(user?.email_confirmed_at);
 
   return (
@@ -322,7 +359,8 @@ function BuyerAccount() {
             <p className="account-intro">Your SupreCart profile and activity.</p>
             {demoAccount && (
               <p className="demo-disclaimer" role="status">
-                Local demo account — email verification and Supabase data are bypassed for testing.
+                SAMPLE DATA · Local demo account. Orders and profile edits are only stored in this
+                browser; nothing is purchased or saved to Supabase.
               </p>
             )}
           </div>
@@ -399,11 +437,11 @@ function BuyerAccount() {
                     <div>
                       <dt>Name</dt>
                       <dd>
-                        {demoAccount?.name ||
-                          [profile?.first_name, profile?.middle_name, profile?.last_name]
-                            .filter(Boolean)
-                            .join(" ") ||
-                          firstName}
+                        {demoAccount?.name
+                          ? demoProfile.name
+                          : [profile?.first_name, profile?.middle_name, profile?.last_name]
+                              .filter(Boolean)
+                              .join(" ") || firstName}
                       </dd>
                     </div>
                     <div>
@@ -414,7 +452,7 @@ function BuyerAccount() {
                       <dt>Phone</dt>
                       <dd>
                         {demoAccount
-                          ? "Demo data only"
+                          ? demoProfile.phone || "Not added"
                           : profile?.phone || user?.user_metadata["phone"] || "Not added"}
                       </dd>
                     </div>
@@ -443,11 +481,21 @@ function BuyerAccount() {
                       {orders.slice(0, 3).map((order) => (
                         <li key={order.id}>
                           <Package size={16} />
-                          <span>Order {order.id.slice(0, 8)}</span>
-                          <span>{order.status}</span>
+                          <span>Order {order.id}</span>
+                          <span className="account-order-status">{order.status}</span>
                           <time dateTime={order.created_at}>
                             {new Date(order.created_at).toLocaleDateString()}
                           </time>
+                          {order.items && <small>{order.items}</small>}
+                          {order.total !== undefined && (
+                            <strong>
+                              {new Intl.NumberFormat("en-NG", {
+                                style: "currency",
+                                currency: "NGN",
+                                maximumFractionDigits: 0,
+                              }).format(order.total)}
+                            </strong>
+                          )}
                         </li>
                       ))}
                     </ul>
@@ -474,11 +522,22 @@ function BuyerAccount() {
                     {orders.map((order) => (
                       <li key={order.id}>
                         <Package size={16} />
-                        <span>Order {order.id.slice(0, 8)}</span>
-                        <span>{order.status}</span>
+                        <span>Order {order.id}</span>
+                        <span className="account-order-status">{order.status}</span>
                         <time dateTime={order.created_at}>
                           {new Date(order.created_at).toLocaleDateString()}
                         </time>
+                        {order.items && <small>{order.items}</small>}
+                        {order.delivery && <small>Delivery: {order.delivery}</small>}
+                        {order.total !== undefined && (
+                          <strong>
+                            {new Intl.NumberFormat("en-NG", {
+                              style: "currency",
+                              currency: "NGN",
+                              maximumFractionDigits: 0,
+                            }).format(order.total)}
+                          </strong>
+                        )}
                       </li>
                     ))}
                   </ul>
@@ -598,10 +657,27 @@ function BuyerAccount() {
               <section className="account-dashboard-card">
                 <h2>Account settings</h2>
                 {demoAccount ? (
-                  <p className="demo-disclaimer">
-                    Settings are read-only for local demo accounts. Sign in with a Supabase buyer
-                    account to update profile data.
-                  </p>
+                  <>
+                    <p className="demo-disclaimer">
+                      Demo-only settings: changes stay in this browser and do not update Supabase or
+                      account credentials.
+                    </p>
+                    <form className="account-form" onSubmit={saveProfile}>
+                      <label>
+                        Display name
+                        <input name="name" defaultValue={demoProfile.name} required />
+                      </label>
+                      <label>
+                        Phone
+                        <input name="phone" type="tel" defaultValue={demoProfile.phone} />
+                      </label>
+                      <label>
+                        Account email
+                        <input value={demoAccount.email} disabled />
+                      </label>
+                      <Button type="submit">Save demo profile</Button>
+                    </form>
+                  </>
                 ) : (
                   <>
                     <p className="account-intro">
@@ -642,8 +718,23 @@ function BuyerAccount() {
                       </label>
                       <label>
                         Account email
-                        <input value={user?.email ?? ""} disabled />
+                        <input
+                          name="email"
+                          type="email"
+                          defaultValue={user?.email ?? ""}
+                          autoComplete="email"
+                        />
                         <small>Email changes require the Supabase verification flow.</small>
+                      </label>
+                      <label>
+                        New password
+                        <input
+                          name="password"
+                          type="password"
+                          minLength={10}
+                          autoComplete="new-password"
+                          placeholder="Leave blank to keep your current password"
+                        />
                       </label>
                       <Button type="submit" disabled={saving}>
                         {saving ? "Saving changes…" : "Save profile"}

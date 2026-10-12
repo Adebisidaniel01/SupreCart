@@ -206,24 +206,6 @@ export function Storefront({ children }: { children: ReactNode }) {
             Create account
           </Link>
         </nav>
-        <form
-          className="header-search"
-          role="search"
-          onSubmit={(event) => {
-            event.preventDefault();
-            void navigate({ to: "/shop", search: { filter: "All", query: query.trim() } });
-          }}
-        >
-          <Search size={17} aria-hidden="true" />
-          <input
-            type="search"
-            aria-label="Search products"
-            placeholder="Search products, brands, sellers..."
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-          />
-          <button type="submit">Search</button>
-        </form>
         <div className="header-tools">
           <Button
             variant="ghost"

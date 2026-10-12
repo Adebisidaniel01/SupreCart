@@ -17,7 +17,7 @@ Seller signup and password reset request a callback based on the current app: `/
 
 After confirmation, open the link in the same browser where the seller application was started so its saved application draft is available. The verified Supabase session returns to the seller portal and continues the application flow.
 
-For local data testing only, the seller portal also accepts the seeded development demo emails listed in [`../src/lib/demo-accounts.ts`](../src/lib/demo-accounts.ts) without a password or email verification. These browser-local demo identities do not create Supabase users or seller applications. Their dashboard is read-only, uses no real seller data, and the bypass is unavailable in production builds.
+For local data testing only, the seller portal also accepts the seeded development demo emails listed in [`../src/lib/demo-accounts.ts`](../src/lib/demo-accounts.ts) without a password or email verification. These browser-local demo identities do not create Supabase users or seller applications. Their products, orders, ratings, and NGN figures are fictional sample data for the dashboard UI; nothing is purchased, paid out, or written to Supabase. Demo name and contact-phone edits are stored in this browser only. The bypass is unavailable in production builds.
 
 Seller applications are tied to a verified Supabase Auth account and stored as `pending` until reviewed. An approved seller signs in with the password they chose; use Supabase's password-reset/invite flow to let them set a password. Do not send passwords over email.
 

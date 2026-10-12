@@ -6,7 +6,6 @@ import {
   Check,
   ClipboardList,
   MapPin,
-  LocateFixed,
   PackageCheck,
   ReceiptText,
   ShieldCheck,
@@ -18,6 +17,7 @@ import { money, type Product } from "@/lib/catalog";
 import { supabase } from "@/lib/supabase";
 
 type DeliveryMethod = "doorstep" | "pickup";
+type PaymentMethod = "paystack" | "bank-transfer" | "pay-on-delivery";
 type ShippingDetails = {
   firstName: string;
   lastName: string;
@@ -28,8 +28,6 @@ type ShippingDetails = {
   community: string;
   streetAddress: string;
   landmark: string;
-  latitude: number | null;
-  longitude: number | null;
   pickupStationId: string;
   pickupStationName: string;
   pickupStationAddress: string;
@@ -53,6 +51,7 @@ type PreviewOrder = {
   total: number;
   deliveryState: string;
   deliveryMethod: DeliveryMethod;
+  paymentMethod: PaymentMethod;
   deliveryDestination: string;
   shipments: { seller: string; trackingNumber: string }[];
 };
@@ -105,10 +104,9 @@ function Checkout() {
   const [order, setOrder] = useState<PreviewOrder | null>(null);
   const [orderError, setOrderError] = useState("");
   const [deliveryMethod, setDeliveryMethod] = useState<DeliveryMethod>("doorstep");
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("paystack");
   const [doorstepFee, setDoorstepFee] = useState<number | null>(null);
   const [pickupStations, setPickupStations] = useState<PickupStation[]>([]);
-  const [location, setLocation] = useState<{ latitude: number; longitude: number } | null>(null);
-  const [locationMessage, setLocationMessage] = useState("");
   const [loadingDeliveryOptions, setLoadingDeliveryOptions] = useState(true);
   const [deliveryOptionsError, setDeliveryOptionsError] = useState("");
   const [savingAddress, setSavingAddress] = useState(false);
@@ -187,8 +185,6 @@ function Checkout() {
       community: String(data.get("community") ?? "").trim(),
       streetAddress: String(data.get("streetAddress") ?? "").trim(),
       landmark: String(data.get("landmark") ?? "").trim(),
-      latitude: location?.latitude ?? null,
-      longitude: location?.longitude ?? null,
       pickupStationId: station?.id ?? "",
       pickupStationName: station?.name ?? "",
       pickupStationAddress: station?.address ?? "",
@@ -211,8 +207,6 @@ function Checkout() {
             community: nextDetails.community,
             street_address: nextDetails.streetAddress,
             landmark: nextDetails.landmark,
-            latitude: nextDetails.latitude,
-            longitude: nextDetails.longitude,
           });
           if (addressError) throw addressError;
         }
@@ -252,6 +246,7 @@ function Checkout() {
         total,
         deliveryState: "Kwara",
         deliveryMethod: details.method,
+        paymentMethod,
         deliveryDestination:
           details.method === "pickup"
             ? `${details.pickupStationName} — ${details.pickupStationAddress}`
@@ -415,37 +410,6 @@ function Checkout() {
                     Nearby landmark <span className="optional-label">Optional</span>
                     <input name="landmark" placeholder="A nearby landmark to help the rider" />
                   </label>
-                  <div className="location-picker">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => {
-                        if (!navigator.geolocation) {
-                          setLocationMessage("Your browser does not provide location access.");
-                          return;
-                        }
-                        setLocationMessage("Getting your location…");
-                        navigator.geolocation.getCurrentPosition(
-                          ({ coords }) => {
-                            setLocation({ latitude: coords.latitude, longitude: coords.longitude });
-                            setLocationMessage("Map pin added to your delivery address.");
-                          },
-                          (error) => {
-                            setLocationMessage(
-                              error.code === error.PERMISSION_DENIED
-                                ? "Location permission was denied. You can enter the address manually."
-                                : "Could not get your location. You can enter the address manually.",
-                            );
-                          },
-                          { enableHighAccuracy: true, timeout: 12000, maximumAge: 30000 },
-                        );
-                      }}
-                    >
-                      <LocateFixed size={16} />{" "}
-                      {location ? "Update map pin" : "Use my location (optional)"}
-                    </Button>
-                    {locationMessage && <span role="status">{locationMessage}</span>}
-                  </div>
                 </>
               ) : (
                 <label>
@@ -506,11 +470,6 @@ function Checkout() {
                   {details.email} · {details.phone}
                 </span>
                 {details.note && <span>Delivery note: {details.note}</span>}
-                {details.method === "doorstep" && details.latitude !== null && (
-                  <span>
-                    Map pin: {details.latitude.toFixed(5)}, {details.longitude?.toFixed(5)}
-                  </span>
-                )}
               </div>
               <div className="receipt-lines">
                 {cart.map((item) => {
@@ -542,6 +501,48 @@ function Checkout() {
                   ? "Pickup selected. No doorstep delivery fee is included."
                   : `Doorstep delivery in Kwara is charged per seller shipment (${sellers.length} ${sellers.length === 1 ? "seller" : "sellers"}).`}
               </p>
+              <fieldset className="payment-method-options">
+                <legend>Choose a payment option</legend>
+                <label>
+                  <input
+                    type="radio"
+                    name="paymentMethod"
+                    value="paystack"
+                    checked={paymentMethod === "paystack"}
+                    onChange={() => setPaymentMethod("paystack")}
+                  />
+                  <span>
+                    <strong>Paystack</strong>
+                    <small>Card, bank, and supported Paystack channels</small>
+                  </span>
+                </label>
+                <label>
+                  <input
+                    type="radio"
+                    name="paymentMethod"
+                    value="bank-transfer"
+                    checked={paymentMethod === "bank-transfer"}
+                    onChange={() => setPaymentMethod("bank-transfer")}
+                  />
+                  <span>
+                    <strong>Bank transfer</strong>
+                    <small>Transfer instructions would be provided at live checkout</small>
+                  </span>
+                </label>
+                <label>
+                  <input
+                    type="radio"
+                    name="paymentMethod"
+                    value="pay-on-delivery"
+                    checked={paymentMethod === "pay-on-delivery"}
+                    onChange={() => setPaymentMethod("pay-on-delivery")}
+                  />
+                  <span>
+                    <strong>Pay on delivery / collection</strong>
+                    <small>Shown for planning only; availability is not yet confirmed</small>
+                  </span>
+                </label>
+              </fieldset>
               <div className="checkout-actions">
                 <Button variant="outline" onClick={() => setStep("delivery")}>
                   <ArrowLeft size={16} /> Edit delivery
@@ -556,8 +557,9 @@ function Checkout() {
                 </p>
               )}
               <p className="payment-preview">
-                Preview estimates only: VAT is shown at 7.5%. Doorstep delivery fee is editable in
-                Supabase delivery settings. No payment will be collected.
+                Payment selection is a preview only. No payment will be initiated or collected.
+                Live Paystack checkout requires a secured server integration and verified payment
+                callbacks.
               </p>
             </div>
           )}
@@ -584,6 +586,16 @@ function Checkout() {
                   <ClipboardList size={15} /> Batch number
                 </span>
                 <strong>{order.batchNumber}</strong>
+              </div>
+              <div className="reference-card">
+                <span>Selected payment option</span>
+                <strong>
+                  {order.paymentMethod === "paystack"
+                    ? "Paystack (preview)"
+                    : order.paymentMethod === "bank-transfer"
+                      ? "Bank transfer (preview)"
+                      : "Pay on delivery / collection (preview)"}
+                </strong>
               </div>
               <p className="order-created-at">
                 Preview created {new Date(order.createdAt).toLocaleString("en-NG")}
