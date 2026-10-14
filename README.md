@@ -1,6 +1,5 @@
 # SupreCart
 
-i want to build a website, i need it exactly like the template attached. My stack is html, css, tailwind, javascript, python, and node, create a github repo while you are at it, note that the name is SupreCart, i would be uploading the logo after first build and deployment
 
 
 
