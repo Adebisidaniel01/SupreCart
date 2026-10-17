@@ -1,7 +1,17 @@
 # SupreCart
 
+SupreCart is a two-sided online marketplace: a **buyer storefront** for browsing and shopping a demo catalog, and a **seller portal** for applying to sell, listing products, and tracking sales. Both sides run from one codebase against one Supabase project and one set of marketplace tables, so buyer and seller activity stays in sync.
 
+The app is built with **TanStack Start (React)**, **TanStack Router**, and **Tailwind CSS v4**. It is currently a preview/demo build: the catalog, orders, and dashboard figures are for interface testing only. Checkout does not create real orders, collect payment, or settle seller payouts until real inventory, checkout, and payment processing are connected.
 
+Key areas:
+
+- **Storefront** (`/`, `/shop`) — browse the demo catalog, product pages, cart, and checkout preview.
+- **Buyer account** (`/account`) — profile, orders, messages, and settings such as notifications, region & language, saved payment methods, and security.
+- **Messages** (`/messages`) — buyer/seller chat with realtime updates, read receipts, and voice notes (live via Supabase).
+- **Seller portal** (`/sellers`) — seller application, dashboard, product management, orders, payouts, and settings including store profile, fulfilment, bank details, notifications, region, payments, and security.
+
+See [seller-portal/README.md](./seller-portal/README.md) for seller-side setup and database details.
 
 ## Development
 
@@ -28,13 +38,31 @@ The pickup stations included in the chat/delivery migration are clearly labeled 
 
 Seller withdrawals are recorded as requests, not transferred funds. Connect and verify payment processing, order reconciliation, and payout review before using the system for real transactions.
 
+### SupreCart seller commission policy
+
+SupreCart charges a commission on the selling price of each item when an order is delivered. The tiers are defined once in [`src/lib/commission.ts`](./src/lib/commission.ts) and shown to sellers in the portal (product form preview, product list, payout panel, and the **Commission & fees** settings tab):
+
+- **Below ₦1,500** — 7.5% of the selling price (e.g. a ₦1,000 item → ₦75 commission).
+- **₦1,500 – ₦5,000** — ₦150 + 7.5% of the selling price.
+- **Above ₦5,000** — 11% of the selling price.
+
+The seller receives the selling price minus this commission. There is no listing or subscription fee. In this preview the commission is calculated in the browser and shown for guidance only; it is not yet enforced in the database or on a real checkout.
+
+### Seller verification, held funds, and profile details
+
+- **Verified sellers:** `seller_applications.verified` (added by [`supabase/migrations/20261015000000_seller_verification.sql`](./supabase/migrations/20261015000000_seller_verification.sql)) is the source of truth for the **Verified seller** badge and is exposed on `public.public_seller_profiles`. There is no admin UI: authorized operators set it directly in Supabase, for example `update public.seller_applications set verified = true where id = '<seller-uuid>';`. The seller portal shows **Verified seller** or **Verification pending** from this flag; the server query falls back to non-verified if the column has not been migrated yet.
+- **Money held by SupreCart (escrow):** the seller dashboard shows a **Held by SupreCart** card totalling `order_items.seller_net` for orders that are paid but not yet delivered (`processing`, `in_transit`, `paid`, `shipped`). Held funds are released to the seller's available balance only when the order is delivered; if a sale does not complete it is never credited. This is a browser-side preview calculation.
+- **Profile photos:** buyers (`/account` → Profile) and sellers (seller portal → Account) can add, change, or remove a profile photo. Photos are read from the file picker and stored as a data URL in browser `localStorage` only; nothing is uploaded.
+- **Payout bank details:** the seller payout form and signup bank field use a dropdown of major Nigerian banks, licensed microfinance banks, and payment providers (see `nigerianBanks` in [`src/lib/account-preferences.ts`](./src/lib/account-preferences.ts)). The 10-digit account number is still entered manually.
+- **Withdrawals:** the seller dashboard has a **Withdraw** button that opens the payout-request form (the same non-transferring request used in the Withdrawals section). It never moves real money.
+
 ### Supabase setup and troubleshooting notes
 
 Use these notes when configuring Supabase for a new local checkout or diagnosing the connection:
 
 - **URL and key were entered in the wrong fields:** `VITE_SUPABASE_URL` must contain the project's HTTPS base URL, for example `https://<project-ref>.supabase.co`. `VITE_SUPABASE_ANON_KEY` must contain the project's anon/publishable key. Do not put a key in the URL field, and never expose a service-role key in a `VITE_` variable. The client warns if the URL contains a path such as `/rest/v1/` and uses only the origin, but the base URL is the correct setting.
 - **Environment changes did not appear to take effect:** put the values in the repository-root `.env.local`, then stop and restart the relevant Vite development server. The main app and standalone seller portal both use these shared Supabase variables.
-- **Seller verification email opens the wrong site (such as `localhost:3000`):** in Supabase **Authentication → URL Configuration**, set **Site URL** to the production site, then add the exact callback URL used by this app to **Redirect URLs** (embedded local example: `http://127.0.0.1:8081/sellers`; standalone local example: `http://127.0.0.1:8082/`). Seller signup and password reset choose `/sellers` when embedded and `/` when standalone. For a custom deployment callback, set `VITE_SELLER_AUTH_REDIRECT_URL` in the repository-root `.env.local` and allowlist that exact URL in Supabase; restart Vite after changing the environment. If you customized the Supabase confirmation email, its link should use `{{ .ConfirmationURL }}`, not a hardcoded localhost URL. Verification should be opened in the same browser that holds the saved application draft. See [seller portal setup](./seller-portal/README.md) for production examples.
+- **Seller verification email opens the wrong site (such as `localhost:3000`):** in Supabase **Authentication → URL Configuration**, set **Site URL** to the production site, then add the exact callback URL used by this app to **Redirect URLs** (embedded local example: `http://localhost:5173/sellers`; standalone local example: `http://127.0.0.1:8082/`). Seller signup and password reset choose `/sellers` when embedded and `/` when standalone. For a custom deployment callback, set `VITE_SELLER_AUTH_REDIRECT_URL` in the repository-root `.env.local` and allowlist that exact URL in Supabase; restart Vite after changing the environment. If you customized the Supabase confirmation email, its link should use `{{ .ConfirmationURL }}`, not a hardcoded localhost URL. Verification should be opened in the same browser that holds the saved application draft. See [seller portal setup](./seller-portal/README.md) for production examples.
 - **The SQL migration reported “Success, no rows returned”:** this is expected for migrations made up of schema changes, policies, grants, and functions. They generally do not return a result table. A success response means the SQL ran; it does not by itself confirm application-level access or resolve every Supabase security warning.
 - **The migration reported `policy "Buyers manage own profile" ... already exists`:** this means the initial marketplace migration (or at least that policy statement) had already been applied. Do not remove the existing policy manually. If the goal is only to fix the view-security warning, run [supabase/migrations/20261009120000_fix_views.sql](./supabase/migrations/20261009120000_fix_views.sql), not the initial migration again. The initial migration in this repository now drops and recreates its named policies so it can be re-run safely when necessary.
 - **Auth connectivity was checked separately:** a successful Supabase Auth response confirmed that the configured project URL and key could reach Auth. That check did not prove that marketplace tables and views existed; those are created by the marketplace migration.
@@ -51,7 +79,7 @@ For local data testing only, the buyer login and seller portal accept the eight 
 - Buyers can start a conversation from a **live Supabase product** before or after purchase; buyers and sellers can continue it from `/messages`. Conversations are private to their participants. Text chat, realtime updates, read receipts, and voice notes are stored through Supabase. Voice notes have a 25 MB file-size cap and no application-imposed duration limit.
 - Doorstep delivery captures a Kwara LGA, community, street address, optional landmark, and optional browser GPS coordinates. Pickup checkout uses active rows in `public.pickup_stations`.
 - The app's checkout is still a preview: it does not create an order, send an order to a seller, or collect payment. Delivery selection, address storage, fees, and station details are currently test/setup features, not a live dispatch system.
-- The cookie banner records only the visitor's accept/reject choice in a first-party preference cookie. Optional analytics/marketing cookies are not currently installed; accepting does not enable a third-party tracker.
+- The cookie banner (on the storefront and the standalone seller portal) records the visitor's choice in a single first-party preference cookie. Visitors can accept, reject, or manage optional cookies; the essential cookie only remembers that choice. Optional analytics/marketing cookies are not currently installed, so accepting does not enable a third-party tracker. See the cookie policy at `/info/cookies`.
 
 ## Third-party services and verification providers
 

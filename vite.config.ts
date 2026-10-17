@@ -26,4 +26,14 @@ export default defineConfig({
     // nitro/vite builds from this
     server: { entry: "server" },
   },
+  vite: {
+    // Override the Lovable default dev server (host "::", port 8080) so local
+    // development uses Vite's standard port. `host: true` binds all network
+    // interfaces so the dev server is reachable from other devices on the LAN.
+    // Ignored inside the Lovable sandbox, which always binds 8080.
+    server: {
+      host: true,
+      port: 5173,
+    },
+  },
 });

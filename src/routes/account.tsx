@@ -1,21 +1,46 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import type { User } from "@supabase/supabase-js";
 import {
+  AlertTriangle,
   ArrowLeft,
   ArrowRight,
+  Bell,
+  Check,
+  CreditCard,
+  Globe,
   House,
+  Lock,
   LogOut,
   MapPin,
   MessageCircle,
   Package,
+  Plus,
   Settings,
   ShieldCheck,
+  Smartphone,
+  Trash2,
+  Upload,
+  UserRound,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/lib/supabase";
 import { clearDemoAccount, readDemoAccount, type DemoAccount } from "@/lib/demo-accounts";
 import { getDemoOrders, getDemoProfile, saveDemoProfile } from "@/lib/demo-orders";
+import {
+  accountPreferenceScope,
+  clearAccountPreferences,
+  createPaymentMethod,
+  currencyOptions,
+  defaultAccountPreferences,
+  languageOptions,
+  readAccountPreferences,
+  saveAccountPreferences,
+  timezoneOptions,
+  type AccountPreferences,
+  type NotificationPreferences,
+  type RegionPreferences,
+} from "@/lib/account-preferences";
 
 type BuyerProfile = {
   first_name: string;
@@ -49,6 +74,17 @@ type BuyerAddress = {
 
 type AccountSection = "overview" | "orders" | "addresses" | "settings";
 
+type SettingsTab = "profile" | "notifications" | "region" | "payments" | "security" | "danger";
+
+const settingsTabs = [
+  ["profile", "Profile", UserRound],
+  ["notifications", "Notifications", Bell],
+  ["region", "Region & language", Globe],
+  ["payments", "Payment methods", CreditCard],
+  ["security", "Security", Lock],
+  ["danger", "Danger zone", AlertTriangle],
+] as const;
+
 export const Route = createFileRoute("/account")({
   head: () => ({
     meta: [
@@ -68,6 +104,10 @@ function BuyerAccount() {
   const [orders, setOrders] = useState<BuyerOrder[]>([]);
   const [addresses, setAddresses] = useState<BuyerAddress[]>([]);
   const [section, setSection] = useState<AccountSection>("overview");
+  const [settingsTab, setSettingsTab] = useState<SettingsTab>("profile");
+  const [preferences, setPreferences] = useState<AccountPreferences>(defaultAccountPreferences);
+  const [preferencesScope, setPreferencesScope] = useState("");
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState("");
   const [loading, setLoading] = useState(true);
@@ -182,6 +222,128 @@ function BuyerAccount() {
       active = false;
     };
   }, [demoAccount, navigate, user]);
+
+  const identity = demoAccount?.email ?? user?.email ?? "";
+  const preferencesKey = useMemo(
+    () => (identity ? accountPreferenceScope("buyer", identity) : ""),
+    [identity],
+  );
+
+  useEffect(() => {
+    if (!preferencesKey) return;
+    setPreferencesScope(preferencesKey);
+    setPreferences(readAccountPreferences(preferencesKey));
+  }, [preferencesKey]);
+
+  function updatePreferences(next: AccountPreferences) {
+    setPreferences(next);
+    if (preferencesScope) saveAccountPreferences(preferencesScope, next);
+  }
+
+  function setNotification(key: keyof NotificationPreferences, value: boolean) {
+    updatePreferences({
+      ...preferences,
+      notifications: { ...preferences.notifications, [key]: value },
+    });
+  }
+
+  function setRegion(patch: Partial<RegionPreferences>) {
+    updatePreferences({ ...preferences, region: { ...preferences.region, ...patch } });
+  }
+
+  function onAvatarFile(event: FormEvent<HTMLInputElement>) {
+    const file = event.currentTarget.files?.[0];
+    if (!file) return;
+    if (
+      !["image/jpeg", "image/png", "image/webp"].includes(file.type) ||
+      file.size > 2 * 1024 * 1024
+    ) {
+      setError("Choose a JPG, PNG, or WebP photo under 2 MB.");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      updatePreferences({ ...preferences, avatarDataUrl: String(reader.result) });
+      setError("");
+      setNotice("Profile photo saved in this browser only.");
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function removeAvatar() {
+    updatePreferences({ ...preferences, avatarDataUrl: "" });
+    setNotice("Profile photo removed from this browser.");
+  }
+
+  function addPaymentMethod(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
+    const brand = String(form.get("brand"));
+    const last4 = String(form.get("last4")).replace(/\D/g, "");
+    const expiry = String(form.get("expiry")).trim();
+    if (last4.length < 4 || !/^\d{2}\/\d{2}$/.test(expiry)) {
+      setError("Enter the last 4 digits and an expiry in MM/YY format.");
+      return;
+    }
+    const method = createPaymentMethod({ brand, last4, expiry });
+    method.isDefault = preferences.paymentMethods.length === 0;
+    updatePreferences({ ...preferences, paymentMethods: [...preferences.paymentMethods, method] });
+    formElement.reset();
+    setError("");
+    setNotice("Sample payment method saved in this browser. No real card is stored or charged.");
+  }
+
+  function removePaymentMethod(id: string) {
+    const remaining = preferences.paymentMethods.filter((method) => method.id !== id);
+    if (remaining.length && !remaining.some((method) => method.isDefault)) {
+      remaining[0] = { ...remaining[0]!, isDefault: true };
+    }
+    updatePreferences({ ...preferences, paymentMethods: remaining });
+  }
+
+  function setDefaultPaymentMethod(id: string) {
+    updatePreferences({
+      ...preferences,
+      paymentMethods: preferences.paymentMethods.map((method) => ({
+        ...method,
+        isDefault: method.id === id,
+      })),
+    });
+  }
+
+  async function signOutOtherSessions() {
+    if (demoAccount) {
+      setNotice("Demo accounts are browser-only, so there are no other sessions to sign out.");
+      return;
+    }
+    if (!supabase) return;
+    setSaving(true);
+    setError("");
+    setNotice("");
+    const { error: scopeError } = await supabase.auth.signOut({ scope: "others" });
+    setSaving(false);
+    if (scopeError) {
+      console.error("Could not sign out the other SupreCart buyer sessions.", scopeError);
+      setError(scopeError.message);
+      return;
+    }
+    setNotice("Any other signed-in devices for this account have been signed out.");
+  }
+
+  async function removeAccount() {
+    if (demoAccount) {
+      clearAccountPreferences(preferencesScope);
+      clearDemoAccount();
+      setDemoAccount(null);
+      await navigate({ to: "/login" });
+      return;
+    }
+    setConfirmDelete(false);
+    setNotice(
+      "Account deletion is not connected in this preview. Nothing was deleted — contact SupreCart support to close a real account.",
+    );
+  }
 
   async function saveProfile(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -432,7 +594,16 @@ function BuyerAccount() {
                   </article>
                 </section>
                 <section className="account-dashboard-card">
-                  <h2>Profile overview</h2>
+                  <div className="account-profile-heading">
+                    <span className="account-avatar">
+                      {preferences.avatarDataUrl ? (
+                        <img src={preferences.avatarDataUrl} alt="" />
+                      ) : (
+                        <UserRound size={22} />
+                      )}
+                    </span>
+                    <h2>Profile overview</h2>
+                  </div>
                   <dl>
                     <div>
                       <dt>Name</dt>
@@ -654,95 +825,415 @@ function BuyerAccount() {
               </>
             )}
             {section === "settings" && (
-              <section className="account-dashboard-card">
-                <h2>Account settings</h2>
-                {demoAccount ? (
-                  <>
-                    <p className="demo-disclaimer">
-                      Demo-only settings: changes stay in this browser and do not update Supabase or
-                      account credentials.
-                    </p>
-                    <form className="account-form" onSubmit={saveProfile}>
-                      <label>
-                        Display name
-                        <input name="name" defaultValue={demoProfile.name} required />
-                      </label>
-                      <label>
-                        Phone
-                        <input name="phone" type="tel" defaultValue={demoProfile.phone} />
-                      </label>
-                      <label>
-                        Account email
-                        <input value={demoAccount.email} disabled />
-                      </label>
-                      <Button type="submit">Save demo profile</Button>
-                    </form>
-                  </>
-                ) : (
-                  <>
+              <>
+                <nav className="account-settings-tabs" aria-label="Account settings sections">
+                  {settingsTabs.map(([key, label, Icon]) => (
+                    <button
+                      type="button"
+                      key={key}
+                      className={settingsTab === key ? "active" : ""}
+                      onClick={() => {
+                        setSettingsTab(key);
+                        setError("");
+                        setNotice("");
+                        setConfirmDelete(false);
+                      }}
+                    >
+                      <Icon size={15} /> {label}
+                    </button>
+                  ))}
+                </nav>
+
+                {settingsTab === "profile" && (
+                  <section className="account-dashboard-card">
+                    <h2>Profile</h2>
+                    <div className="account-profile-photo">
+                      <span className="account-avatar account-avatar-lg">
+                        {preferences.avatarDataUrl ? (
+                          <img src={preferences.avatarDataUrl} alt="Your profile photo" />
+                        ) : (
+                          <UserRound size={28} />
+                        )}
+                      </span>
+                      <div className="account-profile-photo-actions">
+                        <strong>Profile photo</strong>
+                        <span>Shown on your account and reviews. Saved in this browser only.</span>
+                        <div className="account-avatar-buttons">
+                          <label className="account-upload-button">
+                            <Upload size={14} />{" "}
+                            {preferences.avatarDataUrl ? "Change photo" : "Add photo"}
+                            <input
+                              type="file"
+                              accept=".jpg,.jpeg,.png,.webp"
+                              onChange={onAvatarFile}
+                              hidden
+                            />
+                          </label>
+                          {preferences.avatarDataUrl && (
+                            <button
+                              type="button"
+                              className="account-link-button"
+                              onClick={removeAvatar}
+                            >
+                              <Trash2 size={14} /> Remove
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    {demoAccount ? (
+                      <>
+                        <p className="demo-disclaimer">
+                          Demo-only settings: changes stay in this browser and do not update
+                          Supabase or account credentials.
+                        </p>
+                        <form className="account-form" onSubmit={saveProfile}>
+                          <label>
+                            Display name
+                            <input name="name" defaultValue={demoProfile.name} required />
+                          </label>
+                          <label>
+                            Phone
+                            <input name="phone" type="tel" defaultValue={demoProfile.phone} />
+                          </label>
+                          <label>
+                            Account email
+                            <input value={demoAccount.email} disabled />
+                          </label>
+                          <Button type="submit">Save demo profile</Button>
+                        </form>
+                      </>
+                    ) : (
+                      <>
+                        <p className="account-intro">
+                          Update the profile attached to your SupreCart buyer account.
+                        </p>
+                        <form className="account-form" onSubmit={saveProfile}>
+                          <label>
+                            First name
+                            <input
+                              name="first_name"
+                              defaultValue={
+                                profile?.first_name ?? user?.user_metadata["first_name"] ?? ""
+                              }
+                              required
+                            />
+                          </label>
+                          <div className="field-pair">
+                            <label>
+                              Middle name
+                              <input name="middle_name" defaultValue={profile?.middle_name ?? ""} />
+                            </label>
+                            <label>
+                              Last name
+                              <input
+                                name="last_name"
+                                defaultValue={
+                                  profile?.last_name ?? user?.user_metadata["last_name"] ?? ""
+                                }
+                                required
+                              />
+                            </label>
+                          </div>
+                          <div className="field-pair">
+                            <label>
+                              Phone
+                              <input
+                                name="phone"
+                                type="tel"
+                                defaultValue={profile?.phone ?? user?.user_metadata["phone"] ?? ""}
+                              />
+                            </label>
+                            <label>
+                              Account email
+                              <input
+                                name="email"
+                                type="email"
+                                defaultValue={user?.email ?? ""}
+                                autoComplete="email"
+                              />
+                            </label>
+                          </div>
+                          <p className="account-field-hint">
+                            Email changes require the Supabase verification flow before they take
+                            effect.
+                          </p>
+                          <label>
+                            New password
+                            <input
+                              name="password"
+                              type="password"
+                              minLength={10}
+                              autoComplete="new-password"
+                              placeholder="Leave blank to keep your current password"
+                            />
+                          </label>
+                          <Button type="submit" disabled={saving}>
+                            {saving ? "Saving changes…" : "Save profile"}
+                          </Button>
+                        </form>
+                      </>
+                    )}
+                  </section>
+                )}
+
+                {settingsTab === "notifications" && (
+                  <section className="account-dashboard-card">
+                    <h2>Notifications</h2>
                     <p className="account-intro">
-                      Update the profile attached to your SupreCart buyer account.
+                      Choose what SupreCart should tell you about. These preferences are saved in
+                      this browser while messaging is still a preview.
                     </p>
-                    <form className="account-form" onSubmit={saveProfile}>
+                    <div className="account-toggle-list">
+                      {(
+                        [
+                          ["orderUpdates", "Order updates", "Delivery and fulfilment progress"],
+                          [
+                            "promotions",
+                            "Deals & promotions",
+                            "Sale alerts from sellers you follow",
+                          ],
+                          ["newsletter", "Newsletter", "Occasional marketplace news"],
+                          ["securityAlerts", "Security alerts", "Sign-ins and account changes"],
+                        ] as const
+                      ).map(([key, title, text]) => (
+                        <label key={key} className="account-toggle-row">
+                          <span>
+                            <strong>{title}</strong>
+                            <small>{text}</small>
+                          </span>
+                          <input
+                            type="checkbox"
+                            checked={preferences.notifications[key]}
+                            onChange={(event) => setNotification(key, event.target.checked)}
+                          />
+                        </label>
+                      ))}
+                    </div>
+                    <p className="account-field-hint">
+                      SupreCart does not send real messages yet; toggles are remembered locally.
+                    </p>
+                  </section>
+                )}
+
+                {settingsTab === "region" && (
+                  <section className="account-dashboard-card">
+                    <h2>Region &amp; language</h2>
+                    <p className="account-intro">
+                      Set how prices and dates are shown to you across the marketplace.
+                    </p>
+                    <div className="account-form">
+                      <div className="field-pair">
+                        <label>
+                          Currency
+                          <select
+                            value={preferences.region.currency}
+                            onChange={(event) => setRegion({ currency: event.target.value })}
+                          >
+                            {currencyOptions.map((option) => (
+                              <option key={option}>{option}</option>
+                            ))}
+                          </select>
+                        </label>
+                        <label>
+                          Language
+                          <select
+                            value={preferences.region.language}
+                            onChange={(event) => setRegion({ language: event.target.value })}
+                          >
+                            {languageOptions.map((option) => (
+                              <option key={option}>{option}</option>
+                            ))}
+                          </select>
+                        </label>
+                      </div>
                       <label>
-                        First name
-                        <input
-                          name="first_name"
-                          defaultValue={
-                            profile?.first_name ?? user?.user_metadata["first_name"] ?? ""
-                          }
-                          required
-                        />
+                        Time zone
+                        <select
+                          value={preferences.region.timezone}
+                          onChange={(event) => setRegion({ timezone: event.target.value })}
+                        >
+                          {timezoneOptions.map((option) => (
+                            <option key={option}>{option}</option>
+                          ))}
+                        </select>
                       </label>
+                    </div>
+                    <p className="account-field-hint">
+                      Currency conversion and translations are not connected yet, so these are
+                      display preferences only.
+                    </p>
+                  </section>
+                )}
+
+                {settingsTab === "payments" && (
+                  <section className="account-dashboard-card">
+                    <h2>Payment methods</h2>
+                    <p className="account-intro">
+                      Sample payment methods for the preview checkout. SupreCart never stores a full
+                      card number and this preview collects no payments.
+                    </p>
+                    {preferences.paymentMethods.length ? (
+                      <div className="account-payment-list">
+                        {preferences.paymentMethods.map((method) => (
+                          <article key={method.id} className="account-payment-card">
+                            <span className="account-payment-brand">
+                              <CreditCard size={17} />
+                              <strong>{method.brand}</strong>
+                            </span>
+                            <span>•••• {method.last4}</span>
+                            <span>Expires {method.expiry}</span>
+                            {method.isDefault ? (
+                              <span className="account-payment-default">
+                                <Check size={12} /> Default
+                              </span>
+                            ) : (
+                              <button
+                                type="button"
+                                className="account-inline-link"
+                                onClick={() => setDefaultPaymentMethod(method.id)}
+                              >
+                                Make default
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              className="account-danger-link"
+                              onClick={() => removePaymentMethod(method.id)}
+                            >
+                              Remove
+                            </button>
+                          </article>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="account-intro">No sample payment methods saved yet.</p>
+                    )}
+                    <form className="account-form account-payment-form" onSubmit={addPaymentMethod}>
+                      <h3>Add a sample method</h3>
+                      <div className="field-pair">
+                        <label>
+                          Brand
+                          <select name="brand" defaultValue="Visa">
+                            {["Visa", "Mastercard", "Verve", "Virtual wallet"].map((brand) => (
+                              <option key={brand}>{brand}</option>
+                            ))}
+                          </select>
+                        </label>
+                        <label>
+                          Last 4 digits
+                          <input
+                            name="last4"
+                            inputMode="numeric"
+                            maxLength={4}
+                            placeholder="4242"
+                            required
+                          />
+                        </label>
+                      </div>
                       <label>
-                        Middle name
-                        <input name="middle_name" defaultValue={profile?.middle_name ?? ""} />
+                        Expiry (MM/YY)
+                        <input name="expiry" placeholder="09/29" required />
                       </label>
-                      <label>
-                        Last name
-                        <input
-                          name="last_name"
-                          defaultValue={
-                            profile?.last_name ?? user?.user_metadata["last_name"] ?? ""
-                          }
-                          required
-                        />
-                      </label>
-                      <label>
-                        Phone
-                        <input
-                          name="phone"
-                          type="tel"
-                          defaultValue={profile?.phone ?? user?.user_metadata["phone"] ?? ""}
-                        />
-                      </label>
-                      <label>
-                        Account email
-                        <input
-                          name="email"
-                          type="email"
-                          defaultValue={user?.email ?? ""}
-                          autoComplete="email"
-                        />
-                        <small>Email changes require the Supabase verification flow.</small>
-                      </label>
-                      <label>
-                        New password
-                        <input
-                          name="password"
-                          type="password"
-                          minLength={10}
-                          autoComplete="new-password"
-                          placeholder="Leave blank to keep your current password"
-                        />
-                      </label>
-                      <Button type="submit" disabled={saving}>
-                        {saving ? "Saving changes…" : "Save profile"}
+                      <Button type="submit" variant="outline">
+                        <Plus size={15} /> Add sample method
                       </Button>
                     </form>
-                  </>
+                  </section>
                 )}
-              </section>
+
+                {settingsTab === "security" && (
+                  <section className="account-dashboard-card">
+                    <h2>Security</h2>
+                    <div className="account-toggle-list">
+                      <label className="account-toggle-row">
+                        <span>
+                          <strong>Two-factor authentication</strong>
+                          <small>Extra protection for sign-in has not been connected yet.</small>
+                        </span>
+                        <input
+                          type="checkbox"
+                          checked={preferences.twoFactorEnabled}
+                          onChange={(event) =>
+                            updatePreferences({
+                              ...preferences,
+                              twoFactorEnabled: event.target.checked,
+                            })
+                          }
+                        />
+                      </label>
+                    </div>
+                    <div className="account-security-actions">
+                      <div>
+                        <strong>Password</strong>
+                        <small>Changes to your password are made in the Profile tab.</small>
+                      </div>
+                      <div>
+                        <strong>Other sessions</strong>
+                        <small>Sign out every other device signed in to this account.</small>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        disabled={saving}
+                        onClick={() => void signOutOtherSessions()}
+                      >
+                        <Smartphone size={15} /> Sign out other sessions
+                      </Button>
+                    </div>
+                    <p className="account-field-hint">
+                      Two-factor authentication is a placeholder in this preview; it never blocks
+                      sign-in.
+                    </p>
+                  </section>
+                )}
+
+                {settingsTab === "danger" && (
+                  <section className="account-dashboard-card account-danger-zone">
+                    <h2>Danger zone</h2>
+                    <p className="account-intro">
+                      {demoAccount
+                        ? "Remove this local demo account and its saved preferences from this browser."
+                        : "Closing a real SupreCart account is handled by our team. Account deletion is not connected in this preview."}
+                    </p>
+                    {demoAccount ? (
+                      confirmDelete ? (
+                        <div className="account-confirm">
+                          <p>This clears the demo session and its local preferences. Continue?</p>
+                          <div className="account-confirm-actions">
+                            <Button
+                              type="button"
+                              variant="destructive"
+                              onClick={() => void removeAccount()}
+                            >
+                              <Trash2 size={15} /> Remove demo account
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              onClick={() => setConfirmDelete(false)}
+                            >
+                              Cancel
+                            </Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => setConfirmDelete(true)}
+                        >
+                          <Trash2 size={15} /> Remove demo account
+                        </Button>
+                      )
+                    ) : (
+                      <Button type="button" variant="outline" onClick={() => void removeAccount()}>
+                        <Trash2 size={15} /> Request account deletion
+                      </Button>
+                    )}
+                  </section>
+                )}
+              </>
             )}
           </>
         )}

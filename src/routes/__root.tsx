@@ -130,7 +130,7 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <CookieConsent />
+      <CookieConsent policyHref="/info/cookies" />
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
       {pathname === "/admin" || pathname.startsWith("/sellers") ? (
         <Outlet />

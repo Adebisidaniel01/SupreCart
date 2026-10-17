@@ -1775,6 +1775,15 @@ body {
   color: #777d71;
   font-size: 9px;
 }
+.product-seller-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .product-seller > span:last-child {
   display: inline-flex;
   align-items: center;
@@ -1783,6 +1792,24 @@ body {
 }
 .product-seller svg {
   color: #929d68;
+}
+.seller-verified-mark {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: #e8f2ec;
+  color: #256347;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+.seller-verified-mark svg {
+  color: #256347;
 }
 .product-bottom {
   font-size: 11px;
@@ -2052,6 +2079,11 @@ body {
   color: var(--foreground);
   font-size: 12px;
 }
+.seller-detail .seller-detail-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
 .seller-detail .seller-detail-rating {
   display: inline-flex;
   gap: 5px;
@@ -2063,6 +2095,9 @@ body {
 }
 .seller-detail svg {
   color: #909a69;
+}
+.seller-detail .seller-verified-mark svg {
+  color: #256347;
 }
 .product-quantity {
   margin: 9px 0 18px;
@@ -2111,6 +2146,7 @@ body {
   max-width: 1260px;
   margin: 38px auto 55px;
   padding: 0 30px;
+  font-family: "Space Grotesk", Arial, sans-serif;
 }
 .account-panel {
   padding: 10px 9% 25px 4%;
@@ -2146,6 +2182,92 @@ body {
   margin: 0 0 14px;
   font-size: 15px;
   letter-spacing: -0.02em;
+}
+.account-profile-heading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.account-profile-heading h2 {
+  margin: 0;
+}
+.account-avatar {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  overflow: hidden;
+  border-radius: 50%;
+  background: #eef1e8;
+  color: #58634e;
+}
+.account-avatar-lg {
+  width: 64px;
+  height: 64px;
+}
+.account-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.account-profile-photo {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding-bottom: 16px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid #eceee5;
+}
+.account-profile-photo-actions {
+  display: grid;
+  gap: 3px;
+}
+.account-profile-photo-actions strong {
+  font-size: 12px;
+  color: #29342b;
+}
+.account-profile-photo-actions > span {
+  font-size: 10px;
+  color: #777d72;
+}
+.account-avatar-buttons {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 5px;
+}
+.account-upload-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  border: 1px solid #d8dbcf;
+  border-radius: 22px;
+  background: #fff;
+  color: #33472f;
+  font-size: 10px;
+  font-weight: 650;
+  cursor: pointer;
+}
+.account-upload-button:hover {
+  background: #f4f6ef;
+}
+.account-link-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: #a5473b;
+  font-size: 10px;
+  font-weight: 650;
+  cursor: pointer;
+}
+.account-link-button:hover {
+  text-decoration: underline;
 }
 .account-dashboard-card dl {
   display: grid;
@@ -2379,6 +2501,227 @@ body {
 .account-checkbox input {
   width: 15px;
   min-height: 15px;
+}
+.account-settings-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 4px 0 18px;
+  padding: 6px;
+  border: 1px solid #e6e8e0;
+  border-radius: 9px;
+  background: #f7f8f3;
+}
+.account-settings-tabs > button {
+  display: inline-flex;
+  min-height: 34px;
+  align-items: center;
+  gap: 7px;
+  padding: 0 11px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #59645a;
+  font: inherit;
+  font-size: 10px;
+  font-weight: 650;
+  cursor: pointer;
+}
+.account-settings-tabs > button:hover,
+.account-settings-tabs > button.active {
+  background: #fff;
+  color: #2c513a;
+  box-shadow: 0 1px 4px rgb(33 45 34 / 9%);
+}
+.account-settings-tabs svg {
+  color: #75856d;
+}
+.account-field-hint {
+  margin: 12px 0 0;
+  color: #82877e;
+  font-size: 10px;
+  line-height: 1.6;
+}
+.account-form select {
+  width: 100%;
+  min-width: 0;
+  min-height: 43px;
+  padding: 10px 12px;
+  border: 1px solid #dedfd7;
+  border-radius: 6px;
+  background: #fffefa;
+  color: #29342b;
+  font-size: 12px;
+  outline: none;
+}
+.account-form select:focus {
+  border-color: #8d9b77;
+  box-shadow: 0 0 0 3px rgb(141 155 119 / 14%);
+}
+.account-toggle-list {
+  display: grid;
+  gap: 10px;
+}
+.account-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 13px 14px;
+  border: 1px solid #e8e9e2;
+  border-radius: 8px;
+  background: #fff;
+}
+.account-toggle-row > span {
+  display: grid;
+  gap: 3px;
+}
+.account-toggle-row strong {
+  color: #29342b;
+  font-size: 12px;
+}
+.account-toggle-row small {
+  color: #858b82;
+  font-size: 10px;
+}
+.account-toggle-row input {
+  position: relative;
+  flex-shrink: 0;
+  width: 40px;
+  height: 22px;
+  border: 1px solid #cfd5c8;
+  border-radius: 999px;
+  background: #e9ece4;
+  appearance: none;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease;
+}
+.account-toggle-row input::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 2px rgb(33 45 34 / 25%);
+  transition: transform 0.15s ease;
+}
+.account-toggle-row input:checked {
+  background: #4f7a5b;
+  border-color: #4f7a5b;
+}
+.account-toggle-row input:checked::after {
+  transform: translateX(18px);
+}
+.account-payment-list {
+  display: grid;
+  gap: 10px;
+}
+.account-payment-card {
+  display: grid;
+  grid-template-columns: minmax(130px, 1fr) auto auto auto auto;
+  align-items: center;
+  gap: 14px;
+  padding: 14px;
+  border: 1px solid #e8e9e2;
+  border-radius: 8px;
+  background: #fff;
+  color: #4f5a50;
+  font-size: 11px;
+}
+.account-payment-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #29342b;
+}
+.account-payment-brand svg {
+  color: #4f7a5b;
+}
+.account-payment-default {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border-radius: 20px;
+  background: #edf3e9;
+  color: #476345;
+  font-size: 9px;
+  font-weight: 700;
+}
+.account-inline-link {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #466149;
+  font: inherit;
+  font-size: 10px;
+  font-weight: 650;
+  cursor: pointer;
+}
+.account-payment-form {
+  margin-top: 18px;
+  padding-top: 18px;
+  border-top: 1px solid #eceee7;
+}
+.account-payment-form h3 {
+  margin: 0;
+  font-size: 12px;
+}
+.account-payment-form .button {
+  justify-self: start;
+}
+.account-security-actions {
+  display: grid;
+  gap: 14px;
+  margin-top: 16px;
+}
+.account-security-actions > div {
+  display: grid;
+  gap: 3px;
+}
+.account-security-actions strong {
+  color: #29342b;
+  font-size: 12px;
+}
+.account-security-actions small {
+  color: #858b82;
+  font-size: 10px;
+}
+.account-security-actions .button {
+  justify-self: start;
+}
+.account-danger-zone {
+  border-color: #eccfca;
+  background: #fffaf8;
+}
+.account-confirm {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid #eccfca;
+  border-radius: 8px;
+  background: #fdf2ef;
+  color: #7d3a31;
+  font-size: 11px;
+  line-height: 1.6;
+}
+.account-confirm p {
+  margin: 0;
+}
+.account-confirm-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+@media (max-width: 640px) {
+  .account-payment-card {
+    grid-template-columns: 1fr auto;
+  }
 }
 .account-dashboard > .button {
   gap: 8px;
@@ -2954,6 +3297,47 @@ body {
   border-color: #344a37;
   background: #344a37;
   color: #fff;
+}
+.cookie-consent-actions .cookie-manage {
+  border-color: #dfe2d7;
+  background: #eef1ea;
+  color: #344a37;
+}
+.cookie-policy-link {
+  color: inherit;
+  text-decoration: underline;
+}
+.cookie-preferences {
+  display: grid;
+  gap: 8px;
+  margin-top: 11px;
+}
+.cookie-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 10px;
+  border: 1px solid #e7eae0;
+  border-radius: 7px;
+  background: #fbfcf8;
+}
+.cookie-toggle > span {
+  display: grid;
+  gap: 2px;
+}
+.cookie-toggle strong {
+  color: #29342b;
+  font-size: 10px;
+}
+.cookie-toggle small {
+  color: #6e756b;
+  font-size: 9px;
+}
+.cookie-toggle input {
+  width: 16px;
+  height: 16px;
+  accent-color: #344a37;
 }
 @media (max-width: 760px) {
   .messages-page {

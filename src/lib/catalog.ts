@@ -17,8 +17,21 @@ export type Product = {
   image: string;
   marketplaceProductId?: string;
   sellerId?: string;
+  sellerVerified?: boolean;
   label?: string;
 };
+
+const verifiedSellers = new Set([
+  "The Sole House",
+  "Lace & Legacy",
+  "North & Loom",
+  "Sound House Lagos",
+  "Atelier Nia",
+]);
+
+export function sellerIsVerified(seller: string): boolean {
+  return verifiedSellers.has(seller);
+}
 
 export const products: Product[] = [
   {

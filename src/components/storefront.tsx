@@ -30,7 +30,11 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { products, money, type Product } from "@/lib/catalog";
+import { products, money, sellerIsVerified, type Product } from "@/lib/catalog";
+
+function productSellerVerified(product: Product): boolean {
+  return product.sellerVerified ?? sellerIsVerified(product.seller);
+}
 
 type CartItem = { product: Product; size: string; quantity: number };
 type Store = {
@@ -239,7 +243,7 @@ export function Storefront({ children }: { children: ReactNode }) {
             {cartCount > 0 && <span className="count-badge">{cartCount}</span>}
           </Button>
           <Button variant="ghost" size="icon" title="Account" aria-label="Account" asChild>
-            <Link to="/login">
+            <Link to="/account">
               <UserRound />
             </Link>
           </Button>
@@ -374,9 +378,25 @@ export function Storefront({ children }: { children: ReactNode }) {
             <form
               onSubmit={(event) => {
                 event.preventDefault();
-                setNewsletterNote(
-                  "Thanks for your interest. Newsletter signups are not connected yet, so your email was not submitted.",
-                );
+                const value = email.trim();
+                if (!value) return;
+                try {
+                  const stored = JSON.parse(
+                    localStorage.getItem("suprecart-newsletter") ?? "[]",
+                  ) as unknown;
+                  const list = Array.isArray(stored) ? (stored as string[]) : [];
+                  if (!list.includes(value)) list.push(value);
+                  localStorage.setItem("suprecart-newsletter", JSON.stringify(list));
+                  setNewsletterNote(
+                    "Saved on this device for the preview. Newsletter delivery is not connected yet.",
+                  );
+                  setEmail("");
+                } catch (error) {
+                  console.error("Could not save the SupreCart newsletter interest.", error);
+                  setNewsletterNote(
+                    "Your browser could not save this address. Newsletter delivery is not connected yet.",
+                  );
+                }
               }}
             >
               <input
@@ -411,6 +431,9 @@ export function Storefront({ children }: { children: ReactNode }) {
             </Link>
             <Link to="/info/$slug" params={{ slug: "privacy" }}>
               Privacy policy
+            </Link>
+            <Link to="/info/$slug" params={{ slug: "cookies" }}>
+              Cookie policy
             </Link>
           </div>
         </div>
@@ -451,7 +474,14 @@ export function Storefront({ children }: { children: ReactNode }) {
               </div>
               <div className="seller-detail">
                 <strong>Seller details</strong>
-                <span>{selected.seller}</span>
+                <span className="seller-detail-name">
+                  {selected.seller}
+                  {productSellerVerified(selected) && (
+                    <span className="seller-verified-mark" title="Verified seller">
+                      <BadgeCheck size={13} /> Verified
+                    </span>
+                  )}
+                </span>
                 <span className="seller-detail-rating">
                   <Star size={13} fill="currentColor" /> {selected.sellerRating} seller rating
                 </span>
@@ -549,8 +579,13 @@ export function Storefront({ children }: { children: ReactNode }) {
                       <div className="cart-item-copy">
                         <strong>{item.product.name}</strong>
                         <p>
-                          {item.product.seller} ·{" "}
-                          {item.size !== "One size" ? `Size ${item.size} · ` : ""}
+                          {item.product.seller}
+                          {productSellerVerified(item.product) && (
+                            <span className="seller-verified-mark" title="Verified seller">
+                              <BadgeCheck size={11} /> Verified
+                            </span>
+                          )}{" "}
+                          · {item.size !== "One size" ? `Size ${item.size} · ` : ""}
                           {money(item.product.price)}
                         </p>
                         <div className="quantity">
@@ -711,8 +746,26 @@ export function Storefront({ children }: { children: ReactNode }) {
 }
 
 export function ProductCard({ product }: { product: Product }) {
-  const { favorites, toggleFavorite, openProduct } = useStore();
+  const { favorites, toggleFavorite, openProduct, setCart, openPanel } = useStore();
   const saved = favorites.includes(product.id);
+  const needsSize = product.category === "Footwear";
+
+  function addQuickly() {
+    if (needsSize) {
+      openProduct(product);
+      return;
+    }
+    setCart((items) => {
+      const existing = items.find(
+        (item) => item.product.id === product.id && item.size === "One size",
+      );
+      return existing
+        ? items.map((item) => (item === existing ? { ...item, quantity: item.quantity + 1 } : item))
+        : [...items, { product, size: "One size", quantity: 1 }];
+    });
+    openPanel("cart");
+  }
+
   return (
     <article
       className={`product-card product-card--${product.category.toLowerCase().replaceAll(" ", "-")}`}
@@ -746,7 +799,14 @@ export function ProductCard({ product }: { product: Product }) {
         {product.category} <span>·</span> {product.brand}
       </p>
       <div className="product-seller">
-        <span>{product.seller}</span>
+        <span className="product-seller-name">
+          {product.seller}
+          {productSellerVerified(product) && (
+            <span className="seller-verified-mark" title="Verified seller">
+              <BadgeCheck size={12} /> Verified
+            </span>
+          )}
+        </span>
         <span>
           <Star size={11} fill="currentColor" /> {product.sellerRating}
         </span>
@@ -761,11 +821,11 @@ export function ProductCard({ product }: { product: Product }) {
       <Button
         className="product-add-button"
         variant="outline"
-        aria-label={`View details and add ${product.name} to cart`}
-        onClick={() => openProduct(product)}
+        aria-label={needsSize ? `Choose a size for ${product.name}` : `Add ${product.name} to cart`}
+        onClick={addQuickly}
       >
         <ShoppingCart size={15} />
-        Add to cart
+        {needsSize ? "Choose size" : "Add to cart"}
       </Button>
     </article>
   );

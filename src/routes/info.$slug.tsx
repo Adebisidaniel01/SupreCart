@@ -69,6 +69,15 @@ const pages: Record<string, { title: string; eyebrow: string; body: string[] }> 
       "Check the product details or contact the seller for exact measurements before ordering once the marketplace is live.",
     ],
   },
+  cookies: {
+    title: "Cookies, kept simple.",
+    eyebrow: "COOKIE POLICY",
+    body: [
+      "SupreCart uses one essential first-party cookie to remember your cookie choice. It does not track you across other sites.",
+      "Optional analytics and marketing cookies are not installed in this preview. You can choose to accept, reject, or manage optional cookies from the banner, and change your mind by clearing this site's cookies.",
+      "This preview stores demo cart, wishlist and account details only in your browser. Do not enter sensitive personal or payment information.",
+    ],
+  },
 };
 
 export const Route = createFileRoute("/info/$slug")({

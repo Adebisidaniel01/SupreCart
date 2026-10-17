@@ -1,20 +1,32 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import {
+  AlertTriangle,
   ArrowDownToLine,
   ArrowLeft,
   ArrowRight,
   BadgeCheck,
+  Bell,
   Box,
+  Check,
   CircleDollarSign,
   Clock3,
+  CreditCard,
+  Globe,
+  Landmark,
   LogOut,
   MessageCircle,
   PackagePlus,
+  Percent,
+  Plus,
   ShieldCheck,
   Settings,
+  Smartphone,
   Star,
   Store,
+  Trash2,
+  Truck,
   Upload,
+  UserRound,
 } from "lucide-react";
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "../../src/lib/supabase";
@@ -28,6 +40,30 @@ import {
   type DemoAccount,
 } from "../../src/lib/demo-accounts";
 import { getDemoProfile, saveDemoProfile } from "../../src/lib/demo-orders";
+import { CookieConsent } from "../../src/components/CookieConsent";
+import { calculateCommission, commissionTiers } from "../../src/lib/commission";
+import {
+  accountPreferenceScope,
+  createPaymentMethod,
+  currencyOptions,
+  defaultAccountPreferences,
+  languageOptions,
+  nigerianBanks,
+  processingTimeOptions,
+  readAccountPreferences,
+  saveAccountPreferences,
+  shippingOptionsCatalog,
+  timezoneOptions,
+  type AccountPreferences,
+  type NotificationPreferences,
+  type RegionPreferences,
+} from "../../src/lib/account-preferences";
+import {
+  AVATAR_ACCEPT,
+  AVATAR_SIZE,
+  avatarErrorMessage,
+  processAvatarFile,
+} from "../../src/lib/avatar";
 import "./seller.css";
 
 type SellerApplication = {
@@ -38,6 +74,7 @@ type SellerApplication = {
   email: string;
   product_description: string;
   status: "pending" | "approved" | "rejected";
+  verified?: boolean;
 };
 
 type SellerProduct = {
@@ -64,10 +101,47 @@ type SellerStats = {
 
 type DemoFundEntry = { id: string; description: string; amount: number; date: string };
 
+type SellerSettingsTab =
+  | "account"
+  | "store"
+  | "fulfilment"
+  | "bank"
+  | "commission"
+  | "notifications"
+  | "region"
+  | "payments"
+  | "security"
+  | "danger";
+
+const sellerSettingsTabs = [
+  ["account", "Account", Settings],
+  ["store", "Store profile", Store],
+  ["fulfilment", "Fulfilment", Truck],
+  ["bank", "Payout & bank", Landmark],
+  ["commission", "Commission & fees", Percent],
+  ["notifications", "Notifications", Bell],
+  ["region", "Region & language", Globe],
+  ["payments", "Payment methods", CreditCard],
+  ["security", "Security", ShieldCheck],
+  ["danger", "Danger zone", AlertTriangle],
+] as const;
+
+const sellerPages = ["overview", "products", "orders", "payouts", "settings"] as const;
+type SellerPage = (typeof sellerPages)[number];
+
+function readSellerPage(): SellerPage {
+  if (typeof window === "undefined") return "overview";
+  const hash = window.location.hash.replace(/^#\/?/, "");
+  return (sellerPages as readonly string[]).includes(hash) ? (hash as SellerPage) : "overview";
+}
+
 const fileTypes = ["image/jpeg", "image/png", "application/pdf"];
 const productImageTypes = ["image/jpeg", "image/png", "image/webp"];
 const marketplaceUrl = import.meta.env["VITE_MARKETPLACE_URL"] || "/";
 const configuredAuthRedirectUrl = import.meta.env["VITE_SELLER_AUTH_REDIRECT_URL"]?.trim();
+const cookiePolicyHref = /^https?:\/\//.test(marketplaceUrl)
+  ? `${marketplaceUrl.replace(/\/$/, "")}/info/cookies`
+  : undefined;
 
 function sellerAuthRedirectUrl() {
   if (configuredAuthRedirectUrl) {
@@ -190,7 +264,8 @@ function demoSellerStats(email: string): SellerStats {
   ];
   const sellerNet = (index: number, quantity = 1) => {
     const product = products[index];
-    return product ? product.price * 0.88 * quantity : 0;
+    if (!product) return 0;
+    return calculateCommission(product.price).sellerNet * quantity;
   };
   const items: SellerStats["items"] = [
     {
@@ -251,7 +326,7 @@ function demoFundEntries(email: string): DemoFundEntry[] {
   return entries[email] ?? [];
 }
 
-export default function SellerPortal() {
+export default function SellerPortal({ standalone = false }: { standalone?: boolean } = {}) {
   const [session, setSession] = useState<Session | null>(null);
   const [application, setApplication] = useState<SellerApplication | null>(null);
   const [stats, setStats] = useState<SellerStats | null>(null);
@@ -265,15 +340,44 @@ export default function SellerPortal() {
   const [submitted, setSubmitted] = useState(false);
   const [loadingScreen, setLoadingScreen] = useState(true);
   const [confirmationEmail, setConfirmationEmail] = useState("");
+  const [page, setPage] = useState<SellerPage>(readSellerPage);
   const creatingApplication = useRef(false);
+
+  useEffect(() => {
+    const syncPage = () => setPage(readSellerPage());
+    window.addEventListener("popstate", syncPage);
+    window.addEventListener("hashchange", syncPage);
+    return () => {
+      window.removeEventListener("popstate", syncPage);
+      window.removeEventListener("hashchange", syncPage);
+    };
+  }, []);
+
+  function goToPage(next: SellerPage) {
+    setPage(next);
+    if (readSellerPage() !== next) {
+      window.history.pushState(null, "", `#${next}`);
+    }
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
 
   const loadSellerData = useCallback(async (activeSession: Session) => {
     if (!supabase) return;
-    const { data, error: applicationError } = await supabase
+    let applicationQuery = await supabase
       .from("seller_applications")
-      .select("id, first_name, middle_name, last_name, email, product_description, status")
+      .select(
+        "id, first_name, middle_name, last_name, email, product_description, status, verified",
+      )
       .eq("id", activeSession.user.id)
       .maybeSingle();
+    if (applicationQuery.error) {
+      applicationQuery = await supabase
+        .from("seller_applications")
+        .select("id, first_name, middle_name, last_name, email, product_description, status")
+        .eq("id", activeSession.user.id)
+        .maybeSingle();
+    }
+    const { data, error: applicationError } = applicationQuery;
     if (applicationError) throw applicationError;
     const seller = data as SellerApplication | null;
     setApplication(seller);
@@ -732,9 +836,13 @@ export default function SellerPortal() {
   const demoEarnings = demoDeliveredItems.reduce((sum, item) => sum + item.seller_net, 0);
   const demoSoldCount = demoDeliveredItems.reduce((sum, item) => sum + item.quantity, 0);
   const demoWalletEntries = demoAccount ? demoFundEntries(demoAccount.email) : [];
-  const demoBalance = demoEarnings + demoWalletEntries.reduce((sum, entry) => sum + entry.amount, 0);
+  const demoBalance =
+    demoEarnings + demoWalletEntries.reduce((sum, entry) => sum + entry.amount, 0);
 
   if (loadingScreen) return <SellerLoadingScreen />;
+
+  const showDashboard =
+    Boolean(demoAccount) || (Boolean(session) && application?.status === "approved");
 
   return (
     <main className="seller-site">
@@ -781,22 +889,44 @@ export default function SellerPortal() {
             </div>
           </div>
           <div className="seller-sidebar-caption">YOUR SPACE</div>
-          <a className={`seller-side-link ${!application ? "active" : ""}`} href="#seller-content">
+          <button
+            type="button"
+            className={`seller-side-link ${showDashboard && page === "overview" ? "active" : ""}`}
+            onClick={() => goToPage("overview")}
+          >
             <Box size={16} /> Overview
-          </a>
-          <a className="seller-side-link" href="#seller-products">
-            <PackagePlus size={16} /> Products
-          </a>
-          <a className="seller-side-link" href="#seller-orders">
-            <Box size={16} /> Orders
-          </a>
-          <a className="seller-side-link" href="#seller-payouts">
-            <CircleDollarSign size={16} /> Payouts
-          </a>
-          {(session || demoAccount) && (
-            <a className="seller-side-link" href="#seller-settings">
-              <Settings size={16} /> Account settings
-            </a>
+          </button>
+          {showDashboard && (
+            <>
+              <button
+                type="button"
+                className={`seller-side-link ${page === "products" ? "active" : ""}`}
+                onClick={() => goToPage("products")}
+              >
+                <PackagePlus size={16} /> Products
+              </button>
+              <button
+                type="button"
+                className={`seller-side-link ${page === "orders" ? "active" : ""}`}
+                onClick={() => goToPage("orders")}
+              >
+                <Box size={16} /> Orders
+              </button>
+              <button
+                type="button"
+                className={`seller-side-link ${page === "payouts" ? "active" : ""}`}
+                onClick={() => goToPage("payouts")}
+              >
+                <CircleDollarSign size={16} /> Payouts
+              </button>
+              <button
+                type="button"
+                className={`seller-side-link ${page === "settings" ? "active" : ""}`}
+                onClick={() => goToPage("settings")}
+              >
+                <Settings size={16} /> Account settings
+              </button>
+            </>
           )}
           {(session || demoAccount) && (
             <a
@@ -866,6 +996,8 @@ export default function SellerPortal() {
               demoMode
               demoProfile={demoProfile}
               demoFundEntries={demoWalletEntries}
+              page={page}
+              onNavigate={goToPage}
               onAddProduct={addProduct}
               onRequestPayout={requestPayout}
               onUpdateAccount={updateSellerAccount}
@@ -881,6 +1013,9 @@ export default function SellerPortal() {
                 error={error}
                 notice={notice}
                 submitting={submitting}
+                session={session}
+                page={page}
+                onNavigate={goToPage}
                 onAddProduct={addProduct}
                 onRequestPayout={requestPayout}
                 onUpdateAccount={updateSellerAccount}
@@ -921,6 +1056,7 @@ export default function SellerPortal() {
           </footer>
         </section>
       </div>
+      {standalone && <CookieConsent policyHref={cookiePolicyHref} />}
     </main>
   );
 }
@@ -1020,7 +1156,16 @@ function ApplicationForm({
           </label>
           <label>
             Bank name
-            <input name="bankName" autoComplete="off" required />
+            <select name="bankName" autoComplete="off" required defaultValue="">
+              <option value="" disabled>
+                Select your bank…
+              </option>
+              {nigerianBanks.map((bank) => (
+                <option key={bank} value={bank}>
+                  {bank}
+                </option>
+              ))}
+            </select>
           </label>
           <label>
             Bank account number
@@ -1218,9 +1363,12 @@ function SellerDashboard({
   error,
   notice,
   submitting,
+  session = null,
   demoMode = false,
   demoProfile,
   demoFundEntries = [],
+  page,
+  onNavigate,
   onAddProduct,
   onRequestPayout,
   onUpdateAccount,
@@ -1233,25 +1381,236 @@ function SellerDashboard({
   error: string;
   notice: string;
   submitting: boolean;
+  session?: Session | null;
   demoMode?: boolean;
   demoProfile?: { name: string; phone: string };
   demoFundEntries?: DemoFundEntry[];
+  page: SellerPage;
+  onNavigate: (page: SellerPage) => void;
   onAddProduct: (event: FormEvent<HTMLFormElement>) => void;
   onRequestPayout: (event: FormEvent<HTMLFormElement>) => void;
   onUpdateAccount: (event: FormEvent<HTMLFormElement>) => void;
 }) {
   const [productFormOpen, setProductFormOpen] = useState(false);
   const [payoutFormOpen, setPayoutFormOpen] = useState(false);
+  const [settingsTab, setSettingsTab] = useState<SellerSettingsTab>("account");
+  const [preferences, setPreferences] = useState<AccountPreferences>(defaultAccountPreferences);
+  const [settingsNotice, setSettingsNotice] = useState("");
+  const [settingsError, setSettingsError] = useState("");
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [productPrice, setProductPrice] = useState("");
+  const preferencesKey = accountPreferenceScope("seller", application.email);
+
+  useEffect(() => {
+    setPreferences(readAccountPreferences(preferencesKey));
+  }, [preferencesKey]);
+
+  function updatePreferences(next: AccountPreferences) {
+    setPreferences(next);
+    saveAccountPreferences(preferencesKey, next);
+  }
+
+  function setNotification(key: keyof NotificationPreferences, value: boolean) {
+    updatePreferences({
+      ...preferences,
+      notifications: { ...preferences.notifications, [key]: value },
+    });
+  }
+
+  function setRegion(patch: Partial<RegionPreferences>) {
+    updatePreferences({ ...preferences, region: { ...preferences.region, ...patch } });
+  }
+
+  function toggleShippingOption(option: string) {
+    const current = preferences.fulfilment.shippingOptions;
+    updatePreferences({
+      ...preferences,
+      fulfilment: {
+        ...preferences.fulfilment,
+        shippingOptions: current.includes(option)
+          ? current.filter((entry) => entry !== option)
+          : [...current, option],
+      },
+    });
+  }
+
+  function saveStoreProfile(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    updatePreferences({
+      ...preferences,
+      store: {
+        ...preferences.store,
+        storeName: String(form.get("storeName")).trim(),
+        tagline: String(form.get("tagline")).trim(),
+        description: String(form.get("description")).trim(),
+      },
+    });
+    setSettingsError("");
+    setSettingsNotice(
+      "Store profile saved in this browser. It is not yet published to the marketplace.",
+    );
+  }
+
+  function onStoreLogo(event: FormEvent<HTMLInputElement>) {
+    const file = event.currentTarget.files?.[0];
+    if (!file) return;
+    if (
+      !["image/jpeg", "image/png", "image/webp"].includes(file.type) ||
+      file.size > 2 * 1024 * 1024
+    ) {
+      setSettingsError("Choose a JPG, PNG, or WebP logo under 2 MB.");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      updatePreferences({
+        ...preferences,
+        store: { ...preferences.store, logoDataUrl: String(reader.result) },
+      });
+      setSettingsError("");
+      setSettingsNotice("Store logo preview saved in this browser only.");
+    };
+    reader.readAsDataURL(file);
+  }
+
+  async function onAvatarFile(event: FormEvent<HTMLInputElement>) {
+    const input = event.currentTarget;
+    const file = input.files?.[0];
+    if (!file) return;
+    const result = await processAvatarFile(file);
+    input.value = "";
+    if (!result.ok) {
+      setSettingsError(avatarErrorMessage(result.code));
+      setSettingsNotice("");
+      return;
+    }
+    updatePreferences({ ...preferences, avatarDataUrl: result.dataUrl });
+    setSettingsError("");
+    setSettingsNotice(
+      `Profile photo updated. This ${AVATAR_SIZE}×${AVATAR_SIZE} preview image is kept in this browser until object storage is connected.`,
+    );
+  }
+
+  function removeAvatar() {
+    updatePreferences({ ...preferences, avatarDataUrl: "" });
+    setSettingsNotice("Profile photo removed from this browser.");
+  }
+
+  function saveBankDetails(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    const accountNumber = String(form.get("accountNumber")).trim();
+    if (!/^\d{10}$/.test(accountNumber)) {
+      setSettingsError("Enter a valid 10-digit account number.");
+      return;
+    }
+    updatePreferences({
+      ...preferences,
+      bank: { bankName: String(form.get("bankName")).trim(), accountNumber },
+    });
+    setSettingsError("");
+    setSettingsNotice(
+      "Bank details saved as a request in this browser. SupreCart support confirms real payout changes before any transfer.",
+    );
+  }
+
+  function addPaymentMethod(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
+    const last4 = String(form.get("last4")).replace(/\D/g, "");
+    const expiry = String(form.get("expiry")).trim();
+    if (last4.length < 4 || !/^\d{2}\/\d{2}$/.test(expiry)) {
+      setSettingsError("Enter the last 4 digits and an expiry in MM/YY format.");
+      return;
+    }
+    const method = createPaymentMethod({
+      brand: String(form.get("brand")),
+      last4,
+      expiry,
+    });
+    method.isDefault = preferences.paymentMethods.length === 0;
+    updatePreferences({ ...preferences, paymentMethods: [...preferences.paymentMethods, method] });
+    formElement.reset();
+    setSettingsError("");
+    setSettingsNotice("Sample payout method saved in this browser. No real account is stored.");
+  }
+
+  function removePaymentMethod(id: string) {
+    const remaining = preferences.paymentMethods.filter((method) => method.id !== id);
+    if (remaining.length && !remaining.some((method) => method.isDefault)) {
+      remaining[0] = { ...remaining[0]!, isDefault: true };
+    }
+    updatePreferences({ ...preferences, paymentMethods: remaining });
+  }
+
+  function setDefaultPaymentMethod(id: string) {
+    updatePreferences({
+      ...preferences,
+      paymentMethods: preferences.paymentMethods.map((method) => ({
+        ...method,
+        isDefault: method.id === id,
+      })),
+    });
+  }
+
+  async function signOutOtherSessions() {
+    if (demoMode) {
+      setSettingsNotice(
+        "Demo sellers are browser-only, so there are no other sessions to sign out.",
+      );
+      return;
+    }
+    if (!supabase) return;
+    if (session) {
+      const { error: scopeError } = await supabase.auth.signOut({ scope: "others" });
+      if (scopeError) {
+        console.error("Could not sign out the other SupreCart seller sessions.", scopeError);
+        setSettingsError(scopeError.message);
+        return;
+      }
+      setSettingsNotice("Any other signed-in devices for this account have been signed out.");
+    }
+  }
+
+  function removeSellerAccount() {
+    setConfirmDelete(false);
+    if (demoMode) {
+      setSettingsNotice("Demo seller data stays in this browser. Clear site data to remove it.");
+      return;
+    }
+    setSettingsNotice(
+      "Store closure is handled by SupreCart support and is not connected in this preview. Nothing was deleted.",
+    );
+  }
+
   const ratings = stats?.ratings ?? [];
   const average = ratings.length
     ? ratings.reduce((sum, rating) => sum + Number(rating.average_rating), 0) / ratings.length
     : 0;
+  const heldStatuses = ["paid", "shipped", "processing", "in_transit"];
+  const heldFunds = (stats?.items ?? [])
+    .filter((item) =>
+      (stats?.orders ?? []).some(
+        (order) => order.id === item.order_id && heldStatuses.includes(order.status),
+      ),
+    )
+    .reduce((sum, item) => sum + Number(item.seller_net), 0);
+  const enabledNotifications = Object.values(preferences.notifications).filter(Boolean).length;
   return (
     <div className="seller-dashboard">
       <div className="seller-dashboard-topline">
         <p className="seller-eyebrow">{demoMode ? "LOCAL DEMO DASHBOARD" : "YOUR SELLER STUDIO"}</p>
-        <span className="seller-approved">
-          <BadgeCheck size={14} /> {demoMode ? "DEMO ACCOUNT" : "VERIFIED SELLER"}
+        <span
+          className={`seller-approved ${!demoMode && !application.verified ? "seller-approved-pending" : ""}`}
+        >
+          <BadgeCheck size={14} />{" "}
+          {demoMode
+            ? "DEMO ACCOUNT"
+            : application.verified
+              ? "VERIFIED SELLER"
+              : "VERIFICATION PENDING"}
         </span>
       </div>
       {demoMode && (
@@ -1260,25 +1619,6 @@ function SellerDashboard({
           this preview. No purchases, payouts, or Supabase records exist.
         </p>
       )}
-      <div className="seller-dashboard-heading">
-        <div>
-          <h1>Good to see you, {application.first_name}.</h1>
-          <p>
-            {demoMode
-              ? "Demo metrics only — real seller data is not loaded."
-              : "Here’s how your shop is doing today."}
-          </p>
-        </div>
-        {!demoMode && (
-          <button
-            className="seller-primary-button"
-            type="button"
-            onClick={() => setProductFormOpen((open) => !open)}
-          >
-            <PackagePlus size={16} /> Add a product
-          </button>
-        )}
-      </div>
       {error && (
         <p className="seller-form-error" role="alert">
           {error}
@@ -1289,326 +1629,1027 @@ function SellerDashboard({
           {notice}
         </p>
       )}
-      <div className="seller-metric-grid">
-        <article className="seller-metric-card seller-metric-balance">
-          <span>{demoMode ? "AVAILABLE FUNDS" : "AVAILABLE TO REQUEST"}</span>
-          <strong>{formatMoney(balance)}</strong>
-          <small>For orders marked delivered</small>
-          <CircleDollarSign size={20} />
-        </article>
-        <article className="seller-metric-card">
-          <span>{demoMode ? "NET EARNINGS" : "TOTAL EARNED"}</span>
-          <strong>{formatMoney(earnings)}</strong>
-          <small>Your net from delivered orders</small>
-          <ArrowDownToLine size={19} />
-        </article>
-        <article className="seller-metric-card">
-          <span>ITEMS SOLD</span>
-          <strong>{soldCount}</strong>
-          <small>Across fulfilled orders</small>
-          <Box size={19} />
-        </article>
-        <article className="seller-metric-card">
-          <span>SHOP RATING</span>
-          <strong>
-            {average ? average.toFixed(1) : "—"}{" "}
-            <i>
-              <Star size={16} fill="currentColor" />
-            </i>
-          </strong>
-          <small>
-            {ratings.reduce((sum, rating) => sum + rating.review_count, 0)} verified reviews
-          </small>
-          <BadgeCheck size={19} />
-        </article>
-      </div>
-      <section className="seller-dashboard-section" id="seller-products">
-        <div className="seller-section-heading">
-          <div>
-            <p className="seller-eyebrow">YOUR CATALOGUE</p>
-            <h2>Products</h2>
-          </div>
-          {!demoMode && (
-            <button
-              type="button"
-              className="seller-outline-button"
-              onClick={() => setProductFormOpen((open) => !open)}
-            >
-              <PackagePlus size={15} /> Add product
-            </button>
-          )}
-        </div>
-        {productFormOpen && !demoMode && (
-          <form className="seller-product-form" onSubmit={onAddProduct}>
-            <label>
-              Product name
-              <input name="name" maxLength={120} required />
-            </label>
-            <label>
-              Category
-              <input name="category" maxLength={50} placeholder="Fashion, home, beauty…" required />
-            </label>
-            <label>
-              Price (NGN)
-              <input name="price" type="number" min="1" step="0.01" required />
-            </label>
-            <label>
-              Available quantity
-              <input name="inventory" type="number" min="0" step="1" defaultValue="1" required />
-            </label>
-            <label className="seller-field-full">
-              Product description
-              <textarea name="description" rows={3} maxLength={4000} required />
-            </label>
-            <label className="seller-field-full">
-              Product image
-              <input type="file" name="image" accept=".jpg,.jpeg,.png,.webp" required />
-            </label>
-            <button
-              className="seller-primary-button seller-field-full"
-              type="submit"
-              disabled={submitting}
-            >
-              {submitting ? "Saving product…" : "Publish product"} <ArrowRight size={15} />
-            </button>
-          </form>
-        )}
-        <div className="seller-product-table">
-          {(stats?.products ?? []).length ? (
-            (stats?.products ?? []).map((product) => {
-              const rating = ratings.find((item) => item.product_id === product.id);
-              const image =
-                product.image_url ??
-                supabase?.storage.from("product-images").getPublicUrl(product.image_path).data
-                  .publicUrl ??
-                "";
-              return (
-                <article className="seller-product-row" key={product.id}>
-                  <img src={image} alt="" />
-                  <div className="seller-product-name">
-                    <strong>{product.name}</strong>
-                    <span>{product.category}</span>
-                  </div>
-                  <span>{formatMoney(Number(product.price))}</span>
-                  <span>{product.inventory} in stock</span>
-                  <span className="seller-product-rating">
-                    <Star size={13} fill="currentColor" />{" "}
-                    {rating ? Number(rating.average_rating).toFixed(1) : "New"}
-                  </span>
-                  <span className={`seller-product-state ${product.published ? "published" : ""}`}>
-                    {product.published ? "LIVE" : "HIDDEN"}
-                  </span>
-                </article>
-              );
-            })
-          ) : (
-            <div className="seller-empty-products">
-              <PackagePlus size={21} />
-              <strong>{demoMode ? "No demo products" : "Your first product is waiting."}</strong>
-              <span>
-                {demoMode
-                  ? "This test account has no saved catalogue."
-                  : "Add a product to start building your storefront."}
+      {page === "overview" && (
+        <>
+          <div className="seller-dashboard-heading">
+            <div className="seller-dashboard-greeting">
+              <span className="seller-avatar seller-avatar-sm">
+                {preferences.avatarDataUrl ? (
+                  <img src={preferences.avatarDataUrl} alt="" />
+                ) : (
+                  <UserRound size={22} />
+                )}
               </span>
-              {!demoMode && (
-                <button
-                  type="button"
-                  className="seller-switch-link"
-                  onClick={() => setProductFormOpen(true)}
-                >
-                  Add your first product <ArrowRight size={14} />
-                </button>
-              )}
-            </div>
-          )}
-        </div>
-      </section>
-      <section className="seller-dashboard-section" id="seller-orders">
-        <div className="seller-section-heading">
-          <div>
-            <p className="seller-eyebrow">FULFILMENT</p>
-            <h2>Orders</h2>
-          </div>
-          <span className="seller-payout-balance">{stats?.orders.length ?? 0} orders</span>
-        </div>
-        {(stats?.orders ?? []).length ? (
-          <div className="seller-order-list">
-            {(stats?.orders ?? []).map((order) => {
-              const orderItem = stats?.items.find((item) => item.order_id === order.id);
-              const product = stats?.products.find((item) => item.id === orderItem?.product_id);
-              return (
-                <article key={order.id}>
-                  <PackagePlus size={17} />
-                  <strong>Order {demoMode ? order.id : order.id.slice(0, 8)}</strong>
-                  <span className={`seller-order-status status-${order.status}`}>
-                    {order.status.replaceAll("_", " ")}
-                  </span>
-                  <time dateTime={order.created_at}>
-                    {new Date(order.created_at).toLocaleDateString()}
-                  </time>
-                  {orderItem && product && (
-                    <span className="seller-order-detail">
-                      {product.name} · {orderItem.quantity}{" "}
-                      {orderItem.quantity === 1 ? "item" : "items"} ·{" "}
-                      {formatMoney(Number(orderItem.seller_net))}
-                      {demoMode ? " demo net" : " seller net"}
-                    </span>
-                  )}
-                </article>
-              );
-            })}
-          </div>
-        ) : (
-          <p className="seller-settings-note">
-            {demoMode
-              ? "Demo sellers have no real orders connected."
-              : "Orders containing your products will appear here after a buyer places an order."}
-          </p>
-        )}
-      </section>
-      <section className="seller-dashboard-section seller-finance-section" id="seller-payouts">
-        <div className="seller-section-heading">
-          <div>
-            <p className="seller-eyebrow">YOUR EARNINGS</p>
-            <h2>Withdrawals</h2>
-          </div>
-          <span className="seller-payout-balance">{formatMoney(balance)} available</span>
-        </div>
-        <div className="seller-payout-panel">
-          <div>
-            <CircleDollarSign size={23} />
-            <strong>Request a payout</strong>
-            <span>
-              Delivered-order earnings, less applicable fees. Requests are reviewed before any
-              payment is made.
-            </span>
-          </div>
-          {!demoMode && (
-            <button
-              type="button"
-              className="seller-primary-button"
-              onClick={() => setPayoutFormOpen((open) => !open)}
-              disabled={balance <= 0}
-            >
-              Request funds <ArrowRight size={15} />
-            </button>
-          )}
-        </div>
-        {payoutFormOpen && !demoMode && (
-          <form className="seller-payout-form" onSubmit={onRequestPayout}>
-            <label>
-              Amount (NGN)
-              <input name="amount" type="number" min="1" max={balance} step="0.01" required />
-            </label>
-            <button className="seller-primary-button" type="submit" disabled={submitting}>
-              {submitting ? "Submitting…" : "Submit payout request"}
-            </button>
-          </form>
-        )}
-        <p className="seller-finance-note">
-          <ShieldCheck size={14} />
-          {demoMode
-            ? "Demo balances are not real and cannot be withdrawn."
-            : "A payout request does not transfer funds. SupreCart reviews requests and pays to your verified bank account."}
-        </p>
-        {demoMode && demoFundEntries.length > 0 && (
-          <div className="seller-fund-ledger">
-            <h3>Demo balance activity</h3>
-            <p>Fictional refund adjustments and top-ups included in the preview balance.</p>
-            {demoFundEntries.map((entry) => (
-              <div className="seller-fund-ledger-row" key={entry.id}>
-                <span>
-                  <strong>{entry.description}</strong>
-                  <small>{entry.date}</small>
-                </span>
-                <b>+{formatMoney(entry.amount)}</b>
+              <div>
+                <h1>Good to see you, {application.first_name}.</h1>
+                <p>
+                  {demoMode
+                    ? "Demo metrics only — real seller data is not loaded."
+                    : "Here’s how your shop is doing today."}
+                </p>
               </div>
-            ))}
+            </div>
+            {!demoMode && (
+              <div className="seller-dashboard-actions">
+                <button
+                  className="seller-outline-button"
+                  type="button"
+                  onClick={() => {
+                    setPayoutFormOpen(true);
+                    onNavigate("payouts");
+                  }}
+                >
+                  <ArrowDownToLine size={16} /> Withdraw
+                </button>
+                <button
+                  className="seller-primary-button"
+                  type="button"
+                  onClick={() => {
+                    setProductFormOpen(true);
+                    onNavigate("products");
+                  }}
+                >
+                  <PackagePlus size={16} /> Add a product
+                </button>
+              </div>
+            )}
           </div>
-        )}
-      </section>
-      <section className="seller-dashboard-section" id="seller-settings">
-        <div className="seller-section-heading">
-          <div>
-            <p className="seller-eyebrow">PROFILE & SECURITY</p>
-            <h2>Account settings</h2>
+          <div className="seller-metric-grid">
+            <article className="seller-metric-card seller-metric-balance">
+              <span>{demoMode ? "AVAILABLE FUNDS" : "AVAILABLE TO REQUEST"}</span>
+              <strong>{formatMoney(balance)}</strong>
+              <small>For orders marked delivered</small>
+              <CircleDollarSign size={20} />
+            </article>
+            <article className="seller-metric-card seller-metric-held">
+              <span>HELD BY SUPRECART</span>
+              <strong>{formatMoney(heldFunds)}</strong>
+              <small>In escrow until the order is delivered</small>
+              <ShieldCheck size={19} />
+            </article>
+            <article className="seller-metric-card">
+              <span>{demoMode ? "NET EARNINGS" : "TOTAL EARNED"}</span>
+              <strong>{formatMoney(earnings)}</strong>
+              <small>Your net from delivered orders</small>
+              <ArrowDownToLine size={19} />
+            </article>
+            <article className="seller-metric-card">
+              <span>ITEMS SOLD</span>
+              <strong>{soldCount}</strong>
+              <small>Across fulfilled orders</small>
+              <Box size={19} />
+            </article>
+            <article className="seller-metric-card">
+              <span>SHOP RATING</span>
+              <strong>
+                {average ? average.toFixed(1) : "—"}{" "}
+                <i>
+                  <Star size={16} fill="currentColor" />
+                </i>
+              </strong>
+              <small>
+                {ratings.reduce((sum, rating) => sum + rating.review_count, 0)} verified reviews
+              </small>
+              <BadgeCheck size={19} />
+            </article>
           </div>
-        </div>
-        <div className="seller-settings-card">
-          <div>
-            <strong>{demoMode ? "Local demo seller" : application.email}</strong>
-            <span>
-              {demoMode
-                ? "This local identity is not a Supabase account."
-                : `${application.first_name} ${application.last_name} · ${application.status} application`}
-            </span>
+        </>
+      )}
+      {page === "products" && (
+        <section className="seller-dashboard-section" id="seller-products">
+          <div className="seller-section-heading">
+            <div>
+              <p className="seller-eyebrow">YOUR CATALOGUE</p>
+              <h2>Products</h2>
+            </div>
+            {!demoMode && (
+              <button
+                type="button"
+                className="seller-outline-button"
+                onClick={() => setProductFormOpen((open) => !open)}
+              >
+                <PackagePlus size={15} /> Add product
+              </button>
+            )}
           </div>
-          {demoMode ? (
-            <form className="seller-settings-form" onSubmit={onUpdateAccount}>
-              <p className="seller-settings-note">
-                Demo profile changes are saved only in this browser. Email and password remain
-                demo-only and cannot be changed here.
-              </p>
+          {productFormOpen && !demoMode && (
+            <form
+              className="seller-product-form"
+              onSubmit={(event) => {
+                onAddProduct(event);
+                setProductPrice("");
+              }}
+            >
               <label>
-                Display name
+                Product name
+                <input name="name" maxLength={120} required />
+              </label>
+              <label>
+                Category
                 <input
-                  name="name"
-                  defaultValue={demoProfile?.name || application.first_name}
+                  name="category"
+                  maxLength={50}
+                  placeholder="Fashion, home, beauty…"
                   required
                 />
               </label>
               <label>
-                Contact phone
-                <input name="phone" type="tel" defaultValue={demoProfile?.phone ?? ""} />
-              </label>
-              <label>
-                Demo email
-                <input type="email" value={application.email} disabled />
-              </label>
-              <button className="seller-primary-button" type="submit">
-                Save demo profile
-              </button>
-            </form>
-          ) : (
-            <form className="seller-settings-form" onSubmit={onUpdateAccount}>
-              <label>
-                Email address
+                Price (NGN)
                 <input
-                  type="email"
-                  name="email"
-                  defaultValue={application.email}
-                  autoComplete="email"
-                  placeholder="Leave unchanged to keep current email"
-                />
-                <small>Email updates require confirmation from the new address.</small>
-              </label>
-              <label>
-                New password
-                <input
-                  type="password"
-                  name="password"
-                  minLength={10}
-                  autoComplete="new-password"
-                  placeholder="At least 10 characters"
+                  name="price"
+                  type="number"
+                  min="1"
+                  step="0.01"
+                  required
+                  onChange={(event) => setProductPrice(event.target.value)}
                 />
               </label>
-              {error && (
-                <p className="seller-form-error" role="alert">
-                  {error}
+              <label>
+                Available quantity
+                <input name="inventory" type="number" min="0" step="1" defaultValue="1" required />
+              </label>
+              <label className="seller-field-full">
+                Product description
+                <textarea name="description" rows={3} maxLength={4000} required />
+              </label>
+              <label className="seller-field-full">
+                Product image
+                <input type="file" name="image" accept=".jpg,.jpeg,.png,.webp" required />
+              </label>
+              {Number(productPrice) > 0 && (
+                <p className="seller-fee-preview seller-field-full" role="status">
+                  SupreCart commission{" "}
+                  <strong>
+                    {formatMoney(calculateCommission(Number(productPrice)).commission)}
+                  </strong>{" "}
+                  · you receive{" "}
+                  <strong>
+                    {formatMoney(calculateCommission(Number(productPrice)).sellerNet)}
+                  </strong>{" "}
+                  per item ({calculateCommission(Number(productPrice)).tier.summary}).
                 </p>
               )}
-              {notice && (
-                <p className="seller-form-notice" role="status">
-                  {notice}
-                </p>
-              )}
-              <button className="seller-primary-button" type="submit" disabled={submitting}>
-                {submitting ? "Saving settings…" : "Save account settings"}
+              <button
+                className="seller-primary-button seller-field-full"
+                type="submit"
+                disabled={submitting}
+              >
+                {submitting ? "Saving product…" : "Publish product"} <ArrowRight size={15} />
               </button>
             </form>
           )}
-        </div>
-      </section>
+          <div className="seller-product-table">
+            {(stats?.products ?? []).length ? (
+              (stats?.products ?? []).map((product) => {
+                const rating = ratings.find((item) => item.product_id === product.id);
+                const fee = calculateCommission(Number(product.price));
+                const image =
+                  product.image_url ??
+                  supabase?.storage.from("product-images").getPublicUrl(product.image_path).data
+                    .publicUrl ??
+                  "";
+                return (
+                  <article className="seller-product-row" key={product.id}>
+                    <img src={image} alt="" />
+                    <div className="seller-product-name">
+                      <strong>{product.name}</strong>
+                      <span>{product.category}</span>
+                      <small className="seller-product-net">
+                        Net {formatMoney(fee.sellerNet)} · fee {formatMoney(fee.commission)}
+                      </small>
+                    </div>
+                    <span>{formatMoney(Number(product.price))}</span>
+                    <span>{product.inventory} in stock</span>
+                    <span className="seller-product-rating">
+                      <Star size={13} fill="currentColor" />{" "}
+                      {rating ? Number(rating.average_rating).toFixed(1) : "New"}
+                    </span>
+                    <span
+                      className={`seller-product-state ${product.published ? "published" : ""}`}
+                    >
+                      {product.published ? "LIVE" : "HIDDEN"}
+                    </span>
+                  </article>
+                );
+              })
+            ) : (
+              <div className="seller-empty-products">
+                <PackagePlus size={21} />
+                <strong>{demoMode ? "No demo products" : "Your first product is waiting."}</strong>
+                <span>
+                  {demoMode
+                    ? "This test account has no saved catalogue."
+                    : "Add a product to start building your storefront."}
+                </span>
+                {!demoMode && (
+                  <button
+                    type="button"
+                    className="seller-switch-link"
+                    onClick={() => setProductFormOpen(true)}
+                  >
+                    Add your first product <ArrowRight size={14} />
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        </section>
+      )}
+      {page === "orders" && (
+        <section className="seller-dashboard-section" id="seller-orders">
+          <div className="seller-section-heading">
+            <div>
+              <p className="seller-eyebrow">FULFILMENT</p>
+              <h2>Orders</h2>
+            </div>
+            <span className="seller-payout-balance">{stats?.orders.length ?? 0} orders</span>
+          </div>
+          {(stats?.orders ?? []).length ? (
+            <div className="seller-order-list">
+              {(stats?.orders ?? []).map((order) => {
+                const orderItem = stats?.items.find((item) => item.order_id === order.id);
+                const product = stats?.products.find((item) => item.id === orderItem?.product_id);
+                return (
+                  <article key={order.id}>
+                    <PackagePlus size={17} />
+                    <strong>Order {demoMode ? order.id : order.id.slice(0, 8)}</strong>
+                    <span className={`seller-order-status status-${order.status}`}>
+                      {order.status.replaceAll("_", " ")}
+                    </span>
+                    <time dateTime={order.created_at}>
+                      {new Date(order.created_at).toLocaleDateString()}
+                    </time>
+                    {orderItem && product && (
+                      <span className="seller-order-detail">
+                        {product.name} · {orderItem.quantity}{" "}
+                        {orderItem.quantity === 1 ? "item" : "items"} ·{" "}
+                        {formatMoney(Number(orderItem.seller_net))}
+                        {demoMode ? " demo net" : " seller net"}
+                      </span>
+                    )}
+                  </article>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="seller-settings-note">
+              {demoMode
+                ? "Demo sellers have no real orders connected."
+                : "Orders containing your products will appear here after a buyer places an order."}
+            </p>
+          )}
+        </section>
+      )}
+      {page === "payouts" && (
+        <section className="seller-dashboard-section seller-finance-section" id="seller-payouts">
+          <div className="seller-section-heading">
+            <div>
+              <p className="seller-eyebrow">YOUR EARNINGS</p>
+              <h2>Withdrawals</h2>
+            </div>
+            <span className="seller-payout-balance">{formatMoney(balance)} available</span>
+          </div>
+          <div className="seller-payout-panel">
+            <div>
+              <CircleDollarSign size={23} />
+              <strong>Withdraw your available balance</strong>
+              <span>
+                Delivered-order earnings, less applicable fees. Withdrawals are reviewed before any
+                payment is made.
+              </span>
+            </div>
+            {!demoMode && (
+              <button
+                type="button"
+                className="seller-primary-button"
+                onClick={() => setPayoutFormOpen((open) => !open)}
+                disabled={balance <= 0}
+              >
+                <ArrowDownToLine size={15} /> Withdraw funds
+              </button>
+            )}
+          </div>
+          {payoutFormOpen && !demoMode && (
+            <form className="seller-payout-form" onSubmit={onRequestPayout}>
+              <label>
+                Amount (NGN)
+                <input name="amount" type="number" min="1" max={balance} step="0.01" required />
+              </label>
+              <button className="seller-primary-button" type="submit" disabled={submitting}>
+                {submitting ? "Submitting…" : "Submit payout request"}
+              </button>
+            </form>
+          )}
+          <p className="seller-finance-note">
+            <ShieldCheck size={14} />
+            {demoMode
+              ? "Demo balances are not real and cannot be withdrawn."
+              : "A payout request does not transfer funds. SupreCart reviews requests and pays to your verified bank account."}
+          </p>
+          <p className="seller-finance-note">
+            <Percent size={14} />
+            SupreCart commission: below ₦1,500 → 7.5%; ₦1,500–₦5,000 → ₦150 + 7.5%; above ₦5,000 →
+            11% of the selling price. See Commission &amp; fees for a full breakdown.
+          </p>
+          <p className="seller-finance-note">
+            <Clock3 size={14} />
+            {formatMoney(heldFunds)} is held by SupreCart until those orders are delivered. If a
+            sale does not complete, the held amount is never credited to your available balance.
+          </p>
+          {demoMode && demoFundEntries.length > 0 && (
+            <div className="seller-fund-ledger">
+              <h3>Demo balance activity</h3>
+              <p>Fictional refund adjustments and top-ups included in the preview balance.</p>
+              {demoFundEntries.map((entry) => (
+                <div className="seller-fund-ledger-row" key={entry.id}>
+                  <span>
+                    <strong>{entry.description}</strong>
+                    <small>{entry.date}</small>
+                  </span>
+                  <b>+{formatMoney(entry.amount)}</b>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
+      {page === "settings" && (
+        <section className="seller-dashboard-section" id="seller-settings">
+          <div className="seller-section-heading">
+            <div>
+              <p className="seller-eyebrow">PROFILE & SECURITY</p>
+              <h2>Account settings</h2>
+            </div>
+          </div>
+          <nav className="seller-settings-tabs" aria-label="Account settings sections">
+            {sellerSettingsTabs.map(([key, label, Icon]) => (
+              <button
+                type="button"
+                key={key}
+                className={settingsTab === key ? "active" : ""}
+                onClick={() => {
+                  setSettingsTab(key);
+                  setSettingsError("");
+                  setSettingsNotice("");
+                  setConfirmDelete(false);
+                }}
+              >
+                <Icon size={15} /> {label}
+              </button>
+            ))}
+          </nav>
+          {settingsNotice && (
+            <p className="seller-form-notice" role="status">
+              {settingsNotice}
+            </p>
+          )}
+          {settingsError && (
+            <p className="seller-form-error" role="alert">
+              {settingsError}
+            </p>
+          )}
+
+          {settingsTab === "account" && (
+            <div className="seller-settings-card">
+              <div>
+                <strong>{demoMode ? "Local demo seller" : application.email}</strong>
+                <span>
+                  {demoMode
+                    ? "This local identity is not a Supabase account."
+                    : `${application.first_name} ${application.last_name} · ${application.status} application`}
+                </span>
+              </div>
+              <div className="seller-profile-header">
+                <span className="seller-avatar">
+                  {preferences.avatarDataUrl ? (
+                    <img src={preferences.avatarDataUrl} alt="Your profile photo" />
+                  ) : (
+                    <UserRound size={26} />
+                  )}
+                </span>
+                <div className="seller-avatar-actions">
+                  <strong>Profile photo</strong>
+                  <span>
+                    JPG, PNG, or WebP · square {AVATAR_SIZE}×{AVATAR_SIZE}px · 2 MB max. Shown next
+                    to your store once object storage is connected; this preview keeps it in your
+                    browser.
+                  </span>
+                  <div className="seller-avatar-buttons">
+                    <label className="seller-outline-button">
+                      <Upload size={14} />{" "}
+                      {preferences.avatarDataUrl ? "Change photo" : "Add photo"}
+                      <input type="file" accept={AVATAR_ACCEPT} onChange={onAvatarFile} hidden />
+                    </label>
+                    {preferences.avatarDataUrl && (
+                      <button type="button" className="seller-text-button" onClick={removeAvatar}>
+                        <Trash2 size={14} /> Remove
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+              {!demoMode && (
+                <div className={`seller-verify-banner ${application.verified ? "verified" : ""}`}>
+                  <BadgeCheck size={17} />
+                  <div>
+                    <strong>
+                      {application.verified ? "Verified seller" : "Verification pending"}
+                    </strong>
+                    <span>
+                      {application.verified
+                        ? "SupreCart has confirmed your store details."
+                        : "SupreCart reviews stores before granting the verified badge. You can keep selling in the meantime."}
+                    </span>
+                  </div>
+                </div>
+              )}
+              {demoMode ? (
+                <form className="seller-settings-form" onSubmit={onUpdateAccount}>
+                  <p className="seller-settings-note">
+                    Demo profile changes are saved only in this browser. Email and password remain
+                    demo-only and cannot be changed here.
+                  </p>
+                  <label>
+                    Display name
+                    <input
+                      name="name"
+                      defaultValue={demoProfile?.name || application.first_name}
+                      required
+                    />
+                  </label>
+                  <label>
+                    Contact phone
+                    <input name="phone" type="tel" defaultValue={demoProfile?.phone ?? ""} />
+                  </label>
+                  <label>
+                    Demo email
+                    <input type="email" value={application.email} disabled />
+                  </label>
+                  <button className="seller-primary-button" type="submit">
+                    Save demo profile
+                  </button>
+                </form>
+              ) : (
+                <form className="seller-settings-form" onSubmit={onUpdateAccount}>
+                  <label>
+                    Email address
+                    <input
+                      type="email"
+                      name="email"
+                      defaultValue={application.email}
+                      autoComplete="email"
+                      placeholder="Leave unchanged to keep current email"
+                    />
+                    <small>Email updates require confirmation from the new address.</small>
+                  </label>
+                  <label>
+                    New password
+                    <input
+                      type="password"
+                      name="password"
+                      minLength={10}
+                      autoComplete="new-password"
+                      placeholder="At least 10 characters"
+                    />
+                  </label>
+                  {error && (
+                    <p className="seller-form-error" role="alert">
+                      {error}
+                    </p>
+                  )}
+                  {notice && (
+                    <p className="seller-form-notice" role="status">
+                      {notice}
+                    </p>
+                  )}
+                  <button className="seller-primary-button" type="submit" disabled={submitting}>
+                    {submitting ? "Saving settings…" : "Save account settings"}
+                  </button>
+                </form>
+              )}
+            </div>
+          )}
+
+          {settingsTab === "store" && (
+            <div className="seller-settings-card">
+              <div>
+                <strong>Store profile</strong>
+                <span>How your shop is presented to buyers on SupreCart.</span>
+              </div>
+              <form className="seller-settings-form" onSubmit={saveStoreProfile}>
+                <label>
+                  Store name
+                  <input
+                    name="storeName"
+                    defaultValue={preferences.store.storeName || application.first_name}
+                    maxLength={80}
+                    placeholder="e.g. Shewa Home Studio"
+                  />
+                </label>
+                <label>
+                  Tagline
+                  <input
+                    name="tagline"
+                    defaultValue={preferences.store.tagline}
+                    maxLength={120}
+                    placeholder="A short line about your shop"
+                  />
+                </label>
+                <label>
+                  Store description
+                  <textarea
+                    name="description"
+                    rows={4}
+                    maxLength={600}
+                    defaultValue={preferences.store.description}
+                    placeholder="Tell buyers what you make and what makes it special…"
+                  />
+                </label>
+                <label>
+                  Store logo
+                  <input type="file" accept=".jpg,.jpeg,.png,.webp" onChange={onStoreLogo} />
+                  <small>JPG, PNG, or WebP · max 2 MB · preview only.</small>
+                </label>
+                {preferences.store.logoDataUrl && (
+                  <div className="seller-store-logo">
+                    <img src={preferences.store.logoDataUrl} alt="Store logo preview" />
+                    <span>Logo preview (saved in this browser)</span>
+                  </div>
+                )}
+                <p className="seller-settings-note">
+                  Saving here keeps your storefront details in this browser. Publishing to the
+                  public marketplace is not connected yet.
+                </p>
+                <button className="seller-primary-button" type="submit">
+                  Save store profile
+                </button>
+              </form>
+            </div>
+          )}
+
+          {settingsTab === "fulfilment" && (
+            <div className="seller-settings-card">
+              <div>
+                <strong>Fulfilment preferences</strong>
+                <span>Defaults for how you process and ship orders.</span>
+              </div>
+              <div className="seller-settings-form">
+                <label>
+                  Typical processing time
+                  <select
+                    value={preferences.fulfilment.processingTime}
+                    onChange={(event) =>
+                      updatePreferences({
+                        ...preferences,
+                        fulfilment: {
+                          ...preferences.fulfilment,
+                          processingTime: event.target.value,
+                        },
+                      })
+                    }
+                  >
+                    {processingTimeOptions.map((option) => (
+                      <option key={option}>{option}</option>
+                    ))}
+                  </select>
+                </label>
+                <fieldset className="seller-shipping-options">
+                  <legend>Shipping options you offer</legend>
+                  <span className="seller-shipping-hint">
+                    Select every method you can support. Buyers see your choices at checkout.
+                  </span>
+                  <div className="seller-shipping-grid">
+                    {shippingOptionsCatalog.map((option) => {
+                      const enabled = preferences.fulfilment.shippingOptions.includes(option.label);
+                      return (
+                        <label
+                          key={option.id}
+                          className={`seller-shipping-card ${enabled ? "enabled" : ""}`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={enabled}
+                            onChange={() => toggleShippingOption(option.label)}
+                          />
+                          <span>
+                            <strong>{option.label}</strong>
+                            <small>{option.description}</small>
+                          </span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                  <span className="seller-shipping-count">
+                    {preferences.fulfilment.shippingOptions.length} of{" "}
+                    {shippingOptionsCatalog.length} selected
+                  </span>
+                </fieldset>
+                <label>
+                  Opening / support hours
+                  <input
+                    defaultValue={preferences.fulfilment.openingHours}
+                    placeholder="e.g. Mon–Fri, 9am–5pm"
+                    onBlur={(event) =>
+                      updatePreferences({
+                        ...preferences,
+                        fulfilment: {
+                          ...preferences.fulfilment,
+                          openingHours: event.target.value.trim(),
+                        },
+                      })
+                    }
+                  />
+                </label>
+                <p className="seller-settings-note">
+                  These preferences are saved in this browser and are not yet applied to checkout.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {settingsTab === "bank" && (
+            <div className="seller-settings-card">
+              <div>
+                <strong>Payout &amp; bank details</strong>
+                <span>
+                  {demoMode
+                    ? "Demo sellers have no real payout account."
+                    : "Where SupreCart would pay approved withdrawals."}
+                </span>
+              </div>
+              <form className="seller-settings-form" onSubmit={saveBankDetails}>
+                <label>
+                  Bank name
+                  <select name="bankName" defaultValue={preferences.bank.bankName} required>
+                    <option value="" disabled>
+                      Select your bank…
+                    </option>
+                    {preferences.bank.bankName &&
+                      !nigerianBanks.includes(preferences.bank.bankName) && (
+                        <option value={preferences.bank.bankName}>
+                          {preferences.bank.bankName} (saved)
+                        </option>
+                      )}
+                    {nigerianBanks.map((bank) => (
+                      <option key={bank} value={bank}>
+                        {bank}
+                      </option>
+                    ))}
+                  </select>
+                  <small>Nigerian banks, licensed microfinance banks, and payment providers.</small>
+                </label>
+                <label>
+                  Account number
+                  <input
+                    name="accountNumber"
+                    inputMode="numeric"
+                    pattern="[0-9]{10}"
+                    maxLength={10}
+                    defaultValue={preferences.bank.accountNumber}
+                  />
+                  <small>10 digits. Never shared publicly.</small>
+                </label>
+                <p className="seller-settings-note">
+                  Changing payout details is a request only in this preview. SupreCart support
+                  verifies bank changes before any real transfer.
+                </p>
+                <button className="seller-primary-button" type="submit">
+                  Save payout details
+                </button>
+              </form>
+            </div>
+          )}
+
+          {settingsTab === "commission" && (
+            <div className="seller-settings-card">
+              <div>
+                <strong>SupreCart commission &amp; fees</strong>
+                <span>What SupreCart deducts from each delivered sale.</span>
+              </div>
+              <p className="seller-settings-note">
+                Commission is charged on the selling price when an order is delivered. There is no
+                listing or subscription fee in this preview.
+              </p>
+              <div className="seller-commission-tiers">
+                {commissionTiers.map((tier) => (
+                  <article className="seller-commission-tier" key={tier.id}>
+                    <strong>{tier.range}</strong>
+                    <span>{tier.summary}</span>
+                  </article>
+                ))}
+              </div>
+              <CommissionEstimator />
+            </div>
+          )}
+
+          {settingsTab === "notifications" && (
+            <div className="seller-settings-card">
+              <div>
+                <strong>Notifications</strong>
+                <span>Choose what SupreCart tells you about.</span>
+              </div>
+              {(
+                [
+                  [
+                    "Orders & account",
+                    [
+                      ["orderUpdates", "New orders", "When a buyer orders one of your products"],
+                      ["securityAlerts", "Security alerts", "Sign-ins and account changes"],
+                    ],
+                  ],
+                  [
+                    "News & marketing",
+                    [
+                      [
+                        "promotions",
+                        "Tips & promotions",
+                        "Seller features and marketplace campaigns",
+                      ],
+                      ["newsletter", "Newsletter", "Occasional seller news"],
+                    ],
+                  ],
+                ] as const
+              ).map(([group, rows]) => (
+                <div className="seller-notification-group" key={group}>
+                  <h3>{group}</h3>
+                  <div className="seller-toggle-list">
+                    {rows.map(([key, title, text]) => (
+                      <label key={key} className="seller-toggle-row">
+                        <span>
+                          <strong>{title}</strong>
+                          <small>{text}</small>
+                        </span>
+                        <input
+                          type="checkbox"
+                          checked={preferences.notifications[key]}
+                          onChange={(event) => setNotification(key, event.target.checked)}
+                        />
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              ))}
+              <p className="seller-settings-note">
+                Messaging is not connected yet. {enabledNotifications} of 4 alerts are on and
+                remembered in this browser.
+              </p>
+            </div>
+          )}
+
+          {settingsTab === "region" && (
+            <div className="seller-settings-card">
+              <div>
+                <strong>Region &amp; language</strong>
+                <span>How prices and dates appear in your studio.</span>
+              </div>
+              <div className="seller-settings-form">
+                <label>
+                  Currency
+                  <select
+                    value={preferences.region.currency}
+                    onChange={(event) => setRegion({ currency: event.target.value })}
+                  >
+                    {currencyOptions.map((option) => (
+                      <option key={option}>{option}</option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  Language
+                  <select
+                    value={preferences.region.language}
+                    onChange={(event) => setRegion({ language: event.target.value })}
+                  >
+                    {languageOptions.map((option) => (
+                      <option key={option}>{option}</option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  Time zone
+                  <select
+                    value={preferences.region.timezone}
+                    onChange={(event) => setRegion({ timezone: event.target.value })}
+                  >
+                    {timezoneOptions.map((option) => (
+                      <option key={option}>{option}</option>
+                    ))}
+                  </select>
+                </label>
+                <p className="seller-settings-note">
+                  Currency conversion and translations are not connected yet.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {settingsTab === "payments" && (
+            <div className="seller-settings-card">
+              <div>
+                <strong>Payment methods</strong>
+                <span>Sample payout methods for this preview. No real account is stored.</span>
+              </div>
+              {preferences.paymentMethods.length ? (
+                <div className="seller-payment-list">
+                  {preferences.paymentMethods.map((method) => (
+                    <article key={method.id} className="seller-payment-card">
+                      <span className="seller-payment-brand">
+                        <CreditCard size={16} />
+                        <strong>{method.brand}</strong>
+                      </span>
+                      <span>•••• {method.last4}</span>
+                      <span>Expires {method.expiry}</span>
+                      {method.isDefault ? (
+                        <span className="seller-payment-default">
+                          <Check size={12} /> Default
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          className="seller-inline-link"
+                          onClick={() => setDefaultPaymentMethod(method.id)}
+                        >
+                          Make default
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        className="seller-danger-link"
+                        onClick={() => removePaymentMethod(method.id)}
+                      >
+                        Remove
+                      </button>
+                    </article>
+                  ))}
+                </div>
+              ) : (
+                <p className="seller-settings-note">No sample payout methods saved yet.</p>
+              )}
+              <form className="seller-settings-form" onSubmit={addPaymentMethod}>
+                <div className="seller-field-pair">
+                  <label>
+                    Brand
+                    <select name="brand" defaultValue="Visa">
+                      {["Visa", "Mastercard", "Verve", "Bank transfer"].map((brand) => (
+                        <option key={brand}>{brand}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    Last 4 digits
+                    <input
+                      name="last4"
+                      inputMode="numeric"
+                      maxLength={4}
+                      placeholder="4242"
+                      required
+                    />
+                  </label>
+                </div>
+                <label>
+                  Expiry (MM/YY)
+                  <input name="expiry" placeholder="09/29" required />
+                </label>
+                <button className="seller-primary-button" type="submit">
+                  <Plus size={15} /> Add sample method
+                </button>
+              </form>
+            </div>
+          )}
+
+          {settingsTab === "security" && (
+            <div className="seller-settings-card">
+              <div>
+                <strong>Security</strong>
+                <span>Keep your seller account and store safe.</span>
+              </div>
+              <div className="seller-toggle-list">
+                <label className="seller-toggle-row">
+                  <span>
+                    <strong>Two-factor authentication</strong>
+                    <small>Extra protection for sign-in has not been connected yet.</small>
+                  </span>
+                  <input
+                    type="checkbox"
+                    checked={preferences.twoFactorEnabled}
+                    onChange={(event) =>
+                      updatePreferences({
+                        ...preferences,
+                        twoFactorEnabled: event.target.checked,
+                      })
+                    }
+                  />
+                </label>
+              </div>
+              <div className="seller-settings-actions">
+                <div>
+                  <strong>Password</strong>
+                  <small>Change your password from the Account tab.</small>
+                </div>
+                <button
+                  type="button"
+                  className="seller-outline-button"
+                  onClick={() => void signOutOtherSessions()}
+                >
+                  <Smartphone size={15} /> Sign out other sessions
+                </button>
+              </div>
+              <p className="seller-settings-note">
+                Two-factor authentication is a placeholder in this preview; it never blocks sign-in.
+              </p>
+            </div>
+          )}
+
+          {settingsTab === "danger" && (
+            <div className="seller-settings-card seller-danger-zone">
+              <div>
+                <strong>Danger zone</strong>
+                <span>
+                  {demoMode
+                    ? "Remove this demo seller identity from this browser."
+                    : "Closing a real seller store is handled by the SupreCart team."}
+                </span>
+              </div>
+              {confirmDelete ? (
+                <div className="seller-confirm">
+                  <p>
+                    {demoMode
+                      ? "This clears the demo session and its saved preferences. Continue?"
+                      : "Account closure is not connected in this preview. Continue to see more?"}
+                  </p>
+                  <div className="seller-confirm-actions">
+                    <button
+                      type="button"
+                      className="seller-danger-button"
+                      onClick={() => removeSellerAccount()}
+                    >
+                      <Trash2 size={15} /> {demoMode ? "Remove demo seller" : "Continue"}
+                    </button>
+                    <button
+                      type="button"
+                      className="seller-outline-button"
+                      onClick={() => setConfirmDelete(false)}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  className="seller-outline-button"
+                  onClick={() => setConfirmDelete(true)}
+                >
+                  <Trash2 size={15} /> {demoMode ? "Remove demo seller" : "Request store closure"}
+                </button>
+              )}
+            </div>
+          )}
+        </section>
+      )}
+    </div>
+  );
+}
+
+function CommissionEstimator() {
+  const [value, setValue] = useState("");
+  const price = Number(value);
+  const breakdown =
+    value !== "" && Number.isFinite(price) && price > 0 ? calculateCommission(price) : null;
+  return (
+    <div className="seller-commission-estimator">
+      <label>
+        Preview a selling price (NGN)
+        <input
+          type="number"
+          min="1"
+          step="0.01"
+          inputMode="decimal"
+          placeholder="e.g. 1000"
+          value={value}
+          onChange={(event) => setValue(event.target.value)}
+        />
+      </label>
+      {breakdown ? (
+        <dl className="seller-commission-result">
+          <div>
+            <dt>SupreCart commission</dt>
+            <dd>{formatMoney(breakdown.commission)}</dd>
+          </div>
+          <div>
+            <dt>You receive per item</dt>
+            <dd>{formatMoney(breakdown.sellerNet)}</dd>
+          </div>
+          <div>
+            <dt>Applies to</dt>
+            <dd>{breakdown.tier.range}</dd>
+          </div>
+        </dl>
+      ) : (
+        <p className="seller-settings-note">
+          Enter a price to see the commission and your net payout per item.
+        </p>
+      )}
     </div>
   );
 }

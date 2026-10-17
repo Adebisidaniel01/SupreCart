@@ -9,6 +9,6 @@ if (!root) throw new Error("Seller portal root element was not found.");
 
 createRoot(root).render(
   <StrictMode>
-    <SellerPortal />
+    <SellerPortal standalone />
   </StrictMode>,
 );
