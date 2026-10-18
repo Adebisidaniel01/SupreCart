@@ -3,7 +3,6 @@ import { useEffect, useState } from "react";
 import { ArrowRight, ArrowUpRight, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ProductCard, Wordmark } from "@/components/storefront";
-import footwearCover from "@/assets/category-5.jpg";
 import { products, categories, type Product } from "@/lib/catalog";
 
 const featuredProducts = categories
@@ -121,7 +120,6 @@ function Index() {
         <div className="category-grid marketplace-categories">
           {featuredProducts.map((product, i) => {
             const category = product.category;
-            const cover = category === "Footwear" ? footwearCover : product.image;
             return (
               <Link
                 key={category}
@@ -130,7 +128,7 @@ function Index() {
                 className={`category category-card category-tone-${i}`}
               >
                 <div>
-                  <img src={cover} alt="" loading="lazy" />
+                  <img src={product.image} alt="" loading="lazy" />
                 </div>
                 <span>{category}</span>
                 <ArrowUpRight className="category-arrow" size={16} />

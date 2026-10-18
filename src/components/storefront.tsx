@@ -7,11 +7,12 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import {
   ArrowRight,
   BadgeCheck,
   Facebook,
+  Globe,
   Heart,
   Instagram,
   Linkedin,
@@ -30,7 +31,15 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { products, money, sellerIsVerified, type Product } from "@/lib/catalog";
+import {
+  products,
+  categories,
+  money,
+  sellerIsVerified,
+  compareAtPrice,
+  discountPercent,
+  type Product,
+} from "@/lib/catalog";
 
 function productSellerVerified(product: Product): boolean {
   return product.sellerVerified ?? sellerIsVerified(product.seller);
@@ -71,11 +80,11 @@ export function Storefront({ children }: { children: ReactNode }) {
   const [quantity, setQuantity] = useState(1);
   const [query, setQuery] = useState("");
   const [mobileNav, setMobileNav] = useState(false);
+  const [categoriesOpen, setCategoriesOpen] = useState(false);
   const [email, setEmail] = useState("");
   const [newsletterNote, setNewsletterNote] = useState("");
   const [notice, setNotice] = useState("");
   const navigate = useNavigate();
-  const path = useRouterState({ select: (state) => state.location.pathname });
   const hasSizes = selected?.category === "Footwear";
   const openProduct = useCallback((product: Product) => {
     setSelected(product);
@@ -166,22 +175,166 @@ export function Storefront({ children }: { children: ReactNode }) {
         <span className="announcement-divider">·</span>
         <span>A marketplace with more to love</span>
       </div>
-      <header className="header page-width">
-        <Link to="/" aria-label="SupreCart home">
-          <Wordmark />
-        </Link>
+      <header className="market-header">
+        <div className="market-header-main">
+          <button
+            type="button"
+            className="market-cat-button"
+            aria-expanded={categoriesOpen}
+            aria-controls="market-category-menu"
+            onClick={() => setCategoriesOpen((value) => !value)}
+          >
+            <Menu size={20} />
+            <span>Categories</span>
+          </button>
+          <button
+            type="button"
+            className="market-menu-button"
+            aria-label="Open menu"
+            onClick={() => setMobileNav((value) => !value)}
+          >
+            <Menu />
+          </button>
+          <Link to="/" className="market-logo" aria-label="SupreCart home">
+            <Wordmark />
+          </Link>
+          <form
+            className="market-search"
+            role="search"
+            onSubmit={(event) => {
+              event.preventDefault();
+              setCategoriesOpen(false);
+              setMobileNav(false);
+              navigate({ to: "/shop", search: { filter: "All", query } });
+            }}
+          >
+            <Search size={18} aria-hidden="true" />
+            <input
+              type="search"
+              name="query"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Search for anything"
+              aria-label="Search for anything"
+            />
+          </form>
+          <nav className="market-links" aria-label="Account, wishlist and bag">
+            <Link to="/shop" search={{ filter: "All", query: "" }} className="market-text-link">
+              Shop all
+            </Link>
+            <Link to="/sellers" className="market-text-link">
+              Sell on SupreCart
+            </Link>
+            <Button
+              variant="ghost"
+              size="icon"
+              title="Wishlist"
+              aria-label="Wishlist"
+              className="market-icon-button count-control"
+              onClick={() => openPanel("wishlist")}
+            >
+              <Heart />
+              {favorites.length > 0 && <span className="count-badge">{favorites.length}</span>}
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              title="Shopping bag"
+              aria-label="Shopping bag"
+              className="market-icon-button count-control"
+              onClick={() => openPanel("cart")}
+            >
+              <ShoppingCart />
+              {cartCount > 0 && <span className="count-badge">{cartCount}</span>}
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              title="Account"
+              aria-label="Account"
+              className="market-icon-button"
+              asChild
+            >
+              <Link to="/account">
+                <UserRound />
+              </Link>
+            </Button>
+            <Link to="/login" className="market-button market-button-outline">
+              Log in
+            </Link>
+            <Link to="/signup" className="market-button market-button-solid">
+              Sign up
+            </Link>
+            <button type="button" className="market-icon-button market-lang" aria-label="Language">
+              <Globe />
+            </button>
+          </nav>
+          <div className="market-mobile-tools">
+            <Button
+              variant="ghost"
+              size="icon"
+              title="Search"
+              aria-label="Search"
+              className="market-icon-button"
+              onClick={() => openPanel("search")}
+            >
+              <Search />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              title="Shopping bag"
+              aria-label="Shopping bag"
+              className="market-icon-button count-control"
+              onClick={() => openPanel("cart")}
+            >
+              <ShoppingCart />
+              {cartCount > 0 && <span className="count-badge">{cartCount}</span>}
+            </Button>
+          </div>
+        </div>
+        {categoriesOpen && (
+          <div className="market-category-menu" id="market-category-menu">
+            <div className="market-category-inner">
+              <Link
+                to="/shop"
+                search={{ filter: "All", query: "" }}
+                onClick={() => setCategoriesOpen(false)}
+              >
+                All categories
+              </Link>
+              {categories.map((category) => (
+                <Link
+                  key={category}
+                  to="/shop"
+                  search={{ filter: category, query: "" }}
+                  onClick={() => setCategoriesOpen(false)}
+                >
+                  {category}
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
+        <button
+          type="button"
+          aria-label="Close menu"
+          className={mobileNav ? "market-drawer-backdrop open" : "market-drawer-backdrop"}
+          onClick={() => setMobileNav(false)}
+        />
         <nav
-          className={mobileNav ? "main-nav mobile-open" : "main-nav"}
+          className={mobileNav ? "market-drawer open" : "market-drawer"}
           aria-label="Main navigation"
         >
+          <div className="market-drawer-head">
+            <strong>Menu</strong>
+            <button type="button" aria-label="Close menu" onClick={() => setMobileNav(false)}>
+              <X />
+            </button>
+          </div>
           {navItems.map((item) =>
             item.to === "/" ? (
-              <Link
-                key={item.label}
-                to="/"
-                onClick={() => setMobileNav(false)}
-                className={path === "/" ? "nav-active" : ""}
-              >
+              <Link key={item.label} to="/" onClick={() => setMobileNav(false)}>
                 {item.label}
               </Link>
             ) : (
@@ -190,78 +343,27 @@ export function Storefront({ children }: { children: ReactNode }) {
                 to="/shop"
                 search={{ filter: item.filter, query: "" }}
                 onClick={() => setMobileNav(false)}
-                className={path === "/shop" && item.filter === "All" ? "nav-active" : ""}
               >
                 {item.label}
               </Link>
             ),
           )}
-          <Link to="/careers" onClick={() => setMobileNav(false)}>
-            Careers
-          </Link>
-          <Link className="auth-nav-link" to="/login" onClick={() => setMobileNav(false)}>
-            Sign in
-          </Link>
-          <Link
-            className="auth-nav-link auth-nav-primary"
-            to="/signup"
-            onClick={() => setMobileNav(false)}
-          >
-            Create account
-          </Link>
+          <div className="market-drawer-actions">
+            <Link to="/sellers" onClick={() => setMobileNav(false)}>
+              Sell on SupreCart
+            </Link>
+            <Link to="/login" onClick={() => setMobileNav(false)}>
+              Log in
+            </Link>
+            <Link
+              to="/signup"
+              className="market-button market-button-solid"
+              onClick={() => setMobileNav(false)}
+            >
+              Sign up
+            </Link>
+          </div>
         </nav>
-        <div className="header-tools">
-          <Button
-            variant="ghost"
-            size="icon"
-            title="Search"
-            aria-label="Search"
-            onClick={() => openPanel("search")}
-          >
-            <Search />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            title="Wishlist"
-            aria-label="Wishlist"
-            onClick={() => openPanel("wishlist")}
-            className="count-control"
-          >
-            <Heart />
-            {favorites.length > 0 && <span className="count-badge">{favorites.length}</span>}
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            title="Shopping bag"
-            aria-label="Shopping bag"
-            onClick={() => openPanel("cart")}
-            className="count-control"
-          >
-            <ShoppingCart />
-            {cartCount > 0 && <span className="count-badge">{cartCount}</span>}
-          </Button>
-          <Button variant="ghost" size="icon" title="Account" aria-label="Account" asChild>
-            <Link to="/account">
-              <UserRound />
-            </Link>
-          </Button>
-          <Button variant="ghost" size="icon" title="Messages" aria-label="Messages" asChild>
-            <Link to="/messages" search={{ productId: undefined }}>
-              <MessageCircle />
-            </Link>
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            aria-label="Toggle menu"
-            className="menu-button"
-            onClick={() => setMobileNav((value) => !value)}
-          >
-            <Menu />
-          </Button>
-        </div>
       </header>
       {children}
       <section className="benefits page-width">
@@ -694,7 +796,14 @@ export function Storefront({ children }: { children: ReactNode }) {
                       <img src={product.image} width={65} height={65} alt="" />
                       <span>
                         {product.name}
-                        <small>{product.seller}</small>
+                        <small>
+                          {product.seller}
+                          {productSellerVerified(product) && (
+                            <span className="seller-verified-mark" title="Verified seller">
+                              <BadgeCheck size={12} /> Verified
+                            </span>
+                          )}
+                        </small>
                       </span>
                       <strong>{money(product.price)}</strong>
                     </Button>
@@ -717,7 +826,14 @@ export function Storefront({ children }: { children: ReactNode }) {
                         <img src={product.image} width={65} height={65} alt="" />
                         <span>
                           {product.name}
-                          <small>{product.seller}</small>
+                          <small>
+                            {product.seller}
+                            {productSellerVerified(product) && (
+                              <span className="seller-verified-mark" title="Verified seller">
+                                <BadgeCheck size={12} /> Verified
+                              </span>
+                            )}
+                          </small>
                         </span>
                         <strong>{money(product.price)}</strong>
                       </Button>
@@ -749,6 +865,7 @@ export function ProductCard({ product }: { product: Product }) {
   const { favorites, toggleFavorite, openProduct, setCart, openPanel } = useStore();
   const saved = favorites.includes(product.id);
   const needsSize = product.category === "Footwear";
+  const compareAt = compareAtPrice(product.price, product.id);
 
   function addQuickly() {
     if (needsSize) {
@@ -799,20 +916,29 @@ export function ProductCard({ product }: { product: Product }) {
         {product.category} <span>·</span> {product.brand}
       </p>
       <div className="product-seller">
-        <span className="product-seller-name">
+        <Link
+          className="product-seller-name"
+          to="/shop"
+          search={{ filter: "All", query: product.seller }}
+          title={`All products from ${product.seller}`}
+        >
           {product.seller}
           {productSellerVerified(product) && (
             <span className="seller-verified-mark" title="Verified seller">
               <BadgeCheck size={12} /> Verified
             </span>
           )}
-        </span>
+        </Link>
         <span>
           <Star size={11} fill="currentColor" /> {product.sellerRating}
         </span>
       </div>
+      <div className="product-price">
+        <strong className="product-price-now">{money(product.price)}</strong>
+        <span className="product-price-was">{money(compareAt)}</span>
+        <span className="product-price-off">-{discountPercent(product.price, compareAt)}%</span>
+      </div>
       <div className="product-bottom">
-        <strong>{money(product.price)}</strong>
         <span>
           <Star size={11} fill="currentColor" />
           {product.rating} <small>({product.reviews})</small>

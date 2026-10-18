@@ -32,8 +32,8 @@ export default defineConfig({
     // interfaces so the dev server is reachable from other devices on the LAN.
     // Ignored inside the Lovable sandbox, which always binds 8080.
     server: {
-      host: true,
-      port: 5173,
+      host: "127.0.0.1",
+      port: 5180,
     },
   },
 });

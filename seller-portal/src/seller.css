@@ -74,6 +74,9 @@
   min-height: calc(100vh - 76px);
   grid-template-columns: 252px minmax(0, 1fr);
 }
+.seller-mobile-nav {
+  display: none;
+}
 .seller-sidebar {
   position: sticky;
   top: 76px;
@@ -1630,6 +1633,27 @@
   .seller-product-row > img {
     width: 36px;
     height: 39px;
+  }
+  .seller-mobile-nav {
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    padding: 10px 15px;
+    border-bottom: 1px solid #e7e9e3;
+    background: #fff;
+    scrollbar-width: none;
+  }
+  .seller-mobile-nav::-webkit-scrollbar {
+    display: none;
+  }
+  .seller-mobile-nav .seller-side-link {
+    width: auto;
+    flex: 0 0 auto;
+    min-height: 34px;
+    padding: 0 12px;
+    background: #f5f7f4;
+    white-space: nowrap;
+    font-size: 10px;
   }
 }
 @media (max-width: 520px) {

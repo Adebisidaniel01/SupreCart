@@ -539,702 +539,730 @@ function BuyerAccount() {
         )}
         {!loading && (
           <>
-            <nav className="account-section-nav" aria-label="Account sections">
-              {(
-                [
-                  ["overview", "Overview", House],
-                  ["orders", "Orders", Package],
-                  ["addresses", "Addresses", MapPin],
-                  ["settings", "Account settings", Settings],
-                ] as const
-              ).map(([key, label, Icon]) => (
-                <button
-                  type="button"
-                  key={key}
-                  className={section === key ? "active" : ""}
-                  onClick={() => {
-                    setSection(key);
-                    setError("");
-                    setNotice("");
-                  }}
-                >
-                  <Icon size={16} /> {label}
-                </button>
-              ))}
-              <Link to="/messages" search={{ productId: undefined }}>
-                <MessageCircle size={16} /> Messages
-              </Link>
-            </nav>
-            {notice && (
-              <p className="account-success-note" role="status">
-                {notice}
-              </p>
-            )}
-            {error && (
-              <p className="form-error" role="alert">
-                {error}
-              </p>
-            )}
-            {section === "overview" && (
-              <>
-                <section className="account-summary-grid">
-                  <article className="account-summary-card">
-                    <span>ORDERS</span>
-                    <strong>{orders.length}</strong>
-                    <button type="button" onClick={() => setSection("orders")}>
-                      View order history <ArrowRight size={14} />
-                    </button>
-                  </article>
-                  <article className="account-summary-card">
-                    <span>SAVED ADDRESSES</span>
-                    <strong>{addresses.length}</strong>
-                    <button type="button" onClick={() => setSection("addresses")}>
-                      Manage delivery details <ArrowRight size={14} />
-                    </button>
-                  </article>
-                </section>
-                <section className="account-dashboard-card">
-                  <div className="account-profile-heading">
-                    <span className="account-avatar">
-                      {preferences.avatarDataUrl ? (
-                        <img src={preferences.avatarDataUrl} alt="" />
-                      ) : (
-                        <UserRound size={22} />
-                      )}
-                    </span>
-                    <h2>Profile overview</h2>
-                  </div>
-                  <dl>
-                    <div>
-                      <dt>Name</dt>
-                      <dd>
-                        {demoAccount?.name
-                          ? demoProfile.name
-                          : [profile?.first_name, profile?.middle_name, profile?.last_name]
-                              .filter(Boolean)
-                              .join(" ") || firstName}
-                      </dd>
-                    </div>
-                    <div>
-                      <dt>Email</dt>
-                      <dd>{demoAccount?.email || user?.email}</dd>
-                    </div>
-                    <div>
-                      <dt>Phone</dt>
-                      <dd>
-                        {demoAccount
-                          ? demoProfile.phone || "Not added"
-                          : profile?.phone || user?.user_metadata["phone"] || "Not added"}
-                      </dd>
-                    </div>
-                    <div>
-                      <dt>Email verification</dt>
-                      <dd className="account-verification">
-                        <ShieldCheck size={15} />
-                        {demoAccount
-                          ? "Skipped for local testing"
-                          : emailVerified
-                            ? "Verified"
-                            : "Awaiting confirmation"}
-                      </dd>
-                    </div>
-                  </dl>
-                </section>
-                <section className="account-dashboard-card">
-                  <div className="account-dashboard-section-heading">
-                    <h2>Recent orders</h2>
-                    <button type="button" onClick={() => setSection("orders")}>
-                      See all
-                    </button>
-                  </div>
-                  {orders.length ? (
-                    <ul className="account-order-list">
-                      {orders.slice(0, 3).map((order) => (
-                        <li key={order.id}>
-                          <Package size={16} />
-                          <span>Order {order.id}</span>
-                          <span className="account-order-status">{order.status}</span>
-                          <time dateTime={order.created_at}>
-                            {new Date(order.created_at).toLocaleDateString()}
-                          </time>
-                          {order.items && <small>{order.items}</small>}
-                          {order.total !== undefined && (
-                            <strong>
-                              {new Intl.NumberFormat("en-NG", {
-                                style: "currency",
-                                currency: "NGN",
-                                maximumFractionDigits: 0,
-                              }).format(order.total)}
-                            </strong>
-                          )}
-                        </li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <p className="account-intro">Your order history will appear here.</p>
-                  )}
-                </section>
-                <Button
-                  size="lg"
-                  onClick={() => navigate({ to: "/shop", search: { filter: "All", query: "" } })}
-                >
-                  Explore the marketplace <ArrowRight size={16} />
-                </Button>
-              </>
-            )}
-            {section === "orders" && (
-              <section className="account-dashboard-card">
-                <div className="account-dashboard-section-heading">
-                  <h2>Order history</h2>
-                  <span>{orders.length}</span>
-                </div>
-                {orders.length ? (
-                  <ul className="account-order-list">
-                    {orders.map((order) => (
-                      <li key={order.id}>
-                        <Package size={16} />
-                        <span>Order {order.id}</span>
-                        <span className="account-order-status">{order.status}</span>
-                        <time dateTime={order.created_at}>
-                          {new Date(order.created_at).toLocaleDateString()}
-                        </time>
-                        {order.items && <small>{order.items}</small>}
-                        {order.delivery && <small>Delivery: {order.delivery}</small>}
-                        {order.total !== undefined && (
-                          <strong>
-                            {new Intl.NumberFormat("en-NG", {
-                              style: "currency",
-                              currency: "NGN",
-                              maximumFractionDigits: 0,
-                            }).format(order.total)}
-                          </strong>
-                        )}
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="account-intro">
-                    {demoAccount
-                      ? "Demo accounts have no real orders. Complete checkout with a real Supabase account after order processing is connected."
-                      : "You have no orders yet. Explore the marketplace to find something good."}
+            <div className="account-dashboard-body">
+              <nav className="account-section-nav" aria-label="Account sections">
+                {(
+                  [
+                    ["overview", "Overview", House],
+                    ["orders", "Orders", Package],
+                    ["addresses", "Addresses", MapPin],
+                    ["settings", "Account settings", Settings],
+                  ] as const
+                ).map(([key, label, Icon]) => (
+                  <button
+                    type="button"
+                    key={key}
+                    className={section === key ? "active" : ""}
+                    onClick={() => {
+                      setSection(key);
+                      setError("");
+                      setNotice("");
+                    }}
+                  >
+                    <Icon size={16} /> {label}
+                  </button>
+                ))}
+                <Link to="/messages" search={{ productId: undefined }}>
+                  <MessageCircle size={16} /> Messages
+                </Link>
+              </nav>
+              <div className="account-dashboard-main">
+                {notice && (
+                  <p className="account-success-note" role="status">
+                    {notice}
                   </p>
                 )}
-              </section>
-            )}
-            {section === "addresses" && (
-              <>
-                <section className="account-dashboard-card">
-                  <h2>Delivery addresses</h2>
-                  {demoAccount && (
-                    <p className="demo-disclaimer">
-                      Local demo accounts cannot save addresses to Supabase.
-                    </p>
-                  )}
-                  {addresses.length ? (
-                    <div className="account-address-list">
-                      {addresses.map((address) => (
-                        <article key={address.id} className="account-address-card">
-                          <div>
-                            <strong>
-                              {address.first_name} {address.last_name}
-                            </strong>
-                            {address.is_default && <span>DEFAULT</span>}
-                          </div>
-                          <p>
-                            {address.street_address}, {address.community}, {address.lga}
-                          </p>
-                          <small>
-                            {address.phone} · {address.email}
-                            {address.landmark ? ` · ${address.landmark}` : ""}
-                          </small>
-                          {!demoAccount && (
-                            <button
-                              type="button"
-                              className="account-danger-link"
-                              onClick={() => void removeAddress(address.id)}
-                            >
-                              Remove address
-                            </button>
-                          )}
-                        </article>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="account-intro">No saved delivery addresses yet.</p>
-                  )}
-                </section>
-                {!demoAccount && (
-                  <form className="account-dashboard-card account-form" onSubmit={addAddress}>
-                    <h2>Add a delivery address</h2>
-                    <div className="field-pair">
-                      <label>
-                        First name
-                        <input
-                          name="first_name"
-                          defaultValue={profile?.first_name ?? ""}
-                          required
-                        />
-                      </label>
-                      <label>
-                        Last name
-                        <input name="last_name" defaultValue={profile?.last_name ?? ""} required />
-                      </label>
-                    </div>
-                    <div className="field-pair">
-                      <label>
-                        Email
-                        <input
-                          name="email"
-                          type="email"
-                          defaultValue={user?.email ?? ""}
-                          required
-                        />
-                      </label>
-                      <label>
-                        Phone
-                        <input name="phone" type="tel" required />
-                      </label>
-                    </div>
-                    <div className="field-pair">
-                      <label>
-                        Kwara LGA
-                        <input name="lga" placeholder="e.g. Ilorin West" required />
-                      </label>
-                      <label>
-                        Community
-                        <input name="community" required />
-                      </label>
-                    </div>
-                    <label>
-                      Street address
-                      <input name="street_address" required />
-                    </label>
-                    <label>
-                      Landmark (optional)
-                      <input name="landmark" />
-                    </label>
-                    <label className="account-checkbox">
-                      <input name="is_default" type="checkbox" />
-                      Make this my default delivery address
-                    </label>
-                    <Button type="submit" disabled={saving}>
-                      {saving ? "Saving address…" : "Save address"}
-                    </Button>
-                  </form>
+                {error && (
+                  <p className="form-error" role="alert">
+                    {error}
+                  </p>
                 )}
-              </>
-            )}
-            {section === "settings" && (
-              <>
-                <nav className="account-settings-tabs" aria-label="Account settings sections">
-                  {settingsTabs.map(([key, label, Icon]) => (
-                    <button
-                      type="button"
-                      key={key}
-                      className={settingsTab === key ? "active" : ""}
-                      onClick={() => {
-                        setSettingsTab(key);
-                        setError("");
-                        setNotice("");
-                        setConfirmDelete(false);
-                      }}
-                    >
-                      <Icon size={15} /> {label}
-                    </button>
-                  ))}
-                </nav>
-
-                {settingsTab === "profile" && (
-                  <section className="account-dashboard-card">
-                    <h2>Profile</h2>
-                    <div className="account-profile-photo">
-                      <span className="account-avatar account-avatar-lg">
-                        {preferences.avatarDataUrl ? (
-                          <img src={preferences.avatarDataUrl} alt="Your profile photo" />
-                        ) : (
-                          <UserRound size={28} />
-                        )}
-                      </span>
-                      <div className="account-profile-photo-actions">
-                        <strong>Profile photo</strong>
-                        <span>Shown on your account and reviews. Saved in this browser only.</span>
-                        <div className="account-avatar-buttons">
-                          <label className="account-upload-button">
-                            <Upload size={14} />{" "}
-                            {preferences.avatarDataUrl ? "Change photo" : "Add photo"}
-                            <input
-                              type="file"
-                              accept=".jpg,.jpeg,.png,.webp"
-                              onChange={onAvatarFile}
-                              hidden
-                            />
-                          </label>
-                          {preferences.avatarDataUrl && (
-                            <button
-                              type="button"
-                              className="account-link-button"
-                              onClick={removeAvatar}
-                            >
-                              <Trash2 size={14} /> Remove
-                            </button>
+                {section === "overview" && (
+                  <>
+                    <section className="account-summary-grid">
+                      <article className="account-summary-card">
+                        <span>ORDERS</span>
+                        <strong>{orders.length}</strong>
+                        <button type="button" onClick={() => setSection("orders")}>
+                          View order history <ArrowRight size={14} />
+                        </button>
+                      </article>
+                      <article className="account-summary-card">
+                        <span>SAVED ADDRESSES</span>
+                        <strong>{addresses.length}</strong>
+                        <button type="button" onClick={() => setSection("addresses")}>
+                          Manage delivery details <ArrowRight size={14} />
+                        </button>
+                      </article>
+                    </section>
+                    <section className="account-dashboard-card">
+                      <div className="account-profile-heading">
+                        <span className="account-avatar">
+                          {preferences.avatarDataUrl ? (
+                            <img src={preferences.avatarDataUrl} alt="" />
+                          ) : (
+                            <UserRound size={22} />
                           )}
-                        </div>
+                        </span>
+                        <h2>Profile overview</h2>
                       </div>
+                      <dl>
+                        <div>
+                          <dt>Name</dt>
+                          <dd>
+                            {demoAccount?.name
+                              ? demoProfile.name
+                              : [profile?.first_name, profile?.middle_name, profile?.last_name]
+                                  .filter(Boolean)
+                                  .join(" ") || firstName}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt>Email</dt>
+                          <dd>{demoAccount?.email || user?.email}</dd>
+                        </div>
+                        <div>
+                          <dt>Phone</dt>
+                          <dd>
+                            {demoAccount
+                              ? demoProfile.phone || "Not added"
+                              : profile?.phone || user?.user_metadata["phone"] || "Not added"}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt>Email verification</dt>
+                          <dd className="account-verification">
+                            <ShieldCheck size={15} />
+                            {demoAccount
+                              ? "Skipped for local testing"
+                              : emailVerified
+                                ? "Verified"
+                                : "Awaiting confirmation"}
+                          </dd>
+                        </div>
+                      </dl>
+                    </section>
+                    <section className="account-dashboard-card">
+                      <div className="account-dashboard-section-heading">
+                        <h2>Recent orders</h2>
+                        <button type="button" onClick={() => setSection("orders")}>
+                          See all
+                        </button>
+                      </div>
+                      {orders.length ? (
+                        <ul className="account-order-list">
+                          {orders.slice(0, 3).map((order) => (
+                            <li key={order.id}>
+                              <Package size={16} />
+                              <span>Order {order.id}</span>
+                              <span className="account-order-status">{order.status}</span>
+                              <time dateTime={order.created_at}>
+                                {new Date(order.created_at).toLocaleDateString()}
+                              </time>
+                              {order.items && <small>{order.items}</small>}
+                              {order.total !== undefined && (
+                                <strong>
+                                  {new Intl.NumberFormat("en-NG", {
+                                    style: "currency",
+                                    currency: "NGN",
+                                    maximumFractionDigits: 0,
+                                  }).format(order.total)}
+                                </strong>
+                              )}
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p className="account-intro">Your order history will appear here.</p>
+                      )}
+                    </section>
+                    <Button
+                      size="lg"
+                      onClick={() =>
+                        navigate({ to: "/shop", search: { filter: "All", query: "" } })
+                      }
+                    >
+                      Explore the marketplace <ArrowRight size={16} />
+                    </Button>
+                  </>
+                )}
+                {section === "orders" && (
+                  <section className="account-dashboard-card">
+                    <div className="account-dashboard-section-heading">
+                      <h2>Order history</h2>
+                      <span>{orders.length}</span>
                     </div>
-                    {demoAccount ? (
-                      <>
-                        <p className="demo-disclaimer">
-                          Demo-only settings: changes stay in this browser and do not update
-                          Supabase or account credentials.
-                        </p>
-                        <form className="account-form" onSubmit={saveProfile}>
-                          <label>
-                            Display name
-                            <input name="name" defaultValue={demoProfile.name} required />
-                          </label>
-                          <label>
-                            Phone
-                            <input name="phone" type="tel" defaultValue={demoProfile.phone} />
-                          </label>
-                          <label>
-                            Account email
-                            <input value={demoAccount.email} disabled />
-                          </label>
-                          <Button type="submit">Save demo profile</Button>
-                        </form>
-                      </>
+                    {orders.length ? (
+                      <ul className="account-order-list">
+                        {orders.map((order) => (
+                          <li key={order.id}>
+                            <Package size={16} />
+                            <span>Order {order.id}</span>
+                            <span className="account-order-status">{order.status}</span>
+                            <time dateTime={order.created_at}>
+                              {new Date(order.created_at).toLocaleDateString()}
+                            </time>
+                            {order.items && <small>{order.items}</small>}
+                            {order.delivery && <small>Delivery: {order.delivery}</small>}
+                            {order.total !== undefined && (
+                              <strong>
+                                {new Intl.NumberFormat("en-NG", {
+                                  style: "currency",
+                                  currency: "NGN",
+                                  maximumFractionDigits: 0,
+                                }).format(order.total)}
+                              </strong>
+                            )}
+                          </li>
+                        ))}
+                      </ul>
                     ) : (
-                      <>
-                        <p className="account-intro">
-                          Update the profile attached to your SupreCart buyer account.
+                      <p className="account-intro">
+                        {demoAccount
+                          ? "Demo accounts have no real orders. Complete checkout with a real Supabase account after order processing is connected."
+                          : "You have no orders yet. Explore the marketplace to find something good."}
+                      </p>
+                    )}
+                  </section>
+                )}
+                {section === "addresses" && (
+                  <>
+                    <section className="account-dashboard-card">
+                      <h2>Delivery addresses</h2>
+                      {demoAccount && (
+                        <p className="demo-disclaimer">
+                          Local demo accounts cannot save addresses to Supabase.
                         </p>
-                        <form className="account-form" onSubmit={saveProfile}>
+                      )}
+                      {addresses.length ? (
+                        <div className="account-address-list">
+                          {addresses.map((address) => (
+                            <article key={address.id} className="account-address-card">
+                              <div>
+                                <strong>
+                                  {address.first_name} {address.last_name}
+                                </strong>
+                                {address.is_default && <span>DEFAULT</span>}
+                              </div>
+                              <p>
+                                {address.street_address}, {address.community}, {address.lga}
+                              </p>
+                              <small>
+                                {address.phone} · {address.email}
+                                {address.landmark ? ` · ${address.landmark}` : ""}
+                              </small>
+                              {!demoAccount && (
+                                <button
+                                  type="button"
+                                  className="account-danger-link"
+                                  onClick={() => void removeAddress(address.id)}
+                                >
+                                  Remove address
+                                </button>
+                              )}
+                            </article>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="account-intro">No saved delivery addresses yet.</p>
+                      )}
+                    </section>
+                    {!demoAccount && (
+                      <form className="account-dashboard-card account-form" onSubmit={addAddress}>
+                        <h2>Add a delivery address</h2>
+                        <div className="field-pair">
                           <label>
                             First name
                             <input
                               name="first_name"
-                              defaultValue={
-                                profile?.first_name ?? user?.user_metadata["first_name"] ?? ""
-                              }
+                              defaultValue={profile?.first_name ?? ""}
                               required
                             />
                           </label>
+                          <label>
+                            Last name
+                            <input
+                              name="last_name"
+                              defaultValue={profile?.last_name ?? ""}
+                              required
+                            />
+                          </label>
+                        </div>
+                        <div className="field-pair">
+                          <label>
+                            Email
+                            <input
+                              name="email"
+                              type="email"
+                              defaultValue={user?.email ?? ""}
+                              required
+                            />
+                          </label>
+                          <label>
+                            Phone
+                            <input name="phone" type="tel" required />
+                          </label>
+                        </div>
+                        <div className="field-pair">
+                          <label>
+                            Kwara LGA
+                            <input name="lga" placeholder="e.g. Ilorin West" required />
+                          </label>
+                          <label>
+                            Community
+                            <input name="community" required />
+                          </label>
+                        </div>
+                        <label>
+                          Street address
+                          <input name="street_address" required />
+                        </label>
+                        <label>
+                          Landmark (optional)
+                          <input name="landmark" />
+                        </label>
+                        <label className="account-checkbox">
+                          <input name="is_default" type="checkbox" />
+                          Make this my default delivery address
+                        </label>
+                        <Button type="submit" disabled={saving}>
+                          {saving ? "Saving address…" : "Save address"}
+                        </Button>
+                      </form>
+                    )}
+                  </>
+                )}
+                {section === "settings" && (
+                  <>
+                    <nav className="account-settings-tabs" aria-label="Account settings sections">
+                      {settingsTabs.map(([key, label, Icon]) => (
+                        <button
+                          type="button"
+                          key={key}
+                          className={settingsTab === key ? "active" : ""}
+                          onClick={() => {
+                            setSettingsTab(key);
+                            setError("");
+                            setNotice("");
+                            setConfirmDelete(false);
+                          }}
+                        >
+                          <Icon size={15} /> {label}
+                        </button>
+                      ))}
+                    </nav>
+
+                    {settingsTab === "profile" && (
+                      <section className="account-dashboard-card">
+                        <h2>Profile</h2>
+                        <div className="account-profile-photo">
+                          <span className="account-avatar account-avatar-lg">
+                            {preferences.avatarDataUrl ? (
+                              <img src={preferences.avatarDataUrl} alt="Your profile photo" />
+                            ) : (
+                              <UserRound size={28} />
+                            )}
+                          </span>
+                          <div className="account-profile-photo-actions">
+                            <strong>Profile photo</strong>
+                            <span>
+                              Shown on your account and reviews. Saved in this browser only.
+                            </span>
+                            <div className="account-avatar-buttons">
+                              <label className="account-upload-button">
+                                <Upload size={14} />{" "}
+                                {preferences.avatarDataUrl ? "Change photo" : "Add photo"}
+                                <input
+                                  type="file"
+                                  accept=".jpg,.jpeg,.png,.webp"
+                                  onChange={onAvatarFile}
+                                  hidden
+                                />
+                              </label>
+                              {preferences.avatarDataUrl && (
+                                <button
+                                  type="button"
+                                  className="account-link-button"
+                                  onClick={removeAvatar}
+                                >
+                                  <Trash2 size={14} /> Remove
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                        {demoAccount ? (
+                          <>
+                            <p className="demo-disclaimer">
+                              Demo-only settings: changes stay in this browser and do not update
+                              Supabase or account credentials.
+                            </p>
+                            <form className="account-form" onSubmit={saveProfile}>
+                              <label>
+                                Display name
+                                <input name="name" defaultValue={demoProfile.name} required />
+                              </label>
+                              <label>
+                                Phone
+                                <input name="phone" type="tel" defaultValue={demoProfile.phone} />
+                              </label>
+                              <label>
+                                Account email
+                                <input value={demoAccount.email} disabled />
+                              </label>
+                              <Button type="submit">Save demo profile</Button>
+                            </form>
+                          </>
+                        ) : (
+                          <>
+                            <p className="account-intro">
+                              Update the profile attached to your SupreCart buyer account.
+                            </p>
+                            <form className="account-form" onSubmit={saveProfile}>
+                              <label>
+                                First name
+                                <input
+                                  name="first_name"
+                                  defaultValue={
+                                    profile?.first_name ?? user?.user_metadata["first_name"] ?? ""
+                                  }
+                                  required
+                                />
+                              </label>
+                              <div className="field-pair">
+                                <label>
+                                  Middle name
+                                  <input
+                                    name="middle_name"
+                                    defaultValue={profile?.middle_name ?? ""}
+                                  />
+                                </label>
+                                <label>
+                                  Last name
+                                  <input
+                                    name="last_name"
+                                    defaultValue={
+                                      profile?.last_name ?? user?.user_metadata["last_name"] ?? ""
+                                    }
+                                    required
+                                  />
+                                </label>
+                              </div>
+                              <div className="field-pair">
+                                <label>
+                                  Phone
+                                  <input
+                                    name="phone"
+                                    type="tel"
+                                    defaultValue={
+                                      profile?.phone ?? user?.user_metadata["phone"] ?? ""
+                                    }
+                                  />
+                                </label>
+                                <label>
+                                  Account email
+                                  <input
+                                    name="email"
+                                    type="email"
+                                    defaultValue={user?.email ?? ""}
+                                    autoComplete="email"
+                                  />
+                                </label>
+                              </div>
+                              <p className="account-field-hint">
+                                Email changes require the Supabase verification flow before they
+                                take effect.
+                              </p>
+                              <label>
+                                New password
+                                <input
+                                  name="password"
+                                  type="password"
+                                  minLength={10}
+                                  autoComplete="new-password"
+                                  placeholder="Leave blank to keep your current password"
+                                />
+                              </label>
+                              <Button type="submit" disabled={saving}>
+                                {saving ? "Saving changes…" : "Save profile"}
+                              </Button>
+                            </form>
+                          </>
+                        )}
+                      </section>
+                    )}
+
+                    {settingsTab === "notifications" && (
+                      <section className="account-dashboard-card">
+                        <h2>Notifications</h2>
+                        <p className="account-intro">
+                          Choose what SupreCart should tell you about. These preferences are saved
+                          in this browser while messaging is still a preview.
+                        </p>
+                        <div className="account-toggle-list">
+                          {(
+                            [
+                              ["orderUpdates", "Order updates", "Delivery and fulfilment progress"],
+                              [
+                                "promotions",
+                                "Deals & promotions",
+                                "Sale alerts from sellers you follow",
+                              ],
+                              ["newsletter", "Newsletter", "Occasional marketplace news"],
+                              ["securityAlerts", "Security alerts", "Sign-ins and account changes"],
+                            ] as const
+                          ).map(([key, title, text]) => (
+                            <label key={key} className="account-toggle-row">
+                              <span>
+                                <strong>{title}</strong>
+                                <small>{text}</small>
+                              </span>
+                              <input
+                                type="checkbox"
+                                checked={preferences.notifications[key]}
+                                onChange={(event) => setNotification(key, event.target.checked)}
+                              />
+                            </label>
+                          ))}
+                        </div>
+                        <p className="account-field-hint">
+                          SupreCart does not send real messages yet; toggles are remembered locally.
+                        </p>
+                      </section>
+                    )}
+
+                    {settingsTab === "region" && (
+                      <section className="account-dashboard-card">
+                        <h2>Region &amp; language</h2>
+                        <p className="account-intro">
+                          Set how prices and dates are shown to you across the marketplace.
+                        </p>
+                        <div className="account-form">
                           <div className="field-pair">
                             <label>
-                              Middle name
-                              <input name="middle_name" defaultValue={profile?.middle_name ?? ""} />
+                              Currency
+                              <select
+                                value={preferences.region.currency}
+                                onChange={(event) => setRegion({ currency: event.target.value })}
+                              >
+                                {currencyOptions.map((option) => (
+                                  <option key={option}>{option}</option>
+                                ))}
+                              </select>
                             </label>
                             <label>
-                              Last name
+                              Language
+                              <select
+                                value={preferences.region.language}
+                                onChange={(event) => setRegion({ language: event.target.value })}
+                              >
+                                {languageOptions.map((option) => (
+                                  <option key={option}>{option}</option>
+                                ))}
+                              </select>
+                            </label>
+                          </div>
+                          <label>
+                            Time zone
+                            <select
+                              value={preferences.region.timezone}
+                              onChange={(event) => setRegion({ timezone: event.target.value })}
+                            >
+                              {timezoneOptions.map((option) => (
+                                <option key={option}>{option}</option>
+                              ))}
+                            </select>
+                          </label>
+                        </div>
+                        <p className="account-field-hint">
+                          Currency conversion and translations are not connected yet, so these are
+                          display preferences only.
+                        </p>
+                      </section>
+                    )}
+
+                    {settingsTab === "payments" && (
+                      <section className="account-dashboard-card">
+                        <h2>Payment methods</h2>
+                        <p className="account-intro">
+                          Sample payment methods for the preview checkout. SupreCart never stores a
+                          full card number and this preview collects no payments.
+                        </p>
+                        {preferences.paymentMethods.length ? (
+                          <div className="account-payment-list">
+                            {preferences.paymentMethods.map((method) => (
+                              <article key={method.id} className="account-payment-card">
+                                <span className="account-payment-brand">
+                                  <CreditCard size={17} />
+                                  <strong>{method.brand}</strong>
+                                </span>
+                                <span>•••• {method.last4}</span>
+                                <span>Expires {method.expiry}</span>
+                                {method.isDefault ? (
+                                  <span className="account-payment-default">
+                                    <Check size={12} /> Default
+                                  </span>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    className="account-inline-link"
+                                    onClick={() => setDefaultPaymentMethod(method.id)}
+                                  >
+                                    Make default
+                                  </button>
+                                )}
+                                <button
+                                  type="button"
+                                  className="account-danger-link"
+                                  onClick={() => removePaymentMethod(method.id)}
+                                >
+                                  Remove
+                                </button>
+                              </article>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="account-intro">No sample payment methods saved yet.</p>
+                        )}
+                        <form
+                          className="account-form account-payment-form"
+                          onSubmit={addPaymentMethod}
+                        >
+                          <h3>Add a sample method</h3>
+                          <div className="field-pair">
+                            <label>
+                              Brand
+                              <select name="brand" defaultValue="Visa">
+                                {["Visa", "Mastercard", "Verve", "Virtual wallet"].map((brand) => (
+                                  <option key={brand}>{brand}</option>
+                                ))}
+                              </select>
+                            </label>
+                            <label>
+                              Last 4 digits
                               <input
-                                name="last_name"
-                                defaultValue={
-                                  profile?.last_name ?? user?.user_metadata["last_name"] ?? ""
-                                }
+                                name="last4"
+                                inputMode="numeric"
+                                maxLength={4}
+                                placeholder="4242"
                                 required
                               />
                             </label>
                           </div>
-                          <div className="field-pair">
-                            <label>
-                              Phone
-                              <input
-                                name="phone"
-                                type="tel"
-                                defaultValue={profile?.phone ?? user?.user_metadata["phone"] ?? ""}
-                              />
-                            </label>
-                            <label>
-                              Account email
-                              <input
-                                name="email"
-                                type="email"
-                                defaultValue={user?.email ?? ""}
-                                autoComplete="email"
-                              />
-                            </label>
-                          </div>
-                          <p className="account-field-hint">
-                            Email changes require the Supabase verification flow before they take
-                            effect.
-                          </p>
                           <label>
-                            New password
-                            <input
-                              name="password"
-                              type="password"
-                              minLength={10}
-                              autoComplete="new-password"
-                              placeholder="Leave blank to keep your current password"
-                            />
+                            Expiry (MM/YY)
+                            <input name="expiry" placeholder="09/29" required />
                           </label>
-                          <Button type="submit" disabled={saving}>
-                            {saving ? "Saving changes…" : "Save profile"}
+                          <Button type="submit" variant="outline">
+                            <Plus size={15} /> Add sample method
                           </Button>
                         </form>
-                      </>
+                      </section>
                     )}
-                  </section>
-                )}
 
-                {settingsTab === "notifications" && (
-                  <section className="account-dashboard-card">
-                    <h2>Notifications</h2>
-                    <p className="account-intro">
-                      Choose what SupreCart should tell you about. These preferences are saved in
-                      this browser while messaging is still a preview.
-                    </p>
-                    <div className="account-toggle-list">
-                      {(
-                        [
-                          ["orderUpdates", "Order updates", "Delivery and fulfilment progress"],
-                          [
-                            "promotions",
-                            "Deals & promotions",
-                            "Sale alerts from sellers you follow",
-                          ],
-                          ["newsletter", "Newsletter", "Occasional marketplace news"],
-                          ["securityAlerts", "Security alerts", "Sign-ins and account changes"],
-                        ] as const
-                      ).map(([key, title, text]) => (
-                        <label key={key} className="account-toggle-row">
-                          <span>
-                            <strong>{title}</strong>
-                            <small>{text}</small>
-                          </span>
-                          <input
-                            type="checkbox"
-                            checked={preferences.notifications[key]}
-                            onChange={(event) => setNotification(key, event.target.checked)}
-                          />
-                        </label>
-                      ))}
-                    </div>
-                    <p className="account-field-hint">
-                      SupreCart does not send real messages yet; toggles are remembered locally.
-                    </p>
-                  </section>
-                )}
-
-                {settingsTab === "region" && (
-                  <section className="account-dashboard-card">
-                    <h2>Region &amp; language</h2>
-                    <p className="account-intro">
-                      Set how prices and dates are shown to you across the marketplace.
-                    </p>
-                    <div className="account-form">
-                      <div className="field-pair">
-                        <label>
-                          Currency
-                          <select
-                            value={preferences.region.currency}
-                            onChange={(event) => setRegion({ currency: event.target.value })}
-                          >
-                            {currencyOptions.map((option) => (
-                              <option key={option}>{option}</option>
-                            ))}
-                          </select>
-                        </label>
-                        <label>
-                          Language
-                          <select
-                            value={preferences.region.language}
-                            onChange={(event) => setRegion({ language: event.target.value })}
-                          >
-                            {languageOptions.map((option) => (
-                              <option key={option}>{option}</option>
-                            ))}
-                          </select>
-                        </label>
-                      </div>
-                      <label>
-                        Time zone
-                        <select
-                          value={preferences.region.timezone}
-                          onChange={(event) => setRegion({ timezone: event.target.value })}
-                        >
-                          {timezoneOptions.map((option) => (
-                            <option key={option}>{option}</option>
-                          ))}
-                        </select>
-                      </label>
-                    </div>
-                    <p className="account-field-hint">
-                      Currency conversion and translations are not connected yet, so these are
-                      display preferences only.
-                    </p>
-                  </section>
-                )}
-
-                {settingsTab === "payments" && (
-                  <section className="account-dashboard-card">
-                    <h2>Payment methods</h2>
-                    <p className="account-intro">
-                      Sample payment methods for the preview checkout. SupreCart never stores a full
-                      card number and this preview collects no payments.
-                    </p>
-                    {preferences.paymentMethods.length ? (
-                      <div className="account-payment-list">
-                        {preferences.paymentMethods.map((method) => (
-                          <article key={method.id} className="account-payment-card">
-                            <span className="account-payment-brand">
-                              <CreditCard size={17} />
-                              <strong>{method.brand}</strong>
+                    {settingsTab === "security" && (
+                      <section className="account-dashboard-card">
+                        <h2>Security</h2>
+                        <div className="account-toggle-list">
+                          <label className="account-toggle-row">
+                            <span>
+                              <strong>Two-factor authentication</strong>
+                              <small>
+                                Extra protection for sign-in has not been connected yet.
+                              </small>
                             </span>
-                            <span>•••• {method.last4}</span>
-                            <span>Expires {method.expiry}</span>
-                            {method.isDefault ? (
-                              <span className="account-payment-default">
-                                <Check size={12} /> Default
-                              </span>
-                            ) : (
-                              <button
-                                type="button"
-                                className="account-inline-link"
-                                onClick={() => setDefaultPaymentMethod(method.id)}
-                              >
-                                Make default
-                              </button>
-                            )}
-                            <button
-                              type="button"
-                              className="account-danger-link"
-                              onClick={() => removePaymentMethod(method.id)}
-                            >
-                              Remove
-                            </button>
-                          </article>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="account-intro">No sample payment methods saved yet.</p>
+                            <input
+                              type="checkbox"
+                              checked={preferences.twoFactorEnabled}
+                              onChange={(event) =>
+                                updatePreferences({
+                                  ...preferences,
+                                  twoFactorEnabled: event.target.checked,
+                                })
+                              }
+                            />
+                          </label>
+                        </div>
+                        <div className="account-security-actions">
+                          <div>
+                            <strong>Password</strong>
+                            <small>Changes to your password are made in the Profile tab.</small>
+                          </div>
+                          <div>
+                            <strong>Other sessions</strong>
+                            <small>Sign out every other device signed in to this account.</small>
+                          </div>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            disabled={saving}
+                            onClick={() => void signOutOtherSessions()}
+                          >
+                            <Smartphone size={15} /> Sign out other sessions
+                          </Button>
+                        </div>
+                        <p className="account-field-hint">
+                          Two-factor authentication is a placeholder in this preview; it never
+                          blocks sign-in.
+                        </p>
+                      </section>
                     )}
-                    <form className="account-form account-payment-form" onSubmit={addPaymentMethod}>
-                      <h3>Add a sample method</h3>
-                      <div className="field-pair">
-                        <label>
-                          Brand
-                          <select name="brand" defaultValue="Visa">
-                            {["Visa", "Mastercard", "Verve", "Virtual wallet"].map((brand) => (
-                              <option key={brand}>{brand}</option>
-                            ))}
-                          </select>
-                        </label>
-                        <label>
-                          Last 4 digits
-                          <input
-                            name="last4"
-                            inputMode="numeric"
-                            maxLength={4}
-                            placeholder="4242"
-                            required
-                          />
-                        </label>
-                      </div>
-                      <label>
-                        Expiry (MM/YY)
-                        <input name="expiry" placeholder="09/29" required />
-                      </label>
-                      <Button type="submit" variant="outline">
-                        <Plus size={15} /> Add sample method
-                      </Button>
-                    </form>
-                  </section>
-                )}
 
-                {settingsTab === "security" && (
-                  <section className="account-dashboard-card">
-                    <h2>Security</h2>
-                    <div className="account-toggle-list">
-                      <label className="account-toggle-row">
-                        <span>
-                          <strong>Two-factor authentication</strong>
-                          <small>Extra protection for sign-in has not been connected yet.</small>
-                        </span>
-                        <input
-                          type="checkbox"
-                          checked={preferences.twoFactorEnabled}
-                          onChange={(event) =>
-                            updatePreferences({
-                              ...preferences,
-                              twoFactorEnabled: event.target.checked,
-                            })
-                          }
-                        />
-                      </label>
-                    </div>
-                    <div className="account-security-actions">
-                      <div>
-                        <strong>Password</strong>
-                        <small>Changes to your password are made in the Profile tab.</small>
-                      </div>
-                      <div>
-                        <strong>Other sessions</strong>
-                        <small>Sign out every other device signed in to this account.</small>
-                      </div>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        disabled={saving}
-                        onClick={() => void signOutOtherSessions()}
-                      >
-                        <Smartphone size={15} /> Sign out other sessions
-                      </Button>
-                    </div>
-                    <p className="account-field-hint">
-                      Two-factor authentication is a placeholder in this preview; it never blocks
-                      sign-in.
-                    </p>
-                  </section>
-                )}
-
-                {settingsTab === "danger" && (
-                  <section className="account-dashboard-card account-danger-zone">
-                    <h2>Danger zone</h2>
-                    <p className="account-intro">
-                      {demoAccount
-                        ? "Remove this local demo account and its saved preferences from this browser."
-                        : "Closing a real SupreCart account is handled by our team. Account deletion is not connected in this preview."}
-                    </p>
-                    {demoAccount ? (
-                      confirmDelete ? (
-                        <div className="account-confirm">
-                          <p>This clears the demo session and its local preferences. Continue?</p>
-                          <div className="account-confirm-actions">
+                    {settingsTab === "danger" && (
+                      <section className="account-dashboard-card account-danger-zone">
+                        <h2>Danger zone</h2>
+                        <p className="account-intro">
+                          {demoAccount
+                            ? "Remove this local demo account and its saved preferences from this browser."
+                            : "Closing a real SupreCart account is handled by our team. Account deletion is not connected in this preview."}
+                        </p>
+                        {demoAccount ? (
+                          confirmDelete ? (
+                            <div className="account-confirm">
+                              <p>
+                                This clears the demo session and its local preferences. Continue?
+                              </p>
+                              <div className="account-confirm-actions">
+                                <Button
+                                  type="button"
+                                  variant="destructive"
+                                  onClick={() => void removeAccount()}
+                                >
+                                  <Trash2 size={15} /> Remove demo account
+                                </Button>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  onClick={() => setConfirmDelete(false)}
+                                >
+                                  Cancel
+                                </Button>
+                              </div>
+                            </div>
+                          ) : (
                             <Button
                               type="button"
-                              variant="destructive"
-                              onClick={() => void removeAccount()}
+                              variant="outline"
+                              onClick={() => setConfirmDelete(true)}
                             >
                               <Trash2 size={15} /> Remove demo account
                             </Button>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              onClick={() => setConfirmDelete(false)}
-                            >
-                              Cancel
-                            </Button>
-                          </div>
-                        </div>
-                      ) : (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={() => setConfirmDelete(true)}
-                        >
-                          <Trash2 size={15} /> Remove demo account
-                        </Button>
-                      )
-                    ) : (
-                      <Button type="button" variant="outline" onClick={() => void removeAccount()}>
-                        <Trash2 size={15} /> Request account deletion
-                      </Button>
+                          )
+                        ) : (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => void removeAccount()}
+                          >
+                            <Trash2 size={15} /> Request account deletion
+                          </Button>
+                        )}
+                      </section>
                     )}
-                  </section>
+                  </>
                 )}
-              </>
-            )}
+              </div>
+            </div>
           </>
         )}
       </section>

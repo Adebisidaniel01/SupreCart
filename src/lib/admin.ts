@@ -76,7 +76,7 @@ export const signOutOfAdmin = createServerFn({ method: "POST" }).handler(async (
 
 const dashboardPreview = {
   stats: [
-    { label: "Gross sales", value: "$18,420", change: "+12.8%", detail: "vs. last month" },
+    { label: "Gross sales", value: "₦18,420", change: "+12.8%", detail: "vs. last month" },
     { label: "Total users", value: "1,284", change: "+8.2%", detail: "vs. last month" },
     { label: "New sign-ups", value: "342", change: "+16.4%", detail: "vs. last month" },
     { label: "Page visits", value: "24,892", change: "+5.7%", detail: "vs. last month" },

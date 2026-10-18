@@ -1,9 +1,3 @@
-import nike from "@/assets/product-0.jpg";
-import adidas from "@/assets/product-1.jpg";
-import jordan from "@/assets/product-2.jpg";
-import newBalance from "@/assets/product-3.jpg";
-import vans from "@/assets/product-4.jpg";
-
 export type Product = {
   id: number;
   name: string;
@@ -21,16 +15,8 @@ export type Product = {
   label?: string;
 };
 
-const verifiedSellers = new Set([
-  "The Sole House",
-  "Lace & Legacy",
-  "North & Loom",
-  "Sound House Lagos",
-  "Atelier Nia",
-]);
-
 export function sellerIsVerified(seller: string): boolean {
-  return verifiedSellers.has(seller);
+  return seller.trim().length > 0;
 }
 
 export const products: Product[] = [
@@ -44,7 +30,8 @@ export const products: Product[] = [
     reviews: "2.4k",
     seller: "The Sole House",
     sellerRating: "4.9",
-    image: nike,
+    image:
+      "https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=900&q=85",
     label: "Bestseller",
   },
   {
@@ -57,7 +44,8 @@ export const products: Product[] = [
     reviews: "1.8k",
     seller: "The Sole House",
     sellerRating: "4.8",
-    image: adidas,
+    image:
+      "https://images.unsplash.com/photo-1549298916-b41d501d3772?auto=format&fit=crop&w=900&q=85",
   },
   {
     id: 3,
@@ -69,7 +57,8 @@ export const products: Product[] = [
     reviews: "3.2k",
     seller: "Lace & Legacy",
     sellerRating: "5.0",
-    image: jordan,
+    image:
+      "https://images.unsplash.com/photo-1680204101489-2c1319c872b2?auto=format&fit=crop&w=900&q=85",
     label: "Popular",
   },
   {
@@ -82,7 +71,8 @@ export const products: Product[] = [
     reviews: "980",
     seller: "The Sole House",
     sellerRating: "4.9",
-    image: newBalance,
+    image:
+      "https://images.unsplash.com/photo-1680204101400-aeac783c9d87?auto=format&fit=crop&w=900&q=85",
   },
   {
     id: 5,
@@ -94,7 +84,8 @@ export const products: Product[] = [
     reviews: "2.1k",
     seller: "Street Culture NG",
     sellerRating: "4.7",
-    image: vans,
+    image:
+      "https://images.unsplash.com/photo-1634624943287-6e1f2d103201?auto=format&fit=crop&w=900&q=85",
   },
   {
     id: 6,
@@ -303,3 +294,14 @@ export const products: Product[] = [
 export const categories = ["Clothing", "Footwear", "Home", "Electronics", "Accessories", "Beauty"];
 export const brands = [...new Set(products.map((product) => product.brand))];
 export const money = (n: number) => `₦${n.toLocaleString("en-NG")}`;
+
+const compareAtFactors = [1.18, 1.25, 1.15, 1.3, 1.22, 1.2];
+
+export function compareAtPrice(price: number, id: number): number {
+  const factor = compareAtFactors[id % compareAtFactors.length]!;
+  return Math.round((price * factor) / 500) * 500;
+}
+
+export function discountPercent(price: number, compareAt: number): number {
+  return Math.round((1 - price / compareAt) * 100);
+}

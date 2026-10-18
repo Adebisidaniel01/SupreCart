@@ -946,6 +946,60 @@ export default function SellerPortal({ standalone = false }: { standalone?: bool
           </div>
         </aside>
 
+        <nav className="seller-mobile-nav" aria-label="Seller sections">
+          <button
+            type="button"
+            className={`seller-side-link ${showDashboard && page === "overview" ? "active" : ""}`}
+            onClick={() => goToPage("overview")}
+          >
+            <Box size={16} /> Overview
+          </button>
+          {showDashboard && (
+            <>
+              <button
+                type="button"
+                className={`seller-side-link ${page === "products" ? "active" : ""}`}
+                onClick={() => goToPage("products")}
+              >
+                <PackagePlus size={16} /> Products
+              </button>
+              <button
+                type="button"
+                className={`seller-side-link ${page === "orders" ? "active" : ""}`}
+                onClick={() => goToPage("orders")}
+              >
+                <Box size={16} /> Orders
+              </button>
+              <button
+                type="button"
+                className={`seller-side-link ${page === "payouts" ? "active" : ""}`}
+                onClick={() => goToPage("payouts")}
+              >
+                <CircleDollarSign size={16} /> Payouts
+              </button>
+              <button
+                type="button"
+                className={`seller-side-link ${page === "settings" ? "active" : ""}`}
+                onClick={() => goToPage("settings")}
+              >
+                <Settings size={16} /> Account settings
+              </button>
+            </>
+          )}
+          {(session || demoAccount) && (
+            <a
+              className="seller-side-link"
+              href={
+                demoAccount
+                  ? `${marketplaceUrl.replace(/\/$/, "")}/messages?demoEmail=${encodeURIComponent(demoAccount.email)}&demoRole=seller`
+                  : `${marketplaceUrl.replace(/\/$/, "")}/messages`
+              }
+            >
+              <MessageCircle size={16} /> Messages
+            </a>
+          )}
+        </nav>
+
         <section className="seller-content" id="seller-content">
           {busy ? (
             <div className="seller-state-panel">
