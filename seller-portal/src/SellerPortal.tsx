@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+﻿import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import {
   AlertTriangle,
   ArrowDownToLine,
@@ -28,15 +28,17 @@ import {
   Upload,
   UserRound,
 } from "lucide-react";
-import type { Session } from "@supabase/supabase-js";
-import { supabase } from "../../src/lib/supabase";
+import { supabase, type Session } from "../../src/lib/supabase";
 import { products as demoCatalog } from "../../src/lib/catalog";
 import {
   clearDemoAccount,
+  createLocalAccount,
   findDemoAccount,
   getDemoAccounts,
+  isPresetAccount,
   readDemoAccount,
   saveDemoAccount,
+  verifyAccountPassword,
   type DemoAccount,
 } from "../../src/lib/demo-accounts";
 import { getDemoProfile, saveDemoProfile } from "../../src/lib/demo-orders";
@@ -138,29 +140,9 @@ function readSellerPage(): SellerPage {
 const fileTypes = ["image/jpeg", "image/png", "application/pdf"];
 const productImageTypes = ["image/jpeg", "image/png", "image/webp"];
 const marketplaceUrl = import.meta.env["VITE_MARKETPLACE_URL"] || "/";
-const configuredAuthRedirectUrl = import.meta.env["VITE_SELLER_AUTH_REDIRECT_URL"]?.trim();
 const cookiePolicyHref = /^https?:\/\//.test(marketplaceUrl)
   ? `${marketplaceUrl.replace(/\/$/, "")}/info/cookies`
   : undefined;
-
-function sellerAuthRedirectUrl() {
-  if (configuredAuthRedirectUrl) {
-    const redirectUrl = new URL(configuredAuthRedirectUrl);
-    if (
-      redirectUrl.protocol !== "https:" &&
-      !(
-        redirectUrl.protocol === "http:" &&
-        ["localhost", "127.0.0.1"].includes(redirectUrl.hostname)
-      )
-    ) {
-      throw new Error("Seller auth redirect URL must use HTTPS, except for localhost development.");
-    }
-    return redirectUrl.toString();
-  }
-
-  const callbackPath = window.location.pathname.startsWith("/sellers") ? "/sellers" : "/";
-  return new URL(callbackPath, window.location.origin).toString();
-}
 
 type ApplicationDraft = {
   firstName: string;
@@ -339,7 +321,6 @@ export default function SellerPortal({ standalone = false }: { standalone?: bool
   const [error, setError] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [loadingScreen, setLoadingScreen] = useState(true);
-  const [confirmationEmail, setConfirmationEmail] = useState("");
   const [page, setPage] = useState<SellerPage>(readSellerPage);
   const creatingApplication = useRef(false);
 
@@ -534,8 +515,6 @@ export default function SellerPortal({ standalone = false }: { standalone?: bool
 
   async function register(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!supabase)
-      return setError("Account service is temporarily unavailable. Please try again later.");
     setSubmitting(true);
     setError("");
     setNotice("");
@@ -558,25 +537,18 @@ export default function SellerPortal({ standalone = false }: { standalone?: bool
         accountNumber: String(form.get("accountNumber")).trim(),
         files,
       };
-      await saveApplicationDraft(draft);
-      const { data, error: signUpError } = await supabase.auth.signUp({
+      const account = await createLocalAccount({
         email,
+        name: `${draft.firstName} ${draft.lastName}`.trim(),
+        role: "seller",
         password: String(form.get("password")),
-        options: {
-          data: { first_name: draft.firstName, last_name: draft.lastName, role: "seller" },
-          emailRedirectTo: sellerAuthRedirectUrl(),
-        },
       });
-      if (signUpError) throw signUpError;
-      if (!data.session) {
-        setNotice(
-          `Check ${email} and open the verification link in this browser. You’ll return to SupreCart Seller Studio and your application will finish automatically.`,
-        );
-        setScreen("login");
-        return;
-      }
-      setSession(data.session);
-      await createApplication(data.session);
+      await saveApplicationDraft(draft);
+      saveDemoAccount(account);
+      setDemoAccount(account);
+      setDemoProfile(getDemoProfile(account.email, account.name));
+      setNotice("Your seller account is saved in this browser. No email verification is needed.");
+      await clearApplicationDraft();
     } catch (cause) {
       console.error("Could not submit the SupreCart seller application.", cause);
       setError(cause instanceof Error ? cause.message : "Could not submit your application.");
@@ -593,104 +565,49 @@ export default function SellerPortal({ standalone = false }: { standalone?: bool
       const form = new FormData(event.currentTarget);
       const email = String(form.get("email")).trim().toLowerCase();
       const localDemoAccount = findDemoAccount(email, "seller");
-      if (localDemoAccount) {
-        saveDemoAccount(localDemoAccount);
-        setDemoAccount(localDemoAccount);
-        setNotice("");
-        setBusy(false);
-        return;
+      if (!localDemoAccount) {
+        throw new Error("No seller account matches that email yet. Submit an application first.");
       }
-      const password = String(form.get("password"));
-      if (import.meta.env.DEV && !password) {
-        throw new Error(
-          "Enter a listed demo seller email, or provide a password for a Supabase account.",
+      if (!isPresetAccount(email, "seller")) {
+        const passwordMatches = await verifyAccountPassword(
+          email,
+          "seller",
+          String(form.get("password")),
         );
+        if (!passwordMatches) {
+          throw new Error("That password does not match this account. Please try again.");
+        }
       }
-      if (!supabase)
-        return setError("Account service is temporarily unavailable. Please try again later.");
-      const { data, error: signInError } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-      if (signInError) throw signInError;
-      setSession(data.session);
-      await loadSellerData(data.session);
-      await createApplication(data.session);
+      saveDemoAccount(localDemoAccount);
+      setDemoAccount(localDemoAccount);
+      setDemoProfile(getDemoProfile(localDemoAccount.email, localDemoAccount.name));
+      setNotice("");
+      setBusy(false);
     } catch (cause) {
       console.error("Could not sign in to the SupreCart seller portal.", cause);
-      const nextError = cause instanceof Error ? cause.message : "Could not sign in.";
-      if (nextError.toLowerCase().includes("email not confirmed")) {
-        const email = String(new FormData(event.currentTarget).get("email")).trim().toLowerCase();
-        setConfirmationEmail(email);
-        setNotice("Your seller account exists, but it still needs email confirmation.");
-      }
-      setError(nextError);
+      setError(cause instanceof Error ? cause.message : "Could not sign in.");
     } finally {
       setSubmitting(false);
     }
   }
 
-  async function resendConfirmationEmail(email: string) {
-    if (!supabase) {
-      setError("Account service is temporarily unavailable. Please try again later.");
-      return;
-    }
-    setError("");
-    setNotice("");
-    try {
-      const { error: resendError } = await supabase.auth.resend({ type: "signup", email });
-      if (resendError) throw resendError;
-      setNotice(`A new confirmation email was sent to ${email}. Open it to confirm your account.`);
-      setConfirmationEmail(email);
-    } catch (cause) {
-      console.error("Could not resend a seller confirmation email.", cause);
-      setError(
-        cause instanceof Error ? cause.message : "Could not send a fresh confirmation email.",
-      );
-    }
-  }
-
   async function requestPasswordReset(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!supabase)
-      return setError("Account service is temporarily unavailable. Please try again later.");
     const email = String(new FormData(event.currentTarget).get("email")).trim().toLowerCase();
     setError("");
-    try {
-      const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: sellerAuthRedirectUrl(),
-      });
-      if (resetError) throw resetError;
-      setNotice(
-        "If that address belongs to a seller account, a password reset link is on its way.",
-      );
-    } catch (cause) {
-      console.error("Could not send a seller password reset email.", cause);
-      setError(cause instanceof Error ? cause.message : "Could not send a password reset email.");
-    }
+    setNotice(
+      `Seller accounts live in this browser, so there is no password reset email for ${email}.`,
+    );
   }
 
   async function signOut() {
-    if (demoAccount) {
-      clearDemoAccount();
-      setDemoAccount(null);
-      setApplication(null);
-      setStats(null);
-      setSubmitted(false);
-      setScreen("login");
-      return;
-    }
-    if (!supabase) return;
-    const { error: signOutError } = await supabase.auth.signOut();
-    if (signOutError) {
-      console.error("Could not sign out of the SupreCart seller portal.", signOutError);
-      setError(signOutError.message);
-    } else {
-      setSession(null);
-      setApplication(null);
-      setStats(null);
-      setSubmitted(false);
-    }
+    clearDemoAccount();
+    setDemoAccount(null);
+    setSession(null);
+    setApplication(null);
+    setStats(null);
+    setSubmitted(false);
+    setScreen("login");
   }
 
   async function addProduct(event: FormEvent<HTMLFormElement>) {
@@ -1094,10 +1011,8 @@ export default function SellerPortal({ standalone = false }: { standalone?: bool
               submitting={submitting}
               error={error}
               notice={notice}
-              confirmationEmail={confirmationEmail}
               onSubmit={signIn}
               onReset={requestPasswordReset}
-              onResendConfirmation={() => void resendConfirmationEmail(confirmationEmail)}
               onApply={() => {
                 setScreen("apply");
                 setError("");
@@ -1196,7 +1111,7 @@ function ApplicationForm({
               minLength={10}
               required
             />
-            <small>At least 10 characters. Use a unique password you haven’t used elsewhere.</small>
+            <small>At least 10 characters. Stored in this browser so you can sign in again later.</small>
           </label>
           <label className="seller-field-full">
             What do you make or sell?
@@ -1280,19 +1195,15 @@ function SignInPanel({
   submitting,
   error,
   notice,
-  confirmationEmail,
   onSubmit,
   onReset,
-  onResendConfirmation,
   onApply,
 }: {
   submitting: boolean;
   error: string;
   notice: string;
-  confirmationEmail: string;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
   onReset: (event: FormEvent<HTMLFormElement>) => void;
-  onResendConfirmation: () => void;
   onApply: () => void;
 }) {
   return (
@@ -1317,13 +1228,11 @@ function SignInPanel({
               name="password"
               type="password"
               autoComplete="current-password"
-              required={!import.meta.env.DEV}
             />
-            {import.meta.env.DEV && (
-              <small>
-                For a listed demo seller, leave this blank. Otherwise use your Supabase password.
-              </small>
-            )}
+            <small>
+              Preview seller accounts can sign in without a password. Accounts you create here use
+              the password you chose.
+            </small>
           </label>
           {error && (
             <p className="seller-form-error seller-field-full" role="alert">
@@ -1335,34 +1244,23 @@ function SignInPanel({
               {notice}
             </p>
           )}
-          {error.toLowerCase().includes("email not confirmed") && confirmationEmail && (
-            <button
-              type="button"
-              className="seller-secondary-button seller-field-full"
-              onClick={onResendConfirmation}
-            >
-              Resend confirmation email
-            </button>
-          )}
           <button
             className="seller-primary-button seller-field-full"
             type="submit"
             disabled={submitting}
           >
-            {submitting ? "Signing in…" : "Sign in"} <ArrowRight size={16} />
+            {submitting ? "Signing in..." : "Sign in"} <ArrowRight size={16} />
           </button>
         </form>
-        {import.meta.env.DEV && (
-          <p className="seller-form-notice">
-            Local demo sellers (no password or email verification):
-            {getDemoAccounts("seller").map((account) => (
-              <span key={account.email}>
-                <br />
-                {account.name} — {account.email}
-              </span>
-            ))}
-          </p>
-        )}
+        <p className="seller-form-notice">
+          Preview seller accounts (no password or email verification):
+          {getDemoAccounts("seller").map((account) => (
+            <span key={account.email}>
+              <br />
+              {account.name} - {account.email}
+            </span>
+          ))}
+        </p>
         <form className="seller-reset-form" onSubmit={onReset}>
           <label>
             Email
@@ -1610,22 +1508,7 @@ function SellerDashboard({
   }
 
   async function signOutOtherSessions() {
-    if (demoMode) {
-      setSettingsNotice(
-        "Demo sellers are browser-only, so there are no other sessions to sign out.",
-      );
-      return;
-    }
-    if (!supabase) return;
-    if (session) {
-      const { error: scopeError } = await supabase.auth.signOut({ scope: "others" });
-      if (scopeError) {
-        console.error("Could not sign out the other SupreCart seller sessions.", scopeError);
-        setSettingsError(scopeError.message);
-        return;
-      }
-      setSettingsNotice("Any other signed-in devices for this account have been signed out.");
-    }
+    setSettingsNotice("Seller accounts are browser-only, so there are no other sessions to sign out.");
   }
 
   function removeSellerAccount() {
@@ -1848,7 +1731,7 @@ function SellerDashboard({
                 type="submit"
                 disabled={submitting}
               >
-                {submitting ? "Saving product…" : "Publish product"} <ArrowRight size={15} />
+                {submitting ? "Saving product�?�" : "Publish product"} <ArrowRight size={15} />
               </button>
             </form>
           )}

@@ -1,6 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
-import type { User } from "@supabase/supabase-js";
 import {
   AlertTriangle,
   ArrowLeft,
@@ -24,7 +23,7 @@ import {
   UserRound,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { supabase } from "@/lib/supabase";
+import { supabase, type User } from "@/lib/supabase";
 import { clearDemoAccount, readDemoAccount, type DemoAccount } from "@/lib/demo-accounts";
 import { getDemoOrders, getDemoProfile, saveDemoProfile } from "@/lib/demo-orders";
 import {

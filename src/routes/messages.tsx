@@ -1,8 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
-import type { User } from "@supabase/supabase-js";
 import { ArrowLeft, CheckCheck, MessageCircle, Mic, Send, Square, Store } from "lucide-react";
-import { supabase } from "@/lib/supabase";
+import { supabase, type User } from "@/lib/supabase";
 import { findDemoAccount, readDemoAccount, type DemoAccount } from "@/lib/demo-accounts";
 import {
   getDemoChatConversations,
@@ -41,8 +40,14 @@ function parseDemoRole(role: unknown): DemoAccount["role"] | undefined {
   return undefined;
 }
 
+type MessagesSearch = {
+  productId?: string | undefined;
+  demoEmail?: string | undefined;
+  demoRole?: DemoAccount["role"] | undefined;
+};
+
 export const Route = createFileRoute("/messages")({
-  validateSearch: (search: Record<string, unknown>) => ({
+  validateSearch: (search: Record<string, unknown>): MessagesSearch => ({
     productId: typeof search["productId"] === "string" ? search["productId"] : undefined,
     demoEmail: typeof search["demoEmail"] === "string" ? search["demoEmail"] : undefined,
     demoRole: parseDemoRole(search["demoRole"]),

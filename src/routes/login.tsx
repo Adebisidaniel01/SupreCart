@@ -2,8 +2,13 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState, type FormEvent } from "react";
 import { ArrowLeft, ArrowRight, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { supabase } from "@/lib/supabase";
-import { findDemoAccount, getDemoAccounts, saveDemoAccount } from "@/lib/demo-accounts";
+import {
+  findDemoAccount,
+  getDemoAccounts,
+  isPresetAccount,
+  saveDemoAccount,
+  verifyAccountPassword,
+} from "@/lib/demo-accounts";
 
 export const Route = createFileRoute("/login")({
   head: () => ({
@@ -23,33 +28,28 @@ function Login() {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
     const email = String(formData.get("email")).trim().toLowerCase();
-    const demoAccount = findDemoAccount(email, "buyer");
-    if (demoAccount) {
-      saveDemoAccount(demoAccount);
-      await navigate({ to: "/account" });
-      return;
-    }
     const password = String(formData.get("password"));
-    if (import.meta.env.DEV && !password) {
-      setError("Enter a listed demo buyer email, or provide a password for a Supabase account.");
+    const demoAccount = findDemoAccount(email, "buyer");
+    if (!demoAccount) {
+      setError("No buyer account matches that email yet. Create an account first.");
       return;
     }
-    if (!supabase) {
-      setError("Account service is temporarily unavailable. Please try again later.");
-      return;
+    if (!isPresetAccount(email, "buyer")) {
+      try {
+        const passwordMatches = await verifyAccountPassword(email, "buyer", password);
+        if (!passwordMatches) {
+          setError("That password does not match this account. Please try again.");
+          return;
+        }
+      } catch (cause) {
+        console.error("Could not check the SupreCart buyer password.", cause);
+        setError(cause instanceof Error ? cause.message : "Could not sign in.");
+        return;
+      }
     }
-    try {
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-      if (signInError) throw signInError;
-      setError("");
-      await navigate({ to: "/account" });
-    } catch (cause) {
-      console.error("Could not sign in to the SupreCart buyer account.", cause);
-      setError(cause instanceof Error ? cause.message : "Could not sign in.");
-    }
+    saveDemoAccount(demoAccount);
+    setError("");
+    await navigate({ to: "/account" });
   }
 
   return (
@@ -78,28 +78,24 @@ function Login() {
               type="password"
               name="password"
               autoComplete="current-password"
-              required={!import.meta.env.DEV}
             />
             <small>
-              {import.meta.env.DEV
-                ? "For a listed local demo buyer, leave this blank. Otherwise use your Supabase password."
-                : "Use the password you chose when you created your account."}
+              Use the password you chose when you created your account. Preview accounts can
+              sign in without one.
             </small>
           </label>
-          {import.meta.env.DEV && (
-            <div className="demo-disclaimer">
-              <ShieldCheck size={15} />
-              <span>
-                Local demo accounts (no password or email verification):
-                {getDemoAccounts("buyer").map((account) => (
-                  <span key={account.email}>
-                    <br />
-                    {account.name} — {account.email}
-                  </span>
-                ))}
-              </span>
-            </div>
-          )}
+          <div className="demo-disclaimer">
+            <ShieldCheck size={15} />
+            <span>
+              Preview buyer accounts (no password or email verification):
+              {getDemoAccounts("buyer").map((account) => (
+                <span key={account.email}>
+                  <br />
+                  {account.name} — {account.email}
+                </span>
+              ))}
+            </span>
+          </div>
           {error && (
             <p role="alert" className="form-error">
               {error}
@@ -113,7 +109,7 @@ function Login() {
           New to SupreCart? <Link to="/signup">Create an account</Link>
         </p>
         <p className="demo-disclaimer">
-          <ShieldCheck size={15} /> Your account is securely connected to SupreCart.
+          <ShieldCheck size={15} /> Preview accounts are stored in this browser only.
         </p>
       </div>
       <aside className="account-aside">

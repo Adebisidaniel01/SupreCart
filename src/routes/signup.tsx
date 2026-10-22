@@ -1,8 +1,8 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState, type FormEvent } from "react";
+import { useState, type FormEvent } from "react";
 import { ArrowLeft, ArrowRight, Check, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { supabase } from "@/lib/supabase";
+import { createLocalAccount, saveDemoAccount } from "@/lib/demo-accounts";
 
 type BuyerProfile = {
   firstName: string;
@@ -23,56 +23,11 @@ export const Route = createFileRoute("/signup")({
 
 function Signup() {
   const navigate = useNavigate();
-  const [stage, setStage] = useState<"details" | "verify" | "done">("details");
+  const [stage, setStage] = useState<"details" | "done">("details");
   const [profile, setProfile] = useState<BuyerProfile | null>(null);
   const [error, setError] = useState("");
   const [backendMessage, setBackendMessage] = useState("");
   const [submitting, setSubmitting] = useState(false);
-
-  useEffect(() => {
-    if (!supabase) return;
-    let active = true;
-    const finishVerifiedProfile = (
-      user: {
-        email?: string;
-        user_metadata?: { first_name?: string; last_name?: string; role?: string };
-      } | null,
-    ) => {
-      if (!user || !active || user.user_metadata?.role !== "buyer") return;
-      const verifiedProfile: BuyerProfile = {
-        firstName: user.user_metadata.first_name ?? "",
-        lastName: user.user_metadata.last_name ?? "",
-        email: user.email ?? "",
-        phone: "",
-      };
-      setProfile(verifiedProfile);
-      setStage("done");
-      setBackendMessage("Your email is verified and your buyer profile is saved to SupreCart.");
-    };
-    void supabase.auth
-      .getSession()
-      .then(({ data, error: sessionError }) => {
-        if (sessionError) {
-          console.error("Could not restore the SupreCart buyer session.", sessionError);
-          if (active) setError(sessionError.message);
-          return;
-        }
-        finishVerifiedProfile(data.session?.user ?? null);
-      })
-      .catch((cause: unknown) => {
-        console.error("Could not restore the SupreCart buyer session.", cause);
-        if (active) {
-          setError(cause instanceof Error ? cause.message : "Could not restore your account.");
-        }
-      });
-    const { data } = supabase.auth.onAuthStateChange((_event, session) => {
-      finishVerifiedProfile(session?.user ?? null);
-    });
-    return () => {
-      active = false;
-      data.subscription.unsubscribe();
-    };
-  }, []);
 
   async function createProfile(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -85,37 +40,19 @@ function Signup() {
     };
     setProfile(nextProfile);
     setError("");
-    if (!supabase) {
-      setError("Account service is temporarily unavailable. Please try again later.");
-      return;
-    }
     setSubmitting(true);
     try {
-      const { data: signUpResult, error: signUpError } = await supabase.auth.signUp({
+      const account = await createLocalAccount({
         email: nextProfile.email,
+        name: `${nextProfile.firstName} ${nextProfile.lastName}`.trim(),
+        role: "buyer",
         password: String(formData.get("password")),
-        options: {
-          data: {
-            first_name: nextProfile.firstName,
-            last_name: nextProfile.lastName,
-            phone: nextProfile.phone,
-            role: "buyer",
-          },
-          emailRedirectTo: `${window.location.origin}/signup`,
-        },
       });
-      if (signUpError) throw signUpError;
-      if (signUpResult.session) {
-        setStage("done");
-        setBackendMessage("Your buyer account has been created.");
-      } else {
-        setStage("verify");
-        setBackendMessage(
-          `A verification link was sent to ${nextProfile.email}. Open it to finish creating your account.`,
-        );
-      }
+      saveDemoAccount(account);
+      setBackendMessage("Your buyer account is saved in this browser. No email verification is needed.");
+      setStage("done");
     } catch (cause) {
-      console.error("Could not create the SupreCart buyer profile.", cause);
+      console.error("Could not create the SupreCart buyer account.", cause);
       setError(cause instanceof Error ? cause.message : "Could not create your account.");
     } finally {
       setSubmitting(false);
@@ -182,25 +119,8 @@ function Signup() {
               Already have an account? <Link to="/login">Sign in</Link>
             </p>
             <p className="demo-disclaimer">
-              <ShieldCheck size={15} /> Your account details are stored securely. Email confirmation
-              may be required before signing in.
-            </p>
-          </>
-        )}
-        {stage === "verify" && (
-          <>
-            <p className="eyebrow">ONE QUICK CHECK</p>
-            <h1>Verify your email</h1>
-            <p className="account-intro">Check your inbox for the verification link sent to {profile?.email}.</p>
-            <div className="account-form">
-              {error && (
-                <p role="alert" className="form-error">
-                  {error}
-                </p>
-              )}
-            </div>
-            <p className="demo-disclaimer">
-              <ShieldCheck size={15} /> {backendMessage}
+              <ShieldCheck size={15} /> Account details are stored in this browser only. No email
+              confirmation is required.
             </p>
           </>
         )}
@@ -218,7 +138,7 @@ function Signup() {
               View your account <ArrowRight size={16} />
             </Button>
             <p className="demo-disclaimer">
-              Your buyer account is stored securely with Supabase.
+              Your buyer account is stored in this browser only.
             </p>
           </div>
         )}

@@ -12,9 +12,9 @@ import {
   ArrowRight,
   BadgeCheck,
   Facebook,
-  Globe,
   Heart,
   Instagram,
+  LayoutGrid,
   Linkedin,
   Menu,
   Minus,
@@ -26,6 +26,7 @@ import {
   ShoppingCart,
   Star,
   Truck,
+  Twitter,
   UserRound,
   X,
 } from "lucide-react";
@@ -85,6 +86,15 @@ export function Storefront({ children }: { children: ReactNode }) {
   const [newsletterNote, setNewsletterNote] = useState("");
   const [notice, setNotice] = useState("");
   const navigate = useNavigate();
+  useEffect(() => {
+    function closeNavigation(event: KeyboardEvent) {
+      if (event.key !== "Escape") return;
+      setMobileNav(false);
+      setCategoriesOpen(false);
+    }
+    window.addEventListener("keydown", closeNavigation);
+    return () => window.removeEventListener("keydown", closeNavigation);
+  }, []);
   const hasSizes = selected?.category === "Footwear";
   const openProduct = useCallback((product: Product) => {
     setSelected(product);
@@ -151,7 +161,7 @@ export function Storefront({ children }: { children: ReactNode }) {
     { label: "Clothing", to: "/shop" as const, filter: "Clothing" },
     { label: "Footwear", to: "/shop" as const, filter: "Footwear" },
     { label: "Home & living", to: "/shop" as const, filter: "Home" },
-    { label: "More", to: "/shop" as const, filter: "All" },
+    { label: "Beauty", to: "/shop" as const, filter: "Beauty" },
   ] as const;
 
   function addToCart() {
@@ -179,25 +189,27 @@ export function Storefront({ children }: { children: ReactNode }) {
         <div className="market-header-main">
           <button
             type="button"
+            className="market-menu-button"
+            aria-label={mobileNav ? "Close menu" : "Open menu"}
+            aria-expanded={mobileNav}
+            aria-controls="market-mobile-drawer"
+            onClick={() => setMobileNav((value) => !value)}
+          >
+            {mobileNav ? <X /> : <Menu />}
+          </button>
+          <Link to="/" className="market-logo" aria-label="SupreCart home">
+            <Wordmark />
+          </Link>
+          <button
+            type="button"
             className="market-cat-button"
             aria-expanded={categoriesOpen}
             aria-controls="market-category-menu"
             onClick={() => setCategoriesOpen((value) => !value)}
           >
-            <Menu size={20} />
+            <LayoutGrid size={18} />
             <span>Categories</span>
           </button>
-          <button
-            type="button"
-            className="market-menu-button"
-            aria-label="Open menu"
-            onClick={() => setMobileNav((value) => !value)}
-          >
-            <Menu />
-          </button>
-          <Link to="/" className="market-logo" aria-label="SupreCart home">
-            <Wordmark />
-          </Link>
           <form
             className="market-search"
             role="search"
@@ -214,8 +226,8 @@ export function Storefront({ children }: { children: ReactNode }) {
               name="query"
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search for anything"
-              aria-label="Search for anything"
+              placeholder="Search products, brands and sellers"
+              aria-label="Search products, brands and sellers"
             />
           </form>
           <nav className="market-links" aria-label="Account, wishlist and bag">
@@ -259,15 +271,14 @@ export function Storefront({ children }: { children: ReactNode }) {
                 <UserRound />
               </Link>
             </Button>
-            <Link to="/login" className="market-button market-button-outline">
-              Log in
-            </Link>
-            <Link to="/signup" className="market-button market-button-solid">
-              Sign up
-            </Link>
-            <button type="button" className="market-icon-button market-lang" aria-label="Language">
-              <Globe />
-            </button>
+            <div className="market-auth-links">
+              <Link to="/login" className="market-button market-button-outline">
+                Log in
+              </Link>
+              <Link to="/signup" className="market-button market-button-solid">
+                Sign up
+              </Link>
+            </div>
           </nav>
           <div className="market-mobile-tools">
             <Button
@@ -279,6 +290,17 @@ export function Storefront({ children }: { children: ReactNode }) {
               onClick={() => openPanel("search")}
             >
               <Search />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              title="Wishlist"
+              aria-label="Wishlist"
+              className="market-icon-button count-control"
+              onClick={() => openPanel("wishlist")}
+            >
+              <Heart />
+              {favorites.length > 0 && <span className="count-badge">{favorites.length}</span>}
             </Button>
             <Button
               variant="ghost"
@@ -323,31 +345,89 @@ export function Storefront({ children }: { children: ReactNode }) {
           onClick={() => setMobileNav(false)}
         />
         <nav
+          id="market-mobile-drawer"
           className={mobileNav ? "market-drawer open" : "market-drawer"}
           aria-label="Main navigation"
         >
           <div className="market-drawer-head">
-            <strong>Menu</strong>
+            <Link to="/" aria-label="SupreCart home" onClick={() => setMobileNav(false)}>
+              <Wordmark />
+            </Link>
             <button type="button" aria-label="Close menu" onClick={() => setMobileNav(false)}>
               <X />
             </button>
           </div>
-          {navItems.map((item) =>
-            item.to === "/" ? (
-              <Link key={item.label} to="/" onClick={() => setMobileNav(false)}>
-                {item.label}
-              </Link>
-            ) : (
-              <Link
-                key={item.label}
-                to="/shop"
-                search={{ filter: item.filter, query: "" }}
-                onClick={() => setMobileNav(false)}
-              >
-                {item.label}
-              </Link>
-            ),
-          )}
+          <form
+            className="market-drawer-search"
+            role="search"
+            onSubmit={(event) => {
+              event.preventDefault();
+              setMobileNav(false);
+              navigate({ to: "/shop", search: { filter: "All", query } });
+            }}
+          >
+            <Search size={18} aria-hidden="true" />
+            <input
+              type="search"
+              name="mobile-query"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Search SupreCart"
+              aria-label="Search SupreCart"
+            />
+          </form>
+          <div className="market-drawer-links">
+            {navItems.map((item) =>
+              item.to === "/" ? (
+                <Link key={item.label} to="/" onClick={() => setMobileNav(false)}>
+                  {item.label}
+                </Link>
+              ) : (
+                <Link
+                  key={item.label}
+                  to="/shop"
+                  search={{ filter: item.filter, query: "" }}
+                  onClick={() => setMobileNav(false)}
+                >
+                  {item.label}
+                </Link>
+              ),
+            )}
+          </div>
+          <div className="market-drawer-tools">
+            <button
+              type="button"
+              onClick={() => {
+                setMobileNav(false);
+                openPanel("wishlist");
+              }}
+            >
+              <Heart />
+              <span>Wishlist</span>
+              <em>{favorites.length}</em>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setMobileNav(false);
+                openPanel("cart");
+              }}
+            >
+              <ShoppingCart />
+              <span>Shopping bag</span>
+              <em>{cartCount}</em>
+            </button>
+            <Link to="/account" onClick={() => setMobileNav(false)}>
+              <UserRound />
+              <span>My account</span>
+              <ArrowRight />
+            </Link>
+            <Link to="/messages" onClick={() => setMobileNav(false)}>
+              <MessageCircle />
+              <span>Messages</span>
+              <ArrowRight />
+            </Link>
+          </div>
           <div className="market-drawer-actions">
             <Link to="/sellers" onClick={() => setMobileNav(false)}>
               Sell on SupreCart
@@ -397,7 +477,7 @@ export function Storefront({ children }: { children: ReactNode }) {
             </p>
             <div className="socials">
               <a href="https://x.com" target="_blank" rel="noreferrer" aria-label="X">
-                <span className="social-letter">𝕏</span>
+                <Twitter size={14} />
               </a>
               <a
                 href="https://instagram.com"

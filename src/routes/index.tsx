@@ -1,21 +1,32 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { ArrowRight, ArrowUpRight, Sparkles } from "lucide-react";
+import { ArrowRight, ArrowUpRight, BadgeCheck, Sparkles, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ProductCard, Wordmark } from "@/components/storefront";
-import { products, categories, type Product } from "@/lib/catalog";
+import { products, categories, money, type Product } from "@/lib/catalog";
 
-const featuredProducts = categories
-  .map((category) => products.find((product) => product.category === category))
+const editProducts = [1, 6, 7, 8]
+  .map((id) => products.find((product) => product.id === id))
   .filter((product): product is Product => product !== undefined);
-const freshProducts = products.filter((product) => !featuredProducts.includes(product)).slice(-5);
+
+const freshProducts = [11, 12, 13, 15]
+  .map((id) => products.find((product) => product.id === id))
+  .filter((product): product is Product => product !== undefined);
+
+const heroMain = products.find((product) => product.id === 1)!;
+const heroSide = [7, 9]
+  .map((id) => products.find((product) => product.id === id))
+  .filter((product): product is Product => product !== undefined);
+const averageRating = (
+  products.reduce((total, product) => total + Number(product.rating), 0) / products.length
+).toFixed(1);
 
 function HomeSplash() {
   const [visible, setVisible] = useState(true);
 
   useEffect(() => {
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const timeout = window.setTimeout(() => setVisible(false), reducedMotion ? 700 : 1800);
+    const timeout = window.setTimeout(() => setVisible(false), reducedMotion ? 600 : 1100);
     return () => window.clearTimeout(timeout);
   }, []);
 
@@ -51,26 +62,18 @@ function Index() {
   return (
     <main className="page-width home-main">
       <HomeSplash />
-      <section className="hero marketplace-hero">
-        <div className="hero-showcase" aria-label="A selection of marketplace products">
-          {featuredProducts.slice(0, 4).map((product, index) => (
-            <div className={`hero-tile hero-tile-${index}`} key={product.id}>
-              <img src={product.image} alt={product.category} />
-              <span>{product.category}</span>
-            </div>
-          ))}
-        </div>
+
+      <section className="hero marketplace-hero home-hero">
         <div className="hero-copy">
-          <span className="eyebrow hero-eyebrow">THE MARKETPLACE FOR GOOD FINDS</span>
+          <span className="eyebrow hero-eyebrow">INDEPENDENT FINDS, ONE MARKETPLACE</span>
           <h1>
             Good things,
             <br />
             <em>found here.</em>
           </h1>
           <p>
-            A little bit of everything, from sellers worth knowing.
-            <br />
-            Your next favourite thing is closer than you think.
+            Thoughtful pieces from independent sellers, gathered in one easy place. Take a look
+            around — your next favourite is probably already here.
           </p>
           <div className="hero-actions">
             <Button size="lg" asChild>
@@ -84,29 +87,80 @@ function Index() {
               </a>
             </Button>
           </div>
+          <div className="hero-metrics" aria-label="Marketplace highlights">
+            <div>
+              <strong>{products.length}</strong>
+              <span>curated finds</span>
+            </div>
+            <div>
+              <strong>{categories.length}</strong>
+              <span>categories</span>
+            </div>
+            <div>
+              <strong>{averageRating}</strong>
+              <span>average rating</span>
+            </div>
+          </div>
         </div>
-        <div className="hero-note">
-          <Sparkles size={16} />
-          <span>Fresh finds. Independent sellers.</span>
+
+        <div className="hero-showcase" aria-label="A selection of marketplace products">
+          <Link
+            to="/shop"
+            search={{ filter: heroMain.category, query: "" }}
+            className="hero-tile hero-tile-large"
+          >
+            <img src={heroMain.image} alt={heroMain.name} />
+            <span className="hero-tile-tag">{heroMain.category}</span>
+            <span className="hero-tile-meta">
+              <strong>{heroMain.name}</strong>
+              <em>{money(heroMain.price)}</em>
+            </span>
+          </Link>
+          {heroSide.map((product) => (
+            <Link
+              key={product.id}
+              to="/shop"
+              search={{ filter: product.category, query: "" }}
+              className="hero-tile hero-tile-side"
+            >
+              <img src={product.image} alt={product.name} />
+              <span className="hero-tile-tag">{product.category}</span>
+            </Link>
+          ))}
+        </div>
+
+        <div className="hero-floating-card">
+          <span className="hero-floating-icon">
+            <BadgeCheck size={17} />
+          </span>
+          <div>
+            <strong>Seller checked</strong>
+            <span>Real people, good finds</span>
+          </div>
+          <span className="hero-floating-rating">
+            <Star size={11} fill="currentColor" /> 4.9
+          </span>
         </div>
       </section>
+
       <section className="home-value-strip" aria-label="Why shop SupreCart">
         <div>
           <span>01</span>
-          <strong>Independent by nature</strong>
-          <p>Discover products from small businesses and sellers.</p>
+          <strong>Curated, not crowded</strong>
+          <p>A considered mix of pieces worth making room for.</p>
         </div>
         <div>
           <span>02</span>
-          <strong>More to explore</strong>
-          <p>From style and beauty to home, tech and more.</p>
+          <strong>Sellers with a story</strong>
+          <p>Independent businesses, makers and local favourites.</p>
         </div>
         <div>
           <span>03</span>
-          <strong>Find your next favourite</strong>
-          <p>Take a look around and see what catches your eye.</p>
+          <strong>Easy to explore</strong>
+          <p>Clear categories, useful details and a wishlist for later.</p>
         </div>
       </section>
+
       <section className="category-section" id="categories">
         <div className="section-heading">
           <div>
@@ -117,26 +171,30 @@ function Index() {
             All categories <ArrowRight size={14} />
           </Link>
         </div>
-        <div className="category-grid marketplace-categories">
-          {featuredProducts.map((product, i) => {
-            const category = product.category;
+        <div className="category-grid marketplace-categories home-categories">
+          {categories.map((category, index) => {
+            const product = products.find((item) => item.category === category);
+            if (!product) return null;
+            const count = products.filter((item) => item.category === category).length;
             return (
               <Link
                 key={category}
                 to="/shop"
                 search={{ filter: category, query: "" }}
-                className={`category category-card category-tone-${i}`}
+                className={`category category-card category-tone-${index}`}
               >
                 <div>
                   <img src={product.image} alt="" loading="lazy" />
                 </div>
                 <span>{category}</span>
+                <small className="category-count">{count} finds</small>
                 <ArrowUpRight className="category-arrow" size={16} />
               </Link>
             );
           })}
         </div>
       </section>
+
       <section className="sponsored-grid home-edits" aria-label="Marketplace edits">
         <Link
           to="/shop"
@@ -173,7 +231,8 @@ function Index() {
           </span>
         </Link>
       </section>
-      <section className="bestsellers">
+
+      <section className="bestsellers home-edit">
         <div className="section-heading">
           <div>
             <p className="eyebrow">THE SUPRECART EDIT</p>
@@ -183,48 +242,53 @@ function Index() {
             Shop everything <ArrowRight size={14} />
           </Link>
         </div>
-        <div className="product-grid">
-          {featuredProducts.map((product) => (
+        <div className="product-grid home-product-grid">
+          {editProducts.map((product) => (
             <ProductCard key={product.id} product={product} />
           ))}
         </div>
       </section>
+
       <section className="sponsored-banner home-maker-banner">
         <div>
           <span className="sponsored-label">
-            <Sparkles size={13} /> A MARKETPLACE WITH MORE TO LOVE
+            <Sparkles size={13} /> FOR INDEPENDENT SELLERS
           </span>
           <h2>
-            Find good.
+            Good finds deserve
             <br />
-            Share good.
+            a good home.
           </h2>
-          <p>Browse, find a new favourite, and support independent sellers along the way.</p>
-          <Button variant="outline" asChild>
-            <Link to="/shop" search={{ filter: "All", query: "" }}>
-              Explore SupreCart <ArrowRight />
+          <p>
+            Bring your products to a marketplace built around discovery, thoughtful browsing and
+            the people behind every find.
+          </p>
+          <Button asChild>
+            <Link to="/sellers">
+              Sell on SupreCart <ArrowRight />
             </Link>
           </Button>
         </div>
         <div className="sponsored-stamp">
-          A little more
+          More room
           <br />
-          <strong>local</strong>
+          <strong>to grow</strong>
           <br />
           by design
         </div>
       </section>
+
       <section className="bestsellers latest-finds">
         <div className="section-heading">
           <div>
-            <p className="eyebrow">More reasons to browse</p>
+            <p className="eyebrow">MORE REASONS TO BROWSE</p>
             <h2>Fresh from the marketplace</h2>
           </div>
           <Link to="/shop" search={{ filter: "All", query: "" }} className="view-all">
             See all <ArrowRight size={14} />
           </Link>
         </div>
-        <div className="product-grid">
+        <div className="product-grid home-product-grid">
           {freshProducts.map((product) => (
             <ProductCard key={product.id} product={product} />
           ))}
