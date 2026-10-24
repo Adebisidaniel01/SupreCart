@@ -1676,6 +1676,7 @@
     border-bottom: 1px solid #e7e9e3;
     background: #fff;
     scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
   }
   .seller-mobile-nav::-webkit-scrollbar {
     display: none;
@@ -1688,6 +1689,17 @@
     background: #f5f7f4;
     white-space: nowrap;
     font-size: 10px;
+  }
+  .seller-product-table,
+  .seller-order-list,
+  .seller-fund-ledger {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .seller-product-row,
+  .seller-order-list article,
+  .seller-fund-ledger-row {
+    min-width: 560px;
   }
 }
 @media (max-width: 520px) {
