@@ -1,4 +1,5 @@
 .seller-site {
+  overflow-x: hidden;
   --seller-ink: #17251f;
   --seller-muted: #748078;
   --seller-green: #118f7a;
@@ -500,9 +501,9 @@
 .seller-auth-icon {
   margin-bottom: 24px;
 }
-.seller-auth-card > h1 {
-  font-size: 34px;
-}
+  .seller-auth-card > h1 {
+    font-size: 30px;
+  }
 .seller-auth-card .seller-lead {
   margin: 11px 0 23px;
   font-size: 11px;
@@ -1566,6 +1567,13 @@
   }
 }
 @media (max-width: 760px) {
+  html, body {
+    overflow-x: hidden;
+  }
+  img {
+    max-width: 100%;
+    height: auto;
+  }
   .seller-order-list article {
     grid-template-columns: auto 1fr auto;
   }
@@ -1617,7 +1625,7 @@
     padding-top: 5px;
   }
   .seller-form-card {
-    padding: 19px;
+    padding: 18px 16px;
   }
   .seller-dashboard-heading {
     align-items: flex-start;
@@ -1657,6 +1665,9 @@
   }
 }
 @media (max-width: 520px) {
+  .seller-site {
+    overflow-x: hidden;
+  }
   .seller-header {
     padding-inline: 12px;
   }
@@ -1669,10 +1680,10 @@
     font-size: 9px;
   }
   .seller-content {
-    padding-inline: 14px;
+    padding-inline: 16px;
   }
   .seller-form-page > h1 {
-    font-size: 40px;
+    font-size: 34px;
   }
   .seller-form-grid,
   .seller-product-form {
@@ -1686,8 +1697,8 @@
     gap: 8px;
   }
   .seller-metric-card {
-    min-height: 112px;
-    padding: 13px 11px;
+    min-height: 110px;
+    padding: 12px 12px;
   }
   .seller-metric-card > span {
     max-width: 94px;
@@ -1702,7 +1713,7 @@
     width: 15px;
   }
   .seller-dashboard-section {
-    padding: 14px 11px;
+    padding: 14px 12px;
   }
   .seller-product-row {
     grid-template-columns: 35px minmax(76px, 1fr) 0.75fr 0.6fr;
@@ -1743,7 +1754,7 @@
     font-size: 17px;
   }
   .seller-auth-card {
-    padding: 24px 19px;
+    padding: 22px 18px;
   }
   .seller-reset-form {
     align-items: stretch;

@@ -868,10 +868,10 @@ button {
 .collection-empty h2 {
   font-size: 23px;
 }
-.header .wordmark img {
-  width: 139px;
-  height: 42px;
-}
+  .header .wordmark img {
+    width: 130px;
+    height: 38px;
+  }
 .collection-empty p {
   color: var(--muted-foreground);
   margin-block: 15px 25px;
@@ -1051,8 +1051,15 @@ button {
   }
 }
 @media (max-width: 640px) {
+  html, body {
+    overflow-x: hidden;
+  }
+  img {
+    max-width: 100%;
+    height: auto;
+  }
   .page-width {
-    width: calc(100% - 32px);
+    width: calc(100% - 24px);
   }
   .announcement {
     font-size: 8px;
@@ -1121,7 +1128,7 @@ button {
     width: 90%;
   }
   .hero-copy h1 {
-    font-size: 43px;
+    font-size: 36px;
     line-height: 1.02;
     margin-bottom: 13px;
   }
@@ -1181,7 +1188,7 @@ button {
   }
   .product-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 22px 13px;
+    gap: 18px 12px;
   }
   .product-photo {
     aspect-ratio: 1.14;
@@ -1248,8 +1255,8 @@ button {
     font-size: 18px;
   }
   .benefits {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    margin-block: 20px;
+    grid-template-columns: 1fr;
+    margin-block: 18px;
     gap: 10px;
   }
   .benefit {
@@ -1269,12 +1276,12 @@ button {
     height: 24px;
   }
   .footer-main {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 26px 15px;
-    padding-block: 30px;
+    grid-template-columns: 1fr;
+    gap: 20px;
+    padding-block: 26px;
   }
   .footer-about {
-    grid-column: 1/4;
+    grid-column: 1/-1;
   }
   .footer-about > p {
     max-width: 260px;
@@ -1292,7 +1299,7 @@ button {
     margin-bottom: 11px;
   }
   .newsletter {
-    grid-column: 1/4;
+    grid-column: 1/-1;
   }
   .newsletter > p {
     font-size: 11px;
@@ -1315,15 +1322,25 @@ button {
   .shop-main {
     padding-top: 15px;
   }
+  .shop-heading {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
   .shop-heading h1 {
-    font-size: 33px;
+    font-size: 28px;
+  }
+  .shop-toolbar {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
   }
   .shop-toolbar label {
-    gap: 4px;
+    gap: 6px;
     font-size: 10px;
   }
   .shop-toolbar select {
-    max-width: 145px;
+    max-width: 160px;
     font-size: 11px;
   }
   .shop-toolbar button {

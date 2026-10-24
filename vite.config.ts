@@ -27,6 +27,9 @@ export default defineConfig({
     server: { entry: "server" },
   },
   vite: {
+    resolve: {
+      tsconfigPaths: true,
+    },
     // Override the Lovable default dev server (host "::", port 8080) so local
     // development uses Vite's standard port. `host: true` binds all network
     // interfaces so the dev server is reachable from other devices on the LAN.

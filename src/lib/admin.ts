@@ -1,15 +1,16 @@
 import { createServerFn } from "@tanstack/react-start";
 import { setResponseHeader, useSession } from "@tanstack/react-start/server";
+import { scryptSync, timingSafeEqual } from "node:crypto";
 import { z } from "zod";
 
 const sessionLifetime = 60 * 60 * 8;
 
-function getServerSecret(name: "ADMIN_USERNAME" | "ADMIN_PASSWORD" | "ADMIN_SESSION_SECRET") {
+function getServerSecret(name: "ADMIN_USERNAME" | "ADMIN_PASSWORD" | "ADMIN_SESSION_SECRET" | "ADMIN_PASSWORD_HASH") {
   const secret = process.env[name];
-  if (!secret) {
+  if (!secret && name !== "ADMIN_PASSWORD_HASH") {
     throw new Error(`${name} must be configured as a server-side environment secret.`);
   }
-  if (name === "ADMIN_SESSION_SECRET" && secret.length < 32) {
+  if (name === "ADMIN_SESSION_SECRET" && secret && secret.length < 32) {
     throw new Error("ADMIN_SESSION_SECRET must contain at least 32 characters.");
   }
   return secret;
@@ -35,11 +36,32 @@ function constantTimeEqual(input: string, expected: string) {
   const expectedBytes = new TextEncoder().encode(expected);
   if (inputBytes.length !== expectedBytes.length) return false;
 
-  let difference = 0;
-  for (let index = 0; index < inputBytes.length; index += 1) {
-    difference |= inputBytes[index]! ^ expectedBytes[index]!;
+  try {
+    return timingSafeEqual(inputBytes, expectedBytes);
+  } catch {
+    let difference = 0;
+    for (let index = 0; index < inputBytes.length; index += 1) {
+      difference |= inputBytes[index]! ^ expectedBytes[index]!;
+    }
+    return difference === 0;
   }
-  return difference === 0;
+}
+
+function verifyAdminPassword(plainPassword: string, username: string) {
+  const passwordHash = process.env.ADMIN_PASSWORD_HASH;
+  if (passwordHash) {
+    try {
+      const stored = Buffer.from(passwordHash, "hex");
+      const derived = scryptSync(plainPassword, `suprecart-admin-salt:${username}`, stored.length);
+      if (stored.length !== derived.length) return false;
+      return timingSafeEqual(stored, derived);
+    } catch {
+      return false;
+    }
+  }
+
+  const password = getServerSecret("ADMIN_PASSWORD");
+  return constantTimeEqual(plainPassword, password ?? "");
 }
 
 export const checkAdminSession = createServerFn().handler(async () => {
@@ -58,9 +80,8 @@ export const signInToAdmin = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     setResponseHeader("Cache-Control", "no-store");
     const username = getServerSecret("ADMIN_USERNAME");
-    const password = getServerSecret("ADMIN_PASSWORD");
-    const validUsername = constantTimeEqual(data.username, username);
-    const validPassword = constantTimeEqual(data.password, password);
+    const validUsername = constantTimeEqual(data.username, username ?? "");
+    const validPassword = verifyAdminPassword(data.password, username ?? "");
     if (!validUsername || !validPassword) return false;
 
     const session = await useAdminSession();
