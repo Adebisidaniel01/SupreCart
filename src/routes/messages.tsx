@@ -603,7 +603,7 @@ function Messages() {
   );
 
   return (
-    <main className="messages-page">
+    <main className="messages-page messages-page-full">
       <header className="messages-topbar">
         <Link to="/" className="back-link">
           <ArrowLeft size={15} /> SupreCart
@@ -615,8 +615,8 @@ function Messages() {
           <Store size={15} /> {isSeller ? "Seller studio" : "My account"}
         </Link>
       </header>
-      <div className="messages-layout">
-        <aside className="messages-inbox">
+      <div className="messages-layout messages-layout-mobile">
+        <aside className={`messages-inbox ${activeConversation || activeDemoConversation ? "is-hidden-mobile" : ""}`}>
           <div className="messages-inbox-heading">
             <div>
               <p className="eyebrow">YOUR MARKETPLACE</p>
@@ -655,10 +655,18 @@ function Messages() {
             ))}
           </div>
         </aside>
-        <section className="messages-conversation" aria-label="Conversation">
+        <section className={`messages-conversation ${!(activeConversation || activeDemoConversation) ? "is-hidden-mobile" : ""}`} aria-label="Conversation">
           {activeConversation || activeDemoConversation ? (
             <>
               <header className="conversation-header">
+                <button
+                  type="button"
+                  className="conversation-back-mobile"
+                  onClick={() => setActiveId("")}
+                  aria-label="Back to conversations"
+                >
+                  <ArrowLeft size={16} />
+                </button>
                 <span className="conversation-avatar">
                   {(activeDemoConversation
                     ? demoAccount?.role === "buyer"

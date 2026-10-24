@@ -337,22 +337,26 @@ button {
   text-align: center;
   font-size: 11px;
   font-weight: 600;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  text-decoration: none;
 }
 .category > div {
-  aspect-ratio: 1.25;
+  aspect-ratio: 1;
   border-radius: 7px;
   overflow: hidden;
   background: var(--muted);
-  margin-bottom: 10px;
+  margin-bottom: 0;
 }
 .category img {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transition: transform 0.25s;
+  transition: none;
 }
 .category:hover img {
-  transform: scale(1.05);
+  transform: none;
 }
 .bestsellers {
   margin-top: 31px;
@@ -883,7 +887,7 @@ button {
 }
 @media (max-width: 1100px) {
   .page-width {
-    width: calc(100% - 60px);
+    width: calc(100% - 40px);
   }
   .main-nav {
     gap: 23px;
@@ -982,7 +986,7 @@ button {
     gap: 10px;
   }
   .category {
-    font-size: 10px;
+    font-size: 0;
   }
   .product-grid {
     gap: 12px;
@@ -1059,7 +1063,7 @@ button {
     height: auto;
   }
   .page-width {
-    width: calc(100% - 24px);
+    width: calc(100% - 12px);
   }
   .announcement {
     font-size: 8px;
@@ -1124,13 +1128,13 @@ button {
     background: var(--hero-surface);
   }
   .hero-copy {
-    margin: 26px 0 0 24px;
-    width: 90%;
+    margin: 20px 0 0 16px;
+    width: 94%;
   }
   .hero-copy h1 {
-    font-size: 36px;
+    font-size: 30px;
     line-height: 1.02;
-    margin-bottom: 13px;
+    margin-bottom: 10px;
   }
   .hero-copy p {
     font-size: 12px;
@@ -1170,25 +1174,47 @@ button {
     margin-top: 25px;
   }
   .section-heading h2 {
-    font-size: 11px;
+    font-size: 16px;
   }
   .category-grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 14px 10px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .marketplace-categories {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .category-card {
+    padding: 0;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+    min-height: 0;
+  }
+  .category-card > div {
+    aspect-ratio: 1;
+    margin-bottom: 0;
+    border-radius: 6px;
+    height: 100%;
+  }
+  .category-card > span,
+  .category-card .category-arrow,
+  .category-count {
+    display: none !important;
   }
   .category {
     font-size: 10px;
   }
   .category > div {
-    aspect-ratio: 1.05;
-    margin-bottom: 7px;
+    aspect-ratio: 1;
+    margin-bottom: 0;
   }
   .bestsellers {
     margin-top: 28px;
   }
   .product-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 18px 12px;
+    gap: 14px 10px;
   }
   .product-photo {
     aspect-ratio: 1.14;
@@ -1277,8 +1303,8 @@ button {
   }
   .footer-main {
     grid-template-columns: 1fr;
-    gap: 20px;
-    padding-block: 26px;
+    gap: 18px;
+    padding-block: 24px;
   }
   .footer-about {
     grid-column: 1/-1;
@@ -1694,7 +1720,7 @@ body {
 }
 .marketplace-categories {
   grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: 15px;
+  gap: 8px;
 }
 .category-card {
   position: relative;
@@ -2998,13 +3024,25 @@ body {
   padding: 22px 24px 30px;
   margin: 0 auto;
 }
+.messages-page-full {
+  max-width: 100%;
+  width: 100%;
+  padding: 0;
+  margin: 0;
+  height: 100dvh;
+  min-height: 100dvh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
 .messages-topbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  min-height: 44px;
-  padding-bottom: 14px;
+  min-height: 52px;
+  padding: 10px 16px;
   border-bottom: 1px solid #e6e7df;
+  background: #f7f7f3;
 }
 .messages-topbar > span,
 .messages-account-link {
@@ -3030,8 +3068,20 @@ body {
   border-radius: 10px;
   background: #fffefa;
 }
+.messages-layout-mobile {
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+  margin-top: 0;
+  border: 0;
+  border-radius: 0;
+}
 .messages-inbox {
   border-right: 1px solid #e4e5dd;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
 }
 .messages-inbox-heading {
   display: flex;
@@ -3068,7 +3118,11 @@ body {
   font-size: 10px;
 }
 .conversation-list {
-  display: grid;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
 }
 .conversation-item {
   display: flex;
@@ -3121,16 +3175,18 @@ body {
 .messages-conversation {
   display: flex;
   flex-direction: column;
-  min-width: 0;
-  min-height: 590px;
+  min-height: 0;
+  overflow: hidden;
 }
 .conversation-header {
   display: flex;
   align-items: center;
   gap: 10px;
-  min-height: 68px;
-  padding: 12px 17px;
-  border-bottom: 1px solid #e9eae3;
+  padding: 12px 14px;
+  border-bottom: 1px solid #ecebe2;
+}
+.conversation-back-mobile {
+  display: none;
 }
 .conversation-header > div {
   display: grid;
@@ -3142,9 +3198,9 @@ body {
   flex-direction: column;
   align-items: stretch;
   gap: 11px;
-  min-height: 350px;
-  max-height: 460px;
-  padding: 18px;
+  min-height: 0;
+  max-height: none;
+  padding: 16px 12px;
   overflow: auto;
   background:
     radial-gradient(circle at 1px 1px, rgb(120 130 102 / 7%) 1px, transparent 0) 0 0 / 17px 17px,
@@ -3192,8 +3248,8 @@ body {
 .message-composer {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 12px 15px 5px;
+  gap: 6px;
+  padding: 10px 10px 4px;
 }
 .message-composer input {
   flex: 1;
@@ -3237,9 +3293,9 @@ body {
   cursor: not-allowed;
 }
 .voice-note-hint {
-  padding: 0 16px;
-  margin: 0 0 12px;
-  color: #777d72;
+  margin: 0;
+  padding: 0 12px 10px;
+  color: #7f8676;
   font-size: 9px;
 }
 .messages-error {
@@ -3933,10 +3989,10 @@ body {
     gap: 20px;
   }
   .category-card {
-    padding: 10px;
+    padding: 0;
   }
   .category-card .category-arrow {
-    right: 9px;
+    display: none;
   }
   .account-page {
     grid-template-columns: minmax(380px, 1fr) minmax(320px, 0.88fr);
@@ -5928,8 +5984,7 @@ body {
 }
 @media (max-width: 640px) {
   .home-main {
-    padding-top: 14px;
-    padding-bottom: 30px;
+    padding-top: 6px;
   }
   .marketplace-hero {
     min-height: 650px;
@@ -7154,7 +7209,37 @@ body {
     font-size: 9px;
   }
   .messages-page {
-    padding-inline: 12px;
+    padding: 0;
+  }
+  .messages-topbar {
+    padding: 10px 12px;
+  }
+  .messages-inbox {
+    display: flex;
+    border-right: 0;
+  }
+  .messages-inbox.is-hidden-mobile {
+    display: none;
+  }
+  .messages-conversation {
+    display: flex;
+  }
+  .messages-conversation.is-hidden-mobile {
+    display: none;
+  }
+  .messages-layout-mobile {
+    grid-template-columns: 1fr;
+  }
+  .conversation-back-mobile {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: #f3f4ee;
+    color: #364036;
+    border: 0;
   }
   .messages-inbox-heading h1 {
     font-size: 21px;

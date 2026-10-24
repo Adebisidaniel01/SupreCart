@@ -172,23 +172,20 @@ function Index() {
           </Link>
         </div>
         <div className="category-grid marketplace-categories home-categories">
-          {categories.map((category, index) => {
+          {categories.slice(0, 6).map((category) => {
             const product = products.find((item) => item.category === category);
             if (!product) return null;
-            const count = products.filter((item) => item.category === category).length;
             return (
               <Link
                 key={category}
                 to="/shop"
                 search={{ filter: category, query: "" }}
-                className={`category category-card category-tone-${index}`}
+                className="category category-card"
+                aria-label={category}
               >
                 <div>
-                  <img src={product.image} alt="" loading="lazy" />
+                  <img src={product.image} alt={category} loading="lazy" />
                 </div>
-                <span>{category}</span>
-                <small className="category-count">{count} finds</small>
-                <ArrowUpRight className="category-arrow" size={16} />
               </Link>
             );
           })}
