@@ -2,6 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState, type FormEvent } from "react";
 import { ArrowLeft, ArrowRight, Check, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { trackSignUp } from "@/lib/analytics";
 import { createLocalAccount, saveDemoAccount } from "@/lib/demo-accounts";
 
 type BuyerProfile = {
@@ -49,7 +50,10 @@ function Signup() {
         password: String(formData.get("password")),
       });
       saveDemoAccount(account);
-      setBackendMessage("Your buyer account is saved in this browser. No email verification is needed.");
+      trackSignUp("buyer_preview");
+      setBackendMessage(
+        "Your buyer account is saved in this browser. No email verification is needed.",
+      );
       setStage("done");
     } catch (cause) {
       console.error("Could not create the SupreCart buyer account.", cause);

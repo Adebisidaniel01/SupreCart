@@ -1,9 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { SlidersHorizontal, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ProductCard } from "@/components/storefront";
 import { products, categories, brands } from "@/lib/catalog";
+import { trackFilterProducts, trackViewSearchResults } from "@/lib/analytics";
 import { loadLiveMarketplaceProducts } from "@/lib/marketplace";
 
 export const Route = createFileRoute("/shop")({
@@ -69,6 +70,14 @@ function Shop() {
         ),
     [allProducts, filter, query, sort],
   );
+  const lastTrackedFilter = useRef("");
+  useEffect(() => {
+    const key = `${query}|${filter}`;
+    if (key === lastTrackedFilter.current) return;
+    lastTrackedFilter.current = key;
+    if (query) trackViewSearchResults(query, visible.length, filter);
+    else if (filter !== "All") trackFilterProducts(filter, visible.length);
+  }, [filter, query, visible.length]);
   return (
     <main className="page-width shop-main">
       <div className="shop-heading">

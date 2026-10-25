@@ -1906,6 +1906,9 @@
   height: 16px;
   accent-color: #118f7a;
 }
+.seller-status-page > .seller-primary-button {
+  margin-top: 22px;
+}
 @media (max-width: 760px) {
   .cookie-consent {
     right: 10px;

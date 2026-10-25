@@ -50,6 +50,7 @@ const pages: Record<string, { title: string; eyebrow: string; body: string[] }> 
     eyebrow: "PRIVACY",
     body: [
       "This preview stores demo cart, wishlist and account details only in your browser. Do not enter sensitive personal or payment information.",
+      "If you allow analytics cookies, we use Google Analytics to understand how the storefront and seller portal are used. Analytics can see product and cart events, but never your name, email address, delivery address, password or payment details.",
       "No actual email verification, newsletter signup, account authentication or payment service is connected yet. A complete privacy notice will be published before launch.",
     ],
   },
@@ -74,7 +75,8 @@ const pages: Record<string, { title: string; eyebrow: string; body: string[] }> 
     eyebrow: "COOKIE POLICY",
     body: [
       "SupreCart uses one essential first-party cookie to remember your cookie choice. It does not track you across other sites.",
-      "Optional analytics and marketing cookies are not installed in this preview. You can choose to accept, reject, or manage optional cookies from the banner, and change your mind by clearing this site's cookies.",
+      "If you allow analytics, we load Google Analytics (GA4) to measure page views, searches, cart activity, wishlist use, checkout steps and errors. Google Analytics cookies stay off until you accept analytics, and you can reject or manage them from the banner. Marketing cookies are not installed.",
+      "To change your mind, clear this site's cookies and choose again from the banner.",
       "This preview stores demo cart, wishlist and account details only in your browser. Do not enter sensitive personal or payment information.",
     ],
   },

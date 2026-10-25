@@ -2,6 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState, type FormEvent } from "react";
 import { ArrowLeft, ArrowRight, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { trackLogin } from "@/lib/analytics";
 import {
   findDemoAccount,
   getDemoAccounts,
@@ -48,6 +49,7 @@ function Login() {
       }
     }
     saveDemoAccount(demoAccount);
+    trackLogin("buyer_preview");
     setError("");
     await navigate({ to: "/account" });
   }

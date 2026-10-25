@@ -5,9 +5,9 @@ import { z } from "zod";
 
 const sessionLifetime = 60 * 60 * 8;
 
-function getServerSecret(name: "ADMIN_USERNAME" | "ADMIN_PASSWORD" | "ADMIN_SESSION_SECRET" | "ADMIN_PASSWORD_HASH") {
+function getServerSecret(name: "ADMIN_USERNAME" | "ADMIN_PASSWORD" | "ADMIN_SESSION_SECRET") {
   const secret = process.env[name];
-  if (!secret && name !== "ADMIN_PASSWORD_HASH") {
+  if (!secret) {
     throw new Error(`${name} must be configured as a server-side environment secret.`);
   }
   if (name === "ADMIN_SESSION_SECRET" && secret && secret.length < 32) {
@@ -48,7 +48,7 @@ function constantTimeEqual(input: string, expected: string) {
 }
 
 function verifyAdminPassword(plainPassword: string, username: string) {
-  const passwordHash = process.env.ADMIN_PASSWORD_HASH;
+  const passwordHash = process.env["ADMIN_PASSWORD_HASH"];
   if (passwordHash) {
     try {
       const stored = Buffer.from(passwordHash, "hex");

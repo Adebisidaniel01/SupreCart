@@ -1,43 +1,13 @@
 import { useEffect, useState } from "react";
 
-const CONSENT_COOKIE = "suprecart-cookie-consent";
-const ONE_YEAR_SECONDS = 60 * 60 * 24 * 365;
+import {
+  essentialOnly,
+  readConsent,
+  saveConsent,
+  type ConsentPreferences,
+} from "@/lib/consent";
 
-export type ConsentPreferences = {
-  necessary: true;
-  analytics: boolean;
-  marketing: boolean;
-};
-
-const essentialOnly: ConsentPreferences = { necessary: true, analytics: false, marketing: false };
-
-function readConsent(): ConsentPreferences | null {
-  if (typeof document === "undefined") return null;
-  const entry = document.cookie
-    .split("; ")
-    .find((cookie) => cookie.startsWith(`${CONSENT_COOKIE}=`));
-  const value = entry?.slice(CONSENT_COOKIE.length + 1);
-  if (!value) return null;
-  if (value === "accepted") return { necessary: true, analytics: true, marketing: true };
-  if (value === "rejected") return essentialOnly;
-  try {
-    const parsed = JSON.parse(decodeURIComponent(value)) as Partial<ConsentPreferences>;
-    return {
-      necessary: true,
-      analytics: Boolean(parsed.analytics),
-      marketing: Boolean(parsed.marketing),
-    };
-  } catch {
-    return null;
-  }
-}
-
-function saveConsent(preferences: ConsentPreferences) {
-  const encoded = encodeURIComponent(JSON.stringify(preferences));
-  document.cookie = `${CONSENT_COOKIE}=${encoded}; Path=/; Max-Age=${ONE_YEAR_SECONDS}; SameSite=Lax${
-    window.location.protocol === "https:" ? "; Secure" : ""
-  }`;
-}
+export type { ConsentPreferences } from "@/lib/consent";
 
 export function CookieConsent({
   policyHref,
@@ -65,8 +35,8 @@ export function CookieConsent({
       <div>
         <strong>Cookies on SupreCart</strong>
         <p>
-          We use one essential cookie to remember your choice. Optional analytics and marketing
-          cookies are not installed yet, so accepting does not turn on any tracker.
+          We use one essential cookie to remember your choice. Google Analytics cookies are only
+          set if you allow analytics. Marketing cookies are not installed.
           {policyHref && (
             <>
               {" "}
@@ -90,7 +60,7 @@ export function CookieConsent({
             <label className="cookie-toggle">
               <span>
                 <strong>Analytics</strong>
-                <small>Not installed yet. Off by default.</small>
+                <small>Google Analytics. Off unless you accept.</small>
               </span>
               <input
                 type="checkbox"
@@ -101,7 +71,7 @@ export function CookieConsent({
             <label className="cookie-toggle">
               <span>
                 <strong>Marketing</strong>
-                <small>Not installed yet. Off by default.</small>
+                <small>Not installed. Off by default.</small>
               </span>
               <input
                 type="checkbox"

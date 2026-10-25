@@ -4,17 +4,26 @@ import {
   ArrowLeft,
   ArrowRight,
   ArrowUpRight,
+  Check,
   Eye,
   KeyRound,
   LogOut,
   ShieldCheck,
   ShoppingBag,
   Sparkles,
+  Store,
   Users,
   UserPlus,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { checkAdminSession, getAdminDashboard, signInToAdmin, signOutOfAdmin } from "@/lib/admin";
+import {
+  readSellerApplications,
+  reviewSellerApplication,
+  subscribeSellerApplications,
+  type SellerApplication,
+} from "@/lib/seller-applications";
 
 type AdminDashboard = Awaited<ReturnType<typeof getAdminDashboard>>;
 
@@ -35,6 +44,8 @@ function Admin() {
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [sellerApplications, setSellerApplications] = useState<SellerApplication[]>([]);
+  const [reviewNotes, setReviewNotes] = useState<Record<string, string>>({});
 
   useEffect(() => {
     let active = true;
@@ -62,6 +73,32 @@ function Admin() {
       active = false;
     };
   }, []);
+
+  useEffect(() => {
+    if (!dashboard) {
+      setSellerApplications([]);
+      return;
+    }
+    const syncApplications = () => setSellerApplications(readSellerApplications());
+    syncApplications();
+    return subscribeSellerApplications(syncApplications);
+  }, [dashboard]);
+
+  function reviewApplication(application: SellerApplication, status: "approved" | "rejected") {
+    const reviewed = reviewSellerApplication(
+      application.email,
+      status,
+      reviewNotes[application.email] ?? "",
+    );
+    if (!reviewed) return;
+    setSellerApplications(readSellerApplications());
+    setReviewNotes((current) => ({ ...current, [application.email]: "" }));
+    setMessage(
+      status === "approved"
+        ? `${reviewed.storeName} is now approved. The seller studio is unlocked for that buyer.`
+        : `${reviewed.storeName} was not approved. The buyer can update and resubmit.`,
+    );
+  }
 
   async function handleSignIn(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -185,6 +222,9 @@ function Admin() {
   }
 
   const icons = [ShoppingBag, Users, UserPlus, Eye];
+  const pendingSellerApplications = sellerApplications.filter(
+    (application) => application.status === "pending",
+  ).length;
 
   return (
     <main className="admin-shell">
@@ -202,6 +242,15 @@ function Admin() {
             <Sparkles size={17} />
           </span>{" "}
           Overview
+        </a>
+        <a className="admin-side-link" href="#sellers">
+          <span className="admin-side-icon">
+            <Store size={17} />
+          </span>{" "}
+          Seller applications
+          {pendingSellerApplications > 0 && (
+            <span className="admin-side-count">{pendingSellerApplications}</span>
+          )}
         </a>
         <a className="admin-side-link" href="#activity">
           <span className="admin-side-icon">
@@ -280,6 +329,97 @@ function Admin() {
                 </article>
               );
             })}
+          </section>
+          <section className="admin-panel admin-seller-panel" id="sellers">
+            <div className="admin-panel-heading">
+              <div>
+                <span className="admin-panel-overline">SELLER APPLICATIONS</span>
+                <h2>Who wants to join.</h2>
+              </div>
+              <span className="admin-live-label">
+                <span /> {pendingSellerApplications} PENDING
+              </span>
+            </div>
+            {sellerApplications.length ? (
+              <div className="admin-seller-list">
+                {sellerApplications.map((application) => (
+                  <article
+                    className={`admin-seller-row is-${application.status}`}
+                    key={application.email}
+                  >
+                    <span className="admin-seller-monogram" aria-hidden="true">
+                      {application.storeName
+                        .split(/\s+/)
+                        .slice(0, 2)
+                        .map((word) => word[0])
+                        .join("")
+                        .toUpperCase()}
+                    </span>
+                    <div className="admin-seller-main">
+                      <div className="admin-seller-title">
+                        <strong>{application.storeName}</strong>
+                        <span className={`admin-seller-chip is-${application.status}`}>
+                          {application.status}
+                        </span>
+                      </div>
+                      <p>
+                        {application.name} · {application.email} · {application.phone}
+                      </p>
+                      <small>{application.productDescription}</small>
+                      <div className="admin-seller-meta">
+                        <span>
+                          {application.bankName} · {application.bankAccountNumber}
+                        </span>
+                        <span>
+                          Submitted{" "}
+                          {new Date(application.submittedAt).toLocaleDateString(undefined, {
+                            day: "numeric",
+                            month: "short",
+                            year: "numeric",
+                          })}
+                        </span>
+                      </div>
+                      {application.reviewNote && (
+                        <p className="admin-seller-review-note">{application.reviewNote}</p>
+                      )}
+                      {application.status === "pending" && (
+                        <div className="admin-seller-actions">
+                          <input
+                            aria-label={`Review note for ${application.storeName}`}
+                            placeholder="Optional note for the applicant"
+                            value={reviewNotes[application.email] ?? ""}
+                            onChange={(event) =>
+                              setReviewNotes((current) => ({
+                                ...current,
+                                [application.email]: event.target.value,
+                              }))
+                            }
+                          />
+                          <button
+                            type="button"
+                            className="admin-seller-approve"
+                            onClick={() => reviewApplication(application, "approved")}
+                          >
+                            <Check size={14} /> Approve
+                          </button>
+                          <button
+                            type="button"
+                            className="admin-seller-reject"
+                            onClick={() => reviewApplication(application, "rejected")}
+                          >
+                            <X size={14} /> Decline
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <p className="admin-seller-empty">
+                No seller applications have been submitted in this browser yet.
+              </p>
+            )}
           </section>
           <section className="admin-panel-grid">
             <article className="admin-panel admin-visits-panel">

@@ -4,6 +4,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -41,6 +42,16 @@ import {
   discountPercent,
   type Product,
 } from "@/lib/catalog";
+import {
+  trackAddToCart,
+  trackAddToWishlist,
+  trackContactSeller,
+  trackNewsletterSignup,
+  trackRemoveFromCart,
+  trackRemoveFromWishlist,
+  trackViewCart,
+  trackViewItem,
+} from "@/lib/analytics";
 
 function productSellerVerified(product: Product): boolean {
   return product.sellerVerified ?? sellerIsVerified(product.seller);
@@ -97,6 +108,7 @@ export function Storefront({ children }: { children: ReactNode }) {
   }, []);
   const hasSizes = selected?.category === "Footwear";
   const openProduct = useCallback((product: Product) => {
+    trackViewItem(product);
     setSelected(product);
     setSize(product.category === "Footwear" ? "" : "One size");
     setQuantity(1);
@@ -104,16 +116,28 @@ export function Storefront({ children }: { children: ReactNode }) {
     setPanel("product");
   }, []);
   const toggleFavorite = useCallback(
-    (id: number) =>
+    (id: number) => {
+      const saved = favorites.includes(id);
+      const product = products.find((item) => item.id === id);
+      if (product) {
+        if (saved) trackRemoveFromWishlist(product);
+        else trackAddToWishlist(product);
+      }
       setFavorites((items) =>
         items.includes(id) ? items.filter((item) => item !== id) : [...items, id],
-      ),
-    [],
+      );
+    },
+    [favorites],
   );
   const openPanel = useCallback((name: string) => {
     setNotice("");
     setPanel(name);
   }, []);
+  const cartPanelOpen = useRef(false);
+  useEffect(() => {
+    if (panel === "cart" && !cartPanelOpen.current) trackViewCart(cart);
+    cartPanelOpen.current = panel === "cart";
+  }, [panel, cart]);
   useEffect(() => {
     try {
       const savedCart = localStorage.getItem("suprecart-cart");
@@ -166,6 +190,7 @@ export function Storefront({ children }: { children: ReactNode }) {
 
   function addToCart() {
     if (!selected || !size) return;
+    trackAddToCart(selected, quantity, size);
     setCart((items) => {
       const existing = items.find((item) => item.product.id === selected.id && item.size === size);
       return existing
@@ -572,6 +597,7 @@ export function Storefront({ children }: { children: ReactNode }) {
                   setNewsletterNote(
                     "Saved on this device for the preview. Newsletter delivery is not connected yet.",
                   );
+                  trackNewsletterSignup();
                   setEmail("");
                 } catch (error) {
                   console.error("Could not save the SupreCart newsletter interest.", error);
@@ -713,6 +739,7 @@ export function Storefront({ children }: { children: ReactNode }) {
                   variant="outline"
                   className="w-full"
                   onClick={() => {
+                    trackContactSeller(selected);
                     setPanel("");
                     void navigate({
                       to: "/messages",
@@ -814,9 +841,10 @@ export function Storefront({ children }: { children: ReactNode }) {
                           variant="ghost"
                           size="icon"
                           aria-label={`Remove ${item.product.name}`}
-                          onClick={() =>
-                            setCart((items) => items.filter((entry) => entry !== item))
-                          }
+                          onClick={() => {
+                            trackRemoveFromCart(item.product, item.quantity, item.size);
+                            setCart((items) => items.filter((entry) => entry !== item));
+                          }}
                         >
                           <X />
                         </Button>
@@ -952,6 +980,7 @@ export function ProductCard({ product }: { product: Product }) {
       openProduct(product);
       return;
     }
+    trackAddToCart(product, 1, "One size");
     setCart((items) => {
       const existing = items.find(
         (item) => item.product.id === product.id && item.size === "One size",

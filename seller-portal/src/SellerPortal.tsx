@@ -42,7 +42,14 @@ import {
   type DemoAccount,
 } from "../../src/lib/demo-accounts";
 import { getDemoProfile, saveDemoProfile } from "../../src/lib/demo-orders";
+import {
+  getSellerApplication,
+  subscribeSellerApplications,
+  type SellerApplication as LocalSellerApplication,
+} from "../../src/lib/seller-applications";
+import { Analytics } from "../../src/components/Analytics";
 import { CookieConsent } from "../../src/components/CookieConsent";
+import { trackEvent, trackLogin, trackSignUp } from "../../src/lib/analytics";
 import { calculateCommission, commissionTiers } from "../../src/lib/commission";
 import {
   accountPreferenceScope,
@@ -140,8 +147,11 @@ function readSellerPage(): SellerPage {
 const fileTypes = ["image/jpeg", "image/png", "application/pdf"];
 const productImageTypes = ["image/jpeg", "image/png", "image/webp"];
 const marketplaceUrl = import.meta.env["VITE_MARKETPLACE_URL"] || "/";
+const marketplaceBase = marketplaceUrl.replace(/\/$/, "");
+const loginHref = `${marketplaceBase}/login`;
+const buyerAccountHref = `${marketplaceBase}/account#seller`;
 const cookiePolicyHref = /^https?:\/\//.test(marketplaceUrl)
-  ? `${marketplaceUrl.replace(/\/$/, "")}/info/cookies`
+  ? `${marketplaceBase}/info/cookies`
   : undefined;
 
 type ApplicationDraft = {
@@ -311,6 +321,7 @@ function demoFundEntries(email: string): DemoFundEntry[] {
 export default function SellerPortal({ standalone = false }: { standalone?: boolean } = {}) {
   const [session, setSession] = useState<Session | null>(null);
   const [application, setApplication] = useState<SellerApplication | null>(null);
+  const [sellerApplication, setSellerApplication] = useState<LocalSellerApplication | null>(null);
   const [stats, setStats] = useState<SellerStats | null>(null);
   const [screen, setScreen] = useState<"login" | "apply">("apply");
   const [demoAccount, setDemoAccount] = useState<DemoAccount | null>(null);
@@ -336,6 +347,7 @@ export default function SellerPortal({ standalone = false }: { standalone?: bool
 
   function goToPage(next: SellerPage) {
     setPage(next);
+    trackEvent("seller_page_view", { page: next });
     if (readSellerPage() !== next) {
       window.history.pushState(null, "", `#${next}`);
     }
@@ -455,9 +467,10 @@ export default function SellerPortal({ standalone = false }: { standalone?: bool
 
   useEffect(() => {
     const timer = window.setTimeout(() => setLoadingScreen(false), 1050);
-    const localDemoAccount = readDemoAccount("seller");
+    const localDemoAccount = readDemoAccount("buyer");
     if (localDemoAccount) {
       setDemoAccount(localDemoAccount);
+      setSellerApplication(getSellerApplication(localDemoAccount.email));
       setDemoProfile(getDemoProfile(localDemoAccount.email, localDemoAccount.name));
       setBusy(false);
       return () => window.clearTimeout(timer);
@@ -513,6 +526,21 @@ export default function SellerPortal({ standalone = false }: { standalone?: bool
     };
   }, [createApplication, loadSellerData]);
 
+  useEffect(() => {
+    if (!demoAccount) {
+      setSellerApplication(null);
+      return;
+    }
+    const syncApplication = () => setSellerApplication(getSellerApplication(demoAccount.email));
+    syncApplication();
+    return subscribeSellerApplications(syncApplication);
+  }, [demoAccount]);
+
+  useEffect(() => {
+    if (loadingScreen || busy || demoAccount) return;
+    window.location.replace(loginHref);
+  }, [busy, demoAccount, loadingScreen]);
+
   async function register(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setSubmitting(true);
@@ -545,6 +573,7 @@ export default function SellerPortal({ standalone = false }: { standalone?: bool
       });
       await saveApplicationDraft(draft);
       saveDemoAccount(account);
+      trackSignUp("seller_preview");
       setDemoAccount(account);
       setDemoProfile(getDemoProfile(account.email, account.name));
       setNotice("Your seller account is saved in this browser. No email verification is needed.");
@@ -579,6 +608,7 @@ export default function SellerPortal({ standalone = false }: { standalone?: bool
         }
       }
       saveDemoAccount(localDemoAccount);
+      trackLogin("seller_preview");
       setDemoAccount(localDemoAccount);
       setDemoProfile(getDemoProfile(localDemoAccount.email, localDemoAccount.name));
       setNotice("");
@@ -607,7 +637,9 @@ export default function SellerPortal({ standalone = false }: { standalone?: bool
     setApplication(null);
     setStats(null);
     setSubmitted(false);
+    setSellerApplication(null);
     setScreen("login");
+    window.location.assign(marketplaceBase || "/");
   }
 
   async function addProduct(event: FormEvent<HTMLFormElement>) {
@@ -759,7 +791,8 @@ export default function SellerPortal({ standalone = false }: { standalone?: bool
   if (loadingScreen) return <SellerLoadingScreen />;
 
   const showDashboard =
-    Boolean(demoAccount) || (Boolean(session) && application?.status === "approved");
+    Boolean(demoAccount && sellerApplication?.status === "approved") ||
+    (Boolean(session) && application?.status === "approved");
 
   return (
     <main className="seller-site">
@@ -776,17 +809,9 @@ export default function SellerPortal({ standalone = false }: { standalone?: bool
               <LogOut size={15} /> Sign out
             </button>
           ) : (
-            <button
-              type="button"
-              className="seller-text-button"
-              onClick={() => {
-                setError("");
-                setNotice("");
-                setScreen(screen === "apply" ? "login" : "apply");
-              }}
-            >
-              {screen === "apply" ? "Already a seller? Sign in" : "Apply to sell"}
-            </button>
+            <a className="seller-text-button" href={loginHref}>
+              Buyer sign in <ArrowRight size={15} />
+            </a>
           )}
         </div>
       </header>
@@ -945,7 +970,7 @@ export default function SellerPortal({ standalone = false }: { standalone?: bool
                 Go to seller sign in <ArrowRight size={16} />
               </button>
             </div>
-          ) : demoAccount ? (
+          ) : demoAccount && sellerApplication?.status === "approved" ? (
             <SellerDashboard
               application={{
                 id: demoAccount.email,
@@ -954,8 +979,9 @@ export default function SellerPortal({ standalone = false }: { standalone?: bool
                 middle_name: null,
                 last_name: (demoProfile.name || demoAccount.name).split(/\s+/).slice(1).join(" "),
                 email: demoAccount.email,
-                product_description: "Development-only demo seller",
+                product_description: sellerApplication.productDescription,
                 status: "approved",
+                verified: true,
               }}
               stats={demoStats}
               earnings={demoEarnings}
@@ -994,30 +1020,16 @@ export default function SellerPortal({ standalone = false }: { standalone?: bool
             ) : (
               <ApplicationStatus status={application.status} name={application.first_name} />
             )
-          ) : screen === "apply" ? (
-            <ApplicationForm
-              submitting={submitting}
-              error={error}
-              notice={notice}
-              onSubmit={register}
-              onLogin={() => {
-                setScreen("login");
-                setError("");
-                setNotice("");
-              }}
-            />
+          ) : !demoAccount ? (
+            <SellerRedirectPanel />
+          ) : !sellerApplication ? (
+            <SellerApplicationRequired accountHref={buyerAccountHref} />
           ) : (
-            <SignInPanel
-              submitting={submitting}
-              error={error}
-              notice={notice}
-              onSubmit={signIn}
-              onReset={requestPasswordReset}
-              onApply={() => {
-                setScreen("apply");
-                setError("");
-                setNotice("");
-              }}
+            <ApplicationStatus
+              status={sellerApplication.status === "rejected" ? "rejected" : "pending"}
+              name={(demoProfile.name || demoAccount.name).split(/\s+/)[0] ?? demoAccount.name}
+              {...(sellerApplication.reviewNote ? { reviewNote: sellerApplication.reviewNote } : {})}
+              accountHref={buyerAccountHref}
             />
           )}
           <footer className="seller-footer">
@@ -1025,6 +1037,7 @@ export default function SellerPortal({ standalone = false }: { standalone?: bool
           </footer>
         </section>
       </div>
+      {standalone && <Analytics />}
       {standalone && <CookieConsent policyHref={cookiePolicyHref} />}
     </main>
   );
@@ -1279,9 +1292,13 @@ function SignInPanel({
 function ApplicationStatus({
   status,
   name,
+  reviewNote,
+  accountHref,
 }: {
-  status: SellerApplication["status"];
+  status: "pending" | "rejected";
   name: string;
+  reviewNote?: string;
+  accountHref?: string;
 }) {
   return (
     <div className="seller-status-page">
@@ -1296,12 +1313,47 @@ function ApplicationStatus({
       </h1>
       <p>
         {status === "pending"
-          ? "Your application is under review. We’ll email you as soon as there’s an update. You can sign back in here to check the status."
-          : "Please check your email for the review details or contact SupreCart support if you have questions."}
+          ? "Approvals are reviewed by hand. Your buyer account shows the latest status, and the studio unlocks here once you are approved."
+          : reviewNote ||
+            "Your buyer account has the latest review details. You can update your application and submit it again from there."}
       </p>
       <span className={`seller-status-badge ${status}`}>
         {status === "pending" ? "UNDER REVIEW" : "REVIEW COMPLETE"}
       </span>
+      {accountHref && (
+        <a className="seller-primary-button" href={accountHref}>
+          {status === "pending" ? "View your application" : "Update your application"}{" "}
+          <ArrowRight size={16} />
+        </a>
+      )}
+    </div>
+  );
+}
+
+function SellerApplicationRequired({ accountHref }: { accountHref: string }) {
+  return (
+    <div className="seller-status-page">
+      <span className="seller-status-icon">
+        <Store size={26} />
+      </span>
+      <p className="seller-eyebrow">ONE ACCOUNT, TWO SIDES</p>
+      <h1>Your seller story starts in your buyer account.</h1>
+      <p>
+        Apply to sell from your SupreCart dashboard. Once approved, this studio opens with your
+        products, orders and payouts.
+      </p>
+      <a className="seller-primary-button" href={accountHref}>
+        Go to your seller application <ArrowRight size={16} />
+      </a>
+    </div>
+  );
+}
+
+function SellerRedirectPanel() {
+  return (
+    <div className="seller-state-panel" role="status">
+      <span className="seller-spinner" />
+      <p>Taking you to sign in…</p>
     </div>
   );
 }

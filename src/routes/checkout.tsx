@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import {
   ArrowLeft,
   ArrowRight,
@@ -14,6 +14,11 @@ import {
 import { Button } from "@/components/ui/button";
 import { useStore } from "@/components/storefront";
 import { money, type Product } from "@/lib/catalog";
+import {
+  trackAddShippingInfo,
+  trackBeginCheckout,
+  trackPreviewOrder,
+} from "@/lib/analytics";
 import { supabase } from "@/lib/supabase";
 
 type DeliveryMethod = "doorstep" | "pickup";
@@ -119,6 +124,13 @@ function Checkout() {
     0,
   );
   const total = cartSubtotal + vat + deliveryFee;
+  const checkoutTracked = useRef(false);
+
+  useEffect(() => {
+    if (checkoutTracked.current || cart.length === 0) return;
+    checkoutTracked.current = true;
+    trackBeginCheckout(cart);
+  }, [cart]);
 
   useEffect(() => {
     if (!supabase) {
@@ -213,6 +225,10 @@ function Checkout() {
       }
       setDetails(nextDetails);
       setStep("receipt");
+      trackAddShippingInfo(
+        cart,
+        nextDetails.method === "pickup" ? "Pickup station" : "Doorstep delivery",
+      );
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (cause) {
       console.error("Could not save SupreCart delivery details.", cause);
@@ -259,6 +275,15 @@ function Checkout() {
       const savedOrders = localStorage.getItem("suprecart-preview-orders");
       const orders = savedOrders ? (JSON.parse(savedOrders) as PreviewOrder[]) : [];
       localStorage.setItem("suprecart-preview-orders", JSON.stringify([orderPreview, ...orders]));
+      trackPreviewOrder({
+        transactionId: orderPreview.batchNumber,
+        cart,
+        value: total,
+        tax: vat,
+        shipping: deliveryFee,
+        paymentType: paymentMethod,
+        deliveryMethod: details.method,
+      });
       setOrder(orderPreview);
       setCart([]);
       setStep("complete");

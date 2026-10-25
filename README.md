@@ -9,7 +9,7 @@ Key areas:
 - **Storefront** (`/`, `/shop`) — browse the demo catalog, product pages, cart, and checkout preview.
 - **Buyer account** (`/account`) — profile, orders, messages, and settings such as notifications, region & language, saved payment methods, and security.
 - **Messages** (`/messages`) — buyer/seller chat with realtime updates, read receipts, and voice notes (live via Supabase).
-- **Seller portal** (`/sellers`) — seller application, dashboard, product management, orders, payouts, and settings including store profile, fulfilment, bank details, notifications, region, payments, and security.
+- **Seller studio** (`/sellers`) — approved buyers manage products, orders, payouts, and settings including store profile, fulfilment, bank details, notifications, region, payments, and security. Seller applications start from the buyer dashboard at `/account#seller`.
 
 See [seller-portal/README.md](./seller-portal/README.md) for seller-side setup and database details.
 
@@ -72,21 +72,28 @@ For an existing Supabase project that already ran the marketplace migration, run
 
 ### Local demo accounts
 
-For local data testing only, the buyer login and seller portal accept the eight demo email addresses in `src/lib/demo-accounts.ts` without a password or email verification. These are browser-local identities, not Supabase users or database rows. Buyer and seller dashboards show fictional sample orders, product metrics, and NGN values for interface testing only; they do not represent real purchases, payouts, or financial records. Demo profile name and phone edits are stored in local browser storage and do not change Supabase data or login credentials. This behavior is compiled out of production builds and must not be used to authenticate real users.
+For local data testing only, the buyer login accepts the two preview email addresses in
+`src/lib/demo-accounts.ts` without a password or email verification. Both are buyers first, and the Shewa account has
+a pre-approved local seller application so the seller studio can be tested. New seller applications start from the
+buyer dashboard and wait for approval on the admin dashboard. These are browser-local identities, not Supabase users
+or database rows. Buyer and seller dashboards show fictional sample orders, product metrics, and NGN values for
+interface testing only; they do not represent real purchases, payouts, or financial records. Demo profile name and
+phone edits are stored in local browser storage and do not change Supabase data or login credentials. This behavior is
+compiled out of production builds and must not be used to authenticate real users.
 
 ### Chat, location, checkout, and cookies
 
 - Buyers can start a conversation from a **live Supabase product** before or after purchase; buyers and sellers can continue it from `/messages`. Conversations are private to their participants. Text chat, realtime updates, read receipts, and voice notes are stored through Supabase. Voice notes have a 25 MB file-size cap and no application-imposed duration limit.
 - Doorstep delivery captures a Kwara LGA, community, street address, optional landmark, and optional browser GPS coordinates. Pickup checkout uses active rows in `public.pickup_stations`.
 - The app's checkout is still a preview: it does not create an order, send an order to a seller, or collect payment. Delivery selection, address storage, fees, and station details are currently test/setup features, not a live dispatch system.
-- The cookie banner (on the storefront and the standalone seller portal) records the visitor's choice in a single first-party preference cookie. Visitors can accept, reject, or manage optional cookies; the essential cookie only remembers that choice. Optional analytics/marketing cookies are not currently installed, so accepting does not enable a third-party tracker. See the cookie policy at `/info/cookies`.
+- The cookie banner (on the storefront and the standalone seller portal) records the visitor's choice in a single first-party preference cookie. Visitors can accept, reject, or manage optional cookies; the essential cookie only remembers that choice. Analytics cookies are optional and off by default: Google Analytics only loads after a visitor accepts analytics and `VITE_GA_MEASUREMENT_ID` is configured. Marketing cookies are not installed. See the cookie policy at `/info/cookies`.
 
-## Third-party services and verification providers
+## Third-party services
 
 The project is currently wired to the following providers and services:
 
 - **Supabase** — shared database, authentication, storage buckets, and RLS-backed marketplace tables.
-- **Twilio** — email and phone verification / messaging integration for account verification flows and contact workflows.
+- **Google Analytics 4** — consented storefront and seller-studio usage analytics. Set `VITE_GA_MEASUREMENT_ID` in `.env.local` (or the hosting environment) to enable it; leaving the variable empty disables all tracking.
 - **Lovable** — project scaffolding and editor workflow used during build and iteration.
 - **Vite** — local development server, build tooling, and frontend bundling.
 - **Tailwind CSS** — styling system used across storefront and seller portal UI.
@@ -99,29 +106,17 @@ The following are not yet enabled as live production services in this repo unles
 
 - Stripe / Paystack / Flutterwave / other payment processing providers for seller payout settlement and buyer checkout.
 - SMTP or transactional email providers beyond the default Supabase/Auth configuration.
-- Any premium analytics or monitoring tool you decide to add later.
+- Any other premium analytics or monitoring tool you decide to add later.
 
-Use this section as the source of truth for which services are integrated now and which ones are waiting for future activation. Twilio is currently the verification provider for email and phone-related flows in this app setup.
+Use this section as the source of truth for which services are integrated now and which ones are waiting for future activation.
 
-## Twilio verification setup checklist
+### Google Analytics setup
 
-Use this checklist when you are ready to turn on Twilio-based email and phone verification for the user flows.
+1. Create a GA4 property in Google Analytics and copy its measurement ID (`G-XXXXXXXXXX`).
+2. Add `VITE_GA_MEASUREMENT_ID=G-XXXXXXXXXX` to `.env.local` (and to the hosting environment for production), then restart or redeploy.
+3. Accept analytics in the cookie banner and use GA4 Realtime or Admin DebugView to confirm page views and events. Development builds send `debug_mode`, so local events appear in DebugView. Visitors who reject analytics are not tracked.
 
-1. Create a Twilio account and purchase a phone number if you want SMS verification or message sending.
-2. Open your Twilio console and copy your **Account SID**, **Auth Token**, and **Phone Number**.
-3. Create a Verify Service in Twilio and copy its **Service SID**. This is the value used for OTP email/phone verification.
-4. If you are using a messaging service for SMS, copy the **Messaging Service SID** as well.
-5. Set the values in `.env.local` using the variables in [.env.example](./.env.example):
-   - `TWILIO_ACCOUNT_SID`
-   - `TWILIO_AUTH_TOKEN`
-   - `TWILIO_PHONE_NUMBER`
-   - `TWILIO_VERIFY_SERVICE_SID`
-   - `TWILIO_MESSAGING_SERVICE_SID`
-   - `TWILIO_EMAIL_FROM`
-6. Configure the app to call Twilio Verify for OTP/email and phone validation flows, instead of relying only on Supabase's default email confirmation.
-7. Add the Twilio webhook or callback endpoints you need for any verification or message confirmation flows. Keep them behind secure auth where required.
-8. Test the verification flow with a real mobile number and a real email address before going live.
-9. For premium or production use, consider a dedicated email sending domain, alerting, and rate-limit monitoring to avoid delivery issues and abuse.
+Tracked activity includes page views, scroll depth, outbound clicks, searches and filters, product views, add/remove cart, wishlist changes, begin checkout, shipping selection, preview order confirmations, buyer sign-up and login, seller application submissions, newsletter interest, contact-seller clicks, seller studio page changes and runtime exceptions. Checkout is still a preview, so confirmations use the custom `preview_order_created` event rather than a revenue-bearing `purchase` event.
 
 ### Future premium services
 

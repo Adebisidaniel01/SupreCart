@@ -5,12 +5,13 @@ export type DemoAccount = {
 };
 
 /**
- * The two preview identities that ship with SupreCart: one buyer and one seller.
+ * The two preview identities that ship with SupreCart. Both are buyers first;
+ * the Shewa account also has a pre-approved seller application seeded locally.
  * They need no password, so sign-in is just the listed email address.
  */
 const presetAccounts: DemoAccount[] = [
   { email: "adebisidan01@gmail.com", name: "Daniel Adebisi", role: "buyer" },
-  { email: "shewa@gmail.com", name: "Bello-lawal Dorcas", role: "seller" },
+  { email: "shewa@gmail.com", name: "Bello-lawal Dorcas", role: "buyer" },
 ];
 
 const demoSessionKey = "suprecart-demo-account";

@@ -13,6 +13,8 @@ import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
+import { trackException } from "../lib/analytics";
+import { Analytics } from "../components/Analytics";
 import { Storefront } from "../components/storefront";
 import { CookieConsent } from "../components/CookieConsent";
 
@@ -43,6 +45,7 @@ function ErrorComponent({ error, reset }: ErrorComponentProps) {
   const router = useRouter();
   useEffect(() => {
     reportLovableError(error, { boundary: "tanstack_root_error_component" });
+    trackException(error, true);
   }, [error]);
 
   return (
@@ -130,6 +133,7 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
+      <Analytics />
       <CookieConsent policyHref="/info/cookies" />
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
       {pathname === "/admin" || pathname.startsWith("/sellers") ? (

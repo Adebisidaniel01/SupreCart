@@ -4,9 +4,11 @@ import {
   AlertTriangle,
   ArrowLeft,
   ArrowRight,
+  BadgeCheck,
   Bell,
   Check,
   CreditCard,
+  Clock3,
   Globe,
   House,
   Lock,
@@ -18,6 +20,7 @@ import {
   Settings,
   ShieldCheck,
   Smartphone,
+  Store,
   Trash2,
   Upload,
   UserRound,
@@ -26,6 +29,13 @@ import { Button } from "@/components/ui/button";
 import { supabase, type User } from "@/lib/supabase";
 import { clearDemoAccount, readDemoAccount, type DemoAccount } from "@/lib/demo-accounts";
 import { getDemoOrders, getDemoProfile, saveDemoProfile } from "@/lib/demo-orders";
+import {
+  getSellerApplication,
+  submitSellerApplication as saveSellerApplication,
+  subscribeSellerApplications,
+  type SellerApplication,
+} from "@/lib/seller-applications";
+import { trackEvent } from "@/lib/analytics";
 import {
   accountPreferenceScope,
   clearAccountPreferences,
@@ -71,7 +81,7 @@ type BuyerAddress = {
   is_default: boolean;
 };
 
-type AccountSection = "overview" | "orders" | "addresses" | "settings";
+type AccountSection = "overview" | "orders" | "addresses" | "seller" | "settings";
 
 type SettingsTab = "profile" | "notifications" | "region" | "payments" | "security" | "danger";
 
@@ -106,6 +116,7 @@ function BuyerAccount() {
   const [settingsTab, setSettingsTab] = useState<SettingsTab>("profile");
   const [preferences, setPreferences] = useState<AccountPreferences>(defaultAccountPreferences);
   const [preferencesScope, setPreferencesScope] = useState("");
+  const [sellerApplication, setSellerApplication] = useState<SellerApplication | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState("");
@@ -222,6 +233,25 @@ function BuyerAccount() {
     };
   }, [demoAccount, navigate, user]);
 
+  useEffect(() => {
+    if (!demoAccount) {
+      setSellerApplication(null);
+      return;
+    }
+    const syncApplication = () => setSellerApplication(getSellerApplication(demoAccount.email));
+    syncApplication();
+    return subscribeSellerApplications(syncApplication);
+  }, [demoAccount]);
+
+  useEffect(() => {
+    const syncSection = () => {
+      if (window.location.hash === "#seller") setSection("seller");
+    };
+    syncSection();
+    window.addEventListener("hashchange", syncSection);
+    return () => window.removeEventListener("hashchange", syncSection);
+  }, []);
+
   const identity = demoAccount?.email ?? user?.email ?? "";
   const preferencesKey = useMemo(
     () => (identity ? accountPreferenceScope("buyer", identity) : ""),
@@ -248,6 +278,28 @@ function BuyerAccount() {
 
   function setRegion(patch: Partial<RegionPreferences>) {
     updatePreferences({ ...preferences, region: { ...preferences.region, ...patch } });
+  }
+
+  function submitSellerApplication(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!demoAccount) {
+      setError("Sign in to your buyer account before applying to sell.");
+      return;
+    }
+    const form = new FormData(event.currentTarget);
+    const application = saveSellerApplication({
+      email: demoAccount.email,
+      name: demoAccount.name,
+      storeName: String(form.get("storeName")).trim(),
+      phone: String(form.get("phone")).trim(),
+      productDescription: String(form.get("productDescription")).trim(),
+      bankName: String(form.get("bankName")).trim(),
+      bankAccountNumber: String(form.get("bankAccountNumber")).trim(),
+    });
+    setSellerApplication(application);
+    setError("");
+    setNotice("Your seller application is pending review. Nothing is live until it is approved.");
+    trackEvent("seller_application_submitted", { status: "pending" });
   }
 
   function onAvatarFile(event: FormEvent<HTMLInputElement>) {
@@ -545,6 +597,7 @@ function BuyerAccount() {
                     ["overview", "Overview", House],
                     ["orders", "Orders", Package],
                     ["addresses", "Addresses", MapPin],
+                    ["seller", "Sell with us", Store],
                     ["settings", "Account settings", Settings],
                   ] as const
                 ).map(([key, label, Icon]) => (
@@ -591,6 +644,33 @@ function BuyerAccount() {
                         <strong>{addresses.length}</strong>
                         <button type="button" onClick={() => setSection("addresses")}>
                           Manage delivery details <ArrowRight size={14} />
+                        </button>
+                      </article>
+                      <article className="account-summary-card account-summary-seller">
+                        <span>SELL WITH SUPRECART</span>
+                        <strong>
+                          {sellerApplication
+                            ? sellerApplication.status === "approved"
+                              ? "Approved"
+                              : sellerApplication.status === "pending"
+                                ? "In review"
+                                : "Not approved"
+                            : "Not applied"}
+                        </strong>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            sellerApplication?.status === "approved"
+                              ? void navigate({ to: "/sellers" })
+                              : setSection("seller")
+                          }
+                        >
+                          {sellerApplication?.status === "approved"
+                            ? "Open seller studio"
+                            : sellerApplication?.status === "pending"
+                              ? "View application"
+                              : "Start your application"}{" "}
+                          <ArrowRight size={14} />
                         </button>
                       </article>
                     </section>
@@ -826,6 +906,184 @@ function BuyerAccount() {
                         </label>
                         <Button type="submit" disabled={saving}>
                           {saving ? "Saving address…" : "Save address"}
+                        </Button>
+                      </form>
+                    )}
+                  </>
+                )}
+                {section === "seller" && (
+                  <>
+                    <section className="account-dashboard-card seller-account-hero">
+                      <span className="seller-account-kicker">
+                        <Store size={15} /> SELL ON SUPRECART
+                      </span>
+                      <h2>
+                        {sellerApplication?.status === "approved"
+                          ? "Your studio is ready."
+                          : sellerApplication?.status === "pending"
+                            ? "Your application is with us."
+                            : sellerApplication?.status === "rejected"
+                              ? "Let’s try that again."
+                              : "Bring what you make to more people."}
+                      </h2>
+                      <p className="account-intro">
+                        {sellerApplication?.status === "approved"
+                          ? "Manage products, orders and payouts in the seller studio, or update your details here whenever life changes."
+                          : sellerApplication?.status === "pending"
+                            ? "Our team reviews every seller application by hand. Nothing goes live until your shop is approved."
+                            : sellerApplication?.status === "rejected"
+                              ? sellerApplication.reviewNote ||
+                                "Your application was not approved this time. You can update your details and submit again."
+                              : "Tell us a little about your shop. Approved sellers can manage products, orders and payouts in a dedicated studio."}
+                      </p>
+                      {sellerApplication && (
+                        <div className={`seller-application-state is-${sellerApplication.status}`}>
+                          {sellerApplication.status === "approved" ? (
+                            <BadgeCheck size={18} />
+                          ) : sellerApplication.status === "pending" ? (
+                            <Clock3 size={18} />
+                          ) : (
+                            <AlertTriangle size={18} />
+                          )}
+                          <div>
+                            <strong>
+                              {sellerApplication.status === "approved"
+                                ? "Approved seller"
+                                : sellerApplication.status === "pending"
+                                  ? "Pending review"
+                                  : "Application not approved"}
+                            </strong>
+                            <span>
+                              {sellerApplication.storeName} · Submitted{" "}
+                              {new Date(sellerApplication.submittedAt).toLocaleDateString()}
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                    </section>
+
+                    {sellerApplication?.status === "approved" ? (
+                      <section className="account-dashboard-card seller-studio-card">
+                        <div>
+                          <div className="account-dashboard-section-heading">
+                            <h2>Seller studio</h2>
+                            <span>APPROVED</span>
+                          </div>
+                          <p className="account-intro">
+                            Your shop, orders and payouts live in one focused workspace. This preview keeps
+                            seller changes in this browser only.
+                          </p>
+                        </div>
+                        <Button asChild>
+                          <Link to="/sellers">
+                            Open seller studio <ArrowRight size={15} />
+                          </Link>
+                        </Button>
+                      </section>
+                    ) : sellerApplication?.status === "pending" ? (
+                      <section className="account-dashboard-card">
+                        <h2>What happens next</h2>
+                        <ol className="seller-review-steps">
+                          <li>
+                            <span>01</span>
+                            <div>
+                              <strong>We review your details</strong>
+                              <p>Our team checks your shop, products and payout information.</p>
+                            </div>
+                          </li>
+                          <li>
+                            <span>02</span>
+                            <div>
+                              <strong>You get an answer here</strong>
+                              <p>
+                                Your account dashboard updates when the application is reviewed.
+                              </p>
+                            </div>
+                          </li>
+                          <li>
+                            <span>03</span>
+                            <div>
+                              <strong>Your studio opens</strong>
+                              <p>Once approved, your seller workspace unlocks at /sellers.</p>
+                            </div>
+                          </li>
+                        </ol>
+                      </section>
+                    ) : (
+                      <form
+                        className="account-dashboard-card account-form seller-application-form"
+                        onSubmit={submitSellerApplication}
+                      >
+                        <div>
+                          <h2>
+                            {sellerApplication?.status === "rejected"
+                              ? "Update your application"
+                              : "Seller application"}
+                          </h2>
+                          <p className="account-intro">
+                            Fields marked below are shared with the review team. No payment or
+                            product goes live from this form.
+                          </p>
+                        </div>
+                        <div className="field-pair">
+                          <label>
+                            Shop or business name
+                            <input
+                              name="storeName"
+                              defaultValue={sellerApplication?.storeName ?? ""}
+                              placeholder="e.g. Form & Field"
+                              required
+                            />
+                          </label>
+                          <label>
+                            Phone number
+                            <input
+                              name="phone"
+                              type="tel"
+                              defaultValue={sellerApplication?.phone ?? demoProfile.phone ?? ""}
+                              placeholder="+234"
+                              required
+                            />
+                          </label>
+                        </div>
+                        <label>
+                          What will you sell?
+                          <textarea
+                            name="productDescription"
+                            rows={4}
+                            defaultValue={sellerApplication?.productDescription ?? ""}
+                            placeholder="A short introduction to your products, materials and how you make or source them."
+                            required
+                          />
+                        </label>
+                        <div className="field-pair">
+                          <label>
+                            Bank name
+                            <input
+                              name="bankName"
+                              defaultValue={sellerApplication?.bankName ?? ""}
+                              required
+                            />
+                          </label>
+                          <label>
+                            Account number
+                            <input
+                              name="bankAccountNumber"
+                              inputMode="numeric"
+                              defaultValue={sellerApplication?.bankAccountNumber ?? ""}
+                              required
+                            />
+                          </label>
+                        </div>
+                        <p className="account-field-hint">
+                          Payout details are preview-only and are never sent to a bank. You can
+                          update them before any real payout is connected.
+                        </p>
+                        <Button type="submit">
+                          {sellerApplication?.status === "rejected"
+                            ? "Resubmit for review"
+                            : "Submit for review"}{" "}
+                          <ArrowRight size={15} />
                         </Button>
                       </form>
                     )}
