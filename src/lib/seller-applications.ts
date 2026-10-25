@@ -1,3 +1,5 @@
+import { isDemoAccountDeleted } from "./demo-accounts";
+
 export type SellerApplicationStatus = "pending" | "approved" | "rejected";
 
 export type SellerApplication = {
@@ -73,6 +75,7 @@ function ensureSeeded(applications: SellerApplication[]) {
   let changed = false;
   const next = [...applications];
   for (const application of seededApplications) {
+    if (isDemoAccountDeleted(application.email)) continue;
     if (!next.some((entry) => normalizeEmail(entry.email) === application.email)) {
       next.push(application);
       changed = true;
@@ -102,6 +105,13 @@ export function readSellerApplications(): SellerApplication[] {
 export function getSellerApplication(email: string): SellerApplication | null {
   const normalized = normalizeEmail(email);
   return readSellerApplications().find((entry) => entry.email === normalized) ?? null;
+}
+
+export function deleteSellerApplication(email: string) {
+  const normalized = normalizeEmail(email);
+  const applications = readSellerApplications();
+  const remaining = applications.filter((entry) => entry.email !== normalized);
+  if (remaining.length !== applications.length) writeApplications(remaining);
 }
 
 export function submitSellerApplication(draft: SellerApplicationDraft): SellerApplication {

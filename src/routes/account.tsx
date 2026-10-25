@@ -28,6 +28,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { supabase, type User } from "@/lib/supabase";
 import { clearDemoAccount, readDemoAccount, type DemoAccount } from "@/lib/demo-accounts";
+import { deleteDemoAccountData } from "@/lib/demo-account-cleanup";
 import { getDemoOrders, getDemoProfile, saveDemoProfile } from "@/lib/demo-orders";
 import {
   getSellerApplication,
@@ -38,7 +39,6 @@ import {
 import { trackEvent } from "@/lib/analytics";
 import {
   accountPreferenceScope,
-  clearAccountPreferences,
   createPaymentMethod,
   currencyOptions,
   defaultAccountPreferences,
@@ -384,8 +384,7 @@ function BuyerAccount() {
 
   async function removeAccount() {
     if (demoAccount) {
-      clearAccountPreferences(preferencesScope);
-      clearDemoAccount();
+      deleteDemoAccountData(demoAccount.email);
       setDemoAccount(null);
       await navigate({ to: "/login" });
       return;
@@ -970,8 +969,8 @@ function BuyerAccount() {
                             <span>APPROVED</span>
                           </div>
                           <p className="account-intro">
-                            Your shop, orders and payouts live in one focused workspace. This preview keeps
-                            seller changes in this browser only.
+                            Your shop, orders and payouts live in one focused workspace. This
+                            preview keeps seller changes in this browser only.
                           </p>
                         </div>
                         <Button asChild>
@@ -1470,14 +1469,15 @@ function BuyerAccount() {
                         <h2>Danger zone</h2>
                         <p className="account-intro">
                           {demoAccount
-                            ? "Remove this local demo account and its saved preferences from this browser."
+                            ? "Permanently delete this local demo account, its profile, orders, messages, seller application and saved preferences from this browser."
                             : "Closing a real SupreCart account is handled by our team. Account deletion is not connected in this preview."}
                         </p>
                         {demoAccount ? (
                           confirmDelete ? (
                             <div className="account-confirm">
                               <p>
-                                This clears the demo session and its local preferences. Continue?
+                                This permanently deletes every local record for this account. It
+                                cannot be undone. Continue?
                               </p>
                               <div className="account-confirm-actions">
                                 <Button
@@ -1485,7 +1485,7 @@ function BuyerAccount() {
                                   variant="destructive"
                                   onClick={() => void removeAccount()}
                                 >
-                                  <Trash2 size={15} /> Remove demo account
+                                  <Trash2 size={15} /> Delete demo account
                                 </Button>
                                 <Button
                                   type="button"
@@ -1502,7 +1502,7 @@ function BuyerAccount() {
                               variant="outline"
                               onClick={() => setConfirmDelete(true)}
                             >
-                              <Trash2 size={15} /> Remove demo account
+                              <Trash2 size={15} /> Delete demo account
                             </Button>
                           )
                         ) : (

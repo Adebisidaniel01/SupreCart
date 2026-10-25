@@ -1,3 +1,5 @@
+import { isDemoAccountDeleted } from "./demo-accounts";
+
 export type DemoOrder = {
   id: string;
   status: "Delivered" | "In transit" | "Processing";
@@ -14,7 +16,7 @@ const day = (daysAgo: number) => {
 };
 
 const sampleOrders: Record<string, DemoOrder[]> = {
-  "adebisidan01@gmail.com": [
+  "blackrose@gmail.com": [
     {
       id: "SC-2026-10482",
       status: "Delivered",
@@ -97,6 +99,7 @@ const sampleOrders: Record<string, DemoOrder[]> = {
 };
 
 export function getDemoOrders(email: string) {
+  if (isDemoAccountDeleted(email)) return [];
   return (sampleOrders[email.toLowerCase()] ?? []).map((order) => ({ ...order }));
 }
 
@@ -122,4 +125,9 @@ export function saveDemoProfile(email: string, profile: { name: string; phone: s
     `suprecart-demo-profile:${email.toLowerCase()}`,
     JSON.stringify(profile),
   );
+}
+
+export function deleteDemoProfile(email: string) {
+  if (!import.meta.env.DEV) return;
+  window.localStorage.removeItem(`suprecart-demo-profile:${email.toLowerCase()}`);
 }

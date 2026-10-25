@@ -1669,26 +1669,29 @@
     height: 39px;
   }
   .seller-mobile-nav {
-    display: flex;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 6px;
-    overflow-x: auto;
     padding: 10px 15px;
     border-bottom: 1px solid #e7e9e3;
     background: #fff;
-    scrollbar-width: none;
-    -webkit-overflow-scrolling: touch;
-  }
-  .seller-mobile-nav::-webkit-scrollbar {
-    display: none;
   }
   .seller-mobile-nav .seller-side-link {
-    width: auto;
-    flex: 0 0 auto;
-    min-height: 34px;
-    padding: 0 12px;
+    width: 100%;
+    min-height: 52px;
+    flex-direction: column;
+    justify-content: center;
+    gap: 5px;
+    padding: 7px 4px;
     background: #f5f7f4;
-    white-space: nowrap;
-    font-size: 10px;
+    font-size: 9px;
+    line-height: 1.2;
+    text-align: center;
+    white-space: normal;
+  }
+  .seller-mobile-nav .seller-side-link svg {
+    width: 18px;
+    height: 18px;
   }
   .seller-product-table,
   .seller-order-list,
@@ -1707,12 +1710,13 @@
     overflow-x: hidden;
   }
   .seller-mobile-nav {
-    padding: 7px 8px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    padding: 8px;
     top: 63px;
   }
   .seller-mobile-nav .seller-side-link {
-    min-height: 30px;
-    padding: 0 9px;
+    min-height: 48px;
+    padding: 6px 4px;
     font-size: 9px;
   }
   .seller-content {

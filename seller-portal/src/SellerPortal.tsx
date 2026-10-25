@@ -42,6 +42,7 @@ import {
   type DemoAccount,
 } from "../../src/lib/demo-accounts";
 import { getDemoProfile, saveDemoProfile } from "../../src/lib/demo-orders";
+import { deleteDemoAccountData } from "../../src/lib/demo-account-cleanup";
 import {
   getSellerApplication,
   subscribeSellerApplications,
@@ -1566,7 +1567,8 @@ function SellerDashboard({
   function removeSellerAccount() {
     setConfirmDelete(false);
     if (demoMode) {
-      setSettingsNotice("Demo seller data stays in this browser. Clear site data to remove it.");
+      deleteDemoAccountData(application.email);
+      window.location.assign(marketplaceBase || "/");
       return;
     }
     setSettingsNotice(
@@ -2555,7 +2557,7 @@ function SellerDashboard({
                 <strong>Danger zone</strong>
                 <span>
                   {demoMode
-                    ? "Remove this demo seller identity from this browser."
+                    ? "Permanently delete this demo seller identity and all its local data from this browser."
                     : "Closing a real seller store is handled by the SupreCart team."}
                 </span>
               </div>
@@ -2563,7 +2565,7 @@ function SellerDashboard({
                 <div className="seller-confirm">
                   <p>
                     {demoMode
-                      ? "This clears the demo session and its saved preferences. Continue?"
+                      ? "This permanently deletes the demo seller account, profile, messages, application and preferences. It cannot be undone. Continue?"
                       : "Account closure is not connected in this preview. Continue to see more?"}
                   </p>
                   <div className="seller-confirm-actions">
@@ -2572,7 +2574,7 @@ function SellerDashboard({
                       className="seller-danger-button"
                       onClick={() => removeSellerAccount()}
                     >
-                      <Trash2 size={15} /> {demoMode ? "Remove demo seller" : "Continue"}
+                      <Trash2 size={15} /> {demoMode ? "Delete demo seller" : "Continue"}
                     </button>
                     <button
                       type="button"
@@ -2589,7 +2591,7 @@ function SellerDashboard({
                   className="seller-outline-button"
                   onClick={() => setConfirmDelete(true)}
                 >
-                  <Trash2 size={15} /> {demoMode ? "Remove demo seller" : "Request store closure"}
+                  <Trash2 size={15} /> {demoMode ? "Delete demo seller" : "Request store closure"}
                 </button>
               )}
             </div>

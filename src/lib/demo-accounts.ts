@@ -10,12 +10,13 @@ export type DemoAccount = {
  * They need no password, so sign-in is just the listed email address.
  */
 const presetAccounts: DemoAccount[] = [
-  { email: "adebisidan01@gmail.com", name: "Daniel Adebisi", role: "buyer" },
+  { email: "blackrose@gmail.com", name: "Daniel Adebisi", role: "buyer" },
   { email: "shewa@gmail.com", name: "Bello-lawal Dorcas", role: "buyer" },
 ];
 
 const demoSessionKey = "suprecart-demo-account";
 const localAccountsKey = "suprecart-local-accounts";
+const deletedAccountsKey = "suprecart-deleted-demo-accounts";
 
 type StoredAccount = DemoAccount & {
   salt: string;
@@ -23,7 +24,44 @@ type StoredAccount = DemoAccount & {
   createdAt: string;
 };
 
+function normalizeEmail(email: string) {
+  return email.trim().toLowerCase();
+}
+
+function canUseStorage() {
+  return typeof window !== "undefined" && Boolean(window.localStorage);
+}
+
+function readDeletedAccounts(): string[] {
+  if (!canUseStorage()) return [];
+  try {
+    const raw = window.localStorage.getItem(deletedAccountsKey);
+    if (!raw) return [];
+    const parsed: unknown = JSON.parse(raw);
+    return Array.isArray(parsed)
+      ? parsed.filter((email): email is string => typeof email === "string")
+      : [];
+  } catch (cause) {
+    console.error("Could not read the list of deleted SupreCart demo accounts.", cause);
+    return [];
+  }
+}
+
+export function isDemoAccountDeleted(email: string) {
+  return readDeletedAccounts().includes(normalizeEmail(email));
+}
+
+function markDemoAccountDeleted(email: string) {
+  if (!canUseStorage()) return;
+  const normalized = normalizeEmail(email);
+  const deleted = readDeletedAccounts();
+  if (!deleted.includes(normalized)) {
+    window.localStorage.setItem(deletedAccountsKey, JSON.stringify([...deleted, normalized]));
+  }
+}
+
 function readStoredAccounts(): StoredAccount[] {
+  if (!canUseStorage()) return [];
   try {
     const raw = window.localStorage.getItem(localAccountsKey);
     if (!raw) return [];
@@ -44,6 +82,7 @@ function readStoredAccounts(): StoredAccount[] {
 }
 
 function writeStoredAccounts(accounts: StoredAccount[]) {
+  if (!canUseStorage()) return;
   window.localStorage.setItem(localAccountsKey, JSON.stringify(accounts));
 }
 
@@ -65,48 +104,57 @@ async function hashPassword(password: string, salt: string): Promise<string> {
       "This browser cannot store a password safely. Use the listed preview account instead.",
     );
   }
-  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(`${salt}:${password}`));
+  const digest = await crypto.subtle.digest(
+    "SHA-256",
+    new TextEncoder().encode(`${salt}:${password}`),
+  );
   return Array.from(new Uint8Array(digest))
     .map((byte) => byte.toString(16).padStart(2, "0"))
     .join("");
 }
 
 export function findDemoAccount(email: string, role: DemoAccount["role"]) {
-  const normalized = email.trim().toLowerCase();
-  const preset = presetAccounts.find(
-    (account) => account.email === normalized && account.role === role,
-  );
-  if (preset) return preset;
+  const normalized = normalizeEmail(email);
   const local = readStoredAccounts().find(
     (account) => account.email === normalized && account.role === role,
   );
-  return local ? toDemoAccount(local) : undefined;
+  if (local) return toDemoAccount(local);
+  if (isDemoAccountDeleted(normalized)) return undefined;
+  return presetAccounts.find((account) => account.email === normalized && account.role === role);
 }
 
 export function isPresetAccount(email: string, role: DemoAccount["role"]) {
-  const normalized = email.trim().toLowerCase();
-  return presetAccounts.some(
-    (account) => account.email === normalized && account.role === role,
-  );
+  const normalized = normalizeEmail(email);
+  if (isDemoAccountDeleted(normalized)) return false;
+  return presetAccounts.some((account) => account.email === normalized && account.role === role);
 }
 
 export function getDemoAccounts(role: DemoAccount["role"]) {
   const local = readStoredAccounts()
     .filter((account) => account.role === role)
     .map(toDemoAccount);
-  return [...presetAccounts.filter((account) => account.role === role), ...local];
+  return [
+    ...presetAccounts.filter(
+      (account) => account.role === role && !isDemoAccountDeleted(account.email),
+    ),
+    ...local,
+  ];
 }
 
 export function saveDemoAccount(account: DemoAccount) {
+  if (!canUseStorage()) return;
   window.localStorage.setItem(demoSessionKey, JSON.stringify(account));
 }
 
 export function readDemoAccount(role: DemoAccount["role"]) {
+  if (!canUseStorage()) return null;
   const savedAccount = window.localStorage.getItem(demoSessionKey);
   if (!savedAccount) return null;
   try {
     const account = JSON.parse(savedAccount) as DemoAccount;
-    return findDemoAccount(account.email, role) ?? null;
+    const match = findDemoAccount(account.email, role) ?? null;
+    if (!match) window.localStorage.removeItem(demoSessionKey);
+    return match;
   } catch (cause) {
     console.error("Could not read the local SupreCart preview account.", cause);
     window.localStorage.removeItem(demoSessionKey);
@@ -115,7 +163,23 @@ export function readDemoAccount(role: DemoAccount["role"]) {
 }
 
 export function clearDemoAccount() {
+  if (!canUseStorage()) return;
   window.localStorage.removeItem(demoSessionKey);
+}
+
+export function deleteDemoAccount(email: string) {
+  if (!canUseStorage()) return;
+  const normalized = normalizeEmail(email);
+  writeStoredAccounts(readStoredAccounts().filter((account) => account.email !== normalized));
+  markDemoAccountDeleted(normalized);
+  try {
+    const saved = window.localStorage.getItem(demoSessionKey);
+    if (saved && normalizeEmail((JSON.parse(saved) as DemoAccount).email) === normalized) {
+      window.localStorage.removeItem(demoSessionKey);
+    }
+  } catch {
+    window.localStorage.removeItem(demoSessionKey);
+  }
 }
 
 /**

@@ -259,9 +259,6 @@ export function Storefront({ children }: { children: ReactNode }) {
             <Link to="/shop" search={{ filter: "All", query: "" }} className="market-text-link">
               Shop all
             </Link>
-            <Link to="/sellers" className="market-text-link">
-              Sell on SupreCart
-            </Link>
             <Button
               variant="ghost"
               size="icon"
@@ -454,9 +451,6 @@ export function Storefront({ children }: { children: ReactNode }) {
             </Link>
           </div>
           <div className="market-drawer-actions">
-            <Link to="/sellers" onClick={() => setMobileNav(false)}>
-              Sell on SupreCart
-            </Link>
             <Link to="/login" onClick={() => setMobileNav(false)}>
               Log in
             </Link>
