@@ -13,4 +13,6 @@ export function deleteDemoAccountData(email: string) {
   deleteDemoMessagesFor(normalized);
   clearAccountPreferences(accountPreferenceScope("buyer", normalized));
   clearAccountPreferences(accountPreferenceScope("seller", normalized));
+  window.localStorage.removeItem(`suprecart-demo-addresses:${normalized}`);
+  window.localStorage.removeItem(`suprecart-seller-products:${normalized}`);
 }

@@ -1,4 +1,4 @@
-﻿import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+﻿import { useEffect, useMemo, useState, type FormEvent } from "react";
 import {
   AlertTriangle,
   ArrowDownToLine,
@@ -8,6 +8,7 @@ import {
   Bell,
   Box,
   Check,
+  ChevronDown,
   CircleDollarSign,
   Clock3,
   CreditCard,
@@ -28,7 +29,6 @@ import {
   Upload,
   UserRound,
 } from "lucide-react";
-import { supabase, type Session } from "../../src/lib/supabase";
 import { products as demoCatalog } from "../../src/lib/catalog";
 import {
   clearDemoAccount,
@@ -36,7 +36,7 @@ import {
   findDemoAccount,
   getDemoAccounts,
   isPresetAccount,
-  readDemoAccount,
+  readActiveAccount,
   saveDemoAccount,
   verifyAccountPassword,
   type DemoAccount,
@@ -45,6 +45,7 @@ import { getDemoProfile, saveDemoProfile } from "../../src/lib/demo-orders";
 import { deleteDemoAccountData } from "../../src/lib/demo-account-cleanup";
 import {
   getSellerApplication,
+  submitSellerApplication as saveSellerApplication,
   subscribeSellerApplications,
   type SellerApplication as LocalSellerApplication,
 } from "../../src/lib/seller-applications";
@@ -53,6 +54,7 @@ import { CookieConsent } from "../../src/components/CookieConsent";
 import { trackEvent, trackLogin, trackSignUp } from "../../src/lib/analytics";
 import { calculateCommission, commissionTiers } from "../../src/lib/commission";
 import {
+  accountAvatar,
   accountPreferenceScope,
   createPaymentMethod,
   currencyOptions,
@@ -63,6 +65,7 @@ import {
   readAccountPreferences,
   saveAccountPreferences,
   shippingOptionsCatalog,
+  subscribeAccountPreferences,
   timezoneOptions,
   type AccountPreferences,
   type NotificationPreferences,
@@ -154,66 +157,6 @@ const buyerAccountHref = `${marketplaceBase}/account#seller`;
 const cookiePolicyHref = /^https?:\/\//.test(marketplaceUrl)
   ? `${marketplaceBase}/info/cookies`
   : undefined;
-
-type ApplicationDraft = {
-  firstName: string;
-  middleName: string;
-  lastName: string;
-  email: string;
-  description: string;
-  bankName: string;
-  accountNumber: string;
-  files: File[];
-};
-
-function openApplicationDraftDb() {
-  return new Promise<IDBDatabase>((resolve, reject) => {
-    const request = indexedDB.open("suprecart-seller-portal", 1);
-    request.onupgradeneeded = () => request.result.createObjectStore("applications");
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () =>
-      reject(request.error ?? new Error("Could not open application draft storage."));
-  });
-}
-
-async function saveApplicationDraft(draft: ApplicationDraft) {
-  const database = await openApplicationDraftDb();
-  await new Promise<void>((resolve, reject) => {
-    const transaction = database.transaction("applications", "readwrite");
-    transaction.objectStore("applications").put(draft, "pending");
-    transaction.oncomplete = () => resolve();
-    transaction.onerror = () =>
-      reject(transaction.error ?? new Error("Could not save application details."));
-    transaction.onabort = () =>
-      reject(transaction.error ?? new Error("Application draft save was cancelled."));
-  });
-  database.close();
-}
-
-async function readApplicationDraft() {
-  const database = await openApplicationDraftDb();
-  const draft = await new Promise<ApplicationDraft | undefined>((resolve, reject) => {
-    const transaction = database.transaction("applications", "readonly");
-    const request = transaction.objectStore("applications").get("pending");
-    request.onsuccess = () => resolve(request.result as ApplicationDraft | undefined);
-    request.onerror = () =>
-      reject(request.error ?? new Error("Could not read application details."));
-  });
-  database.close();
-  return draft;
-}
-
-async function clearApplicationDraft() {
-  const database = await openApplicationDraftDb();
-  await new Promise<void>((resolve, reject) => {
-    const transaction = database.transaction("applications", "readwrite");
-    transaction.objectStore("applications").delete("pending");
-    transaction.oncomplete = () => resolve();
-    transaction.onerror = () =>
-      reject(transaction.error ?? new Error("Could not clear application details."));
-  });
-  database.close();
-}
 
 const formatMoney = (amount: number) =>
   new Intl.NumberFormat("en-NG", {
@@ -319,14 +262,43 @@ function demoFundEntries(email: string): DemoFundEntry[] {
   return entries[email] ?? [];
 }
 
+const localSellerProductsKey = (email: string) =>
+  `suprecart-seller-products:${email.toLowerCase()}`;
+
+function readLocalSellerProducts(email: string): SellerProduct[] {
+  try {
+    const saved = window.localStorage.getItem(localSellerProductsKey(email));
+    if (!saved) return [];
+    const parsed: unknown = JSON.parse(saved);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter(
+      (entry): entry is SellerProduct =>
+        typeof entry === "object" &&
+        entry !== null &&
+        typeof (entry as SellerProduct).id === "string",
+    );
+  } catch (cause) {
+    console.error("Could not read the local seller products.", cause);
+    return [];
+  }
+}
+
+function writeLocalSellerProducts(email: string, products: SellerProduct[]) {
+  try {
+    window.localStorage.setItem(localSellerProductsKey(email), JSON.stringify(products));
+  } catch (cause) {
+    console.error("Could not save the local seller products.", cause);
+  }
+}
+
 export default function SellerPortal({ standalone = false }: { standalone?: boolean } = {}) {
-  const [session, setSession] = useState<Session | null>(null);
-  const [application, setApplication] = useState<SellerApplication | null>(null);
   const [sellerApplication, setSellerApplication] = useState<LocalSellerApplication | null>(null);
-  const [stats, setStats] = useState<SellerStats | null>(null);
   const [screen, setScreen] = useState<"login" | "apply">("apply");
   const [demoAccount, setDemoAccount] = useState<DemoAccount | null>(null);
   const [demoProfile, setDemoProfile] = useState({ name: "", phone: "" });
+  const [localProducts, setLocalProducts] = useState<SellerProduct[]>([]);
+  const [sellerAvatar, setSellerAvatar] = useState("");
+  const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const [busy, setBusy] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [notice, setNotice] = useState("");
@@ -334,7 +306,6 @@ export default function SellerPortal({ standalone = false }: { standalone?: bool
   const [submitted, setSubmitted] = useState(false);
   const [loadingScreen, setLoadingScreen] = useState(true);
   const [page, setPage] = useState<SellerPage>(readSellerPage);
-  const creatingApplication = useRef(false);
 
   useEffect(() => {
     const syncPage = () => setPage(readSellerPage());
@@ -355,177 +326,18 @@ export default function SellerPortal({ standalone = false }: { standalone?: bool
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
-  const loadSellerData = useCallback(async (activeSession: Session) => {
-    if (!supabase) return;
-    let applicationQuery = await supabase
-      .from("seller_applications")
-      .select(
-        "id, first_name, middle_name, last_name, email, product_description, status, verified",
-      )
-      .eq("id", activeSession.user.id)
-      .maybeSingle();
-    if (applicationQuery.error) {
-      applicationQuery = await supabase
-        .from("seller_applications")
-        .select("id, first_name, middle_name, last_name, email, product_description, status")
-        .eq("id", activeSession.user.id)
-        .maybeSingle();
-    }
-    const { data, error: applicationError } = applicationQuery;
-    if (applicationError) throw applicationError;
-    const seller = data as SellerApplication | null;
-    setApplication(seller);
-    if (!seller || seller.status !== "approved") {
-      setStats(null);
-      return;
-    }
-    const [ordersResult, itemsResult, productsResult, ratingsResult, payoutsResult] =
-      await Promise.all([
-        supabase.from("orders").select("id, status, created_at"),
-        supabase.from("order_items").select("quantity, seller_net, product_id, order_id"),
-        supabase
-          .from("products")
-          .select("id, name, category, price, inventory, published, image_path, created_at")
-          .eq("seller_id", activeSession.user.id)
-          .order("created_at", { ascending: false }),
-        supabase.from("seller_product_ratings").select("product_id, review_count, average_rating"),
-        supabase.from("payout_requests").select("amount, status"),
-      ]);
-    const failed = [ordersResult, itemsResult, productsResult, ratingsResult, payoutsResult].find(
-      (result) => result.error,
-    );
-    if (failed?.error) throw failed.error;
-    const orders = (ordersResult.data ?? []) as SellerStats["orders"];
-    const items = (itemsResult.data ?? []) as SellerStats["items"];
-    const payouts = (payoutsResult.data ?? []) as { amount: number; status: string }[];
-    setStats({
-      orders,
-      items,
-      products: (productsResult.data ?? []) as SellerProduct[],
-      ratings: (ratingsResult.data ?? []) as Rating[],
-      committedPayouts: payouts
-        .filter((payout) => ["requested", "approved", "processing", "paid"].includes(payout.status))
-        .reduce((sum, payout) => sum + Number(payout.amount), 0),
-    });
-  }, []);
-
-  const createApplication = useCallback(
-    async (activeSession: Session) => {
-      if (!supabase)
-        throw new Error("Account service is temporarily unavailable. Please try again later.");
-      if (!activeSession.user.email_confirmed_at) {
-        setNotice(
-          "Please verify your email using the link we sent before we submit your application.",
-        );
-        setScreen("login");
-        return;
-      }
-      if (creatingApplication.current) return;
-      creatingApplication.current = true;
-      try {
-        const draft = await readApplicationDraft();
-        if (!draft) return;
-        const uploadedFiles: { storage_path: string; file_name: string }[] = [];
-        for (const file of draft.files) {
-          const path = `${activeSession.user.id}/${crypto.randomUUID()}-${file.name}`;
-          const { error: uploadError } = await supabase.storage
-            .from("seller-documents")
-            .upload(path, file, { contentType: file.type, upsert: false });
-          if (uploadError) throw uploadError;
-          uploadedFiles.push({ storage_path: path, file_name: file.name });
-        }
-        const { error: saveError } = await supabase.from("seller_applications").upsert(
-          {
-            id: activeSession.user.id,
-            first_name: draft.firstName,
-            middle_name: draft.middleName || null,
-            last_name: draft.lastName,
-            email: draft.email,
-            product_description: draft.description,
-            bank_name: draft.bankName,
-            bank_account_number: draft.accountNumber,
-            status: "pending",
-          },
-          { onConflict: "id" },
-        );
-        if (saveError) throw saveError;
-        if (uploadedFiles.length) {
-          const { error: documentError } = await supabase
-            .from("seller_documents")
-            .insert(uploadedFiles.map((file) => ({ ...file, seller_id: activeSession.user.id })));
-          if (documentError) throw documentError;
-        }
-        await clearApplicationDraft();
-        setSubmitted(true);
-        setNotice("Your information is under review, we will be in touch!");
-        await loadSellerData(activeSession);
-      } finally {
-        creatingApplication.current = false;
-      }
-    },
-    [loadSellerData],
-  );
-
   useEffect(() => {
     const timer = window.setTimeout(() => setLoadingScreen(false), 1050);
-    const localDemoAccount = readDemoAccount("buyer");
-    if (localDemoAccount) {
-      setDemoAccount(localDemoAccount);
-      setSellerApplication(getSellerApplication(localDemoAccount.email));
-      setDemoProfile(getDemoProfile(localDemoAccount.email, localDemoAccount.name));
-      setBusy(false);
-      return () => window.clearTimeout(timer);
+    const activeAccount = readActiveAccount();
+    if (activeAccount?.role === "seller") {
+      setDemoAccount(activeAccount);
+      setSellerApplication(getSellerApplication(activeAccount.email));
+      setDemoProfile(getDemoProfile(activeAccount.email, activeAccount.name));
+      setLocalProducts(readLocalSellerProducts(activeAccount.email));
     }
-    const client = supabase;
-    if (!client) {
-      setBusy(false);
-      return () => window.clearTimeout(timer);
-    }
-    let active = true;
-    const initialize = async () => {
-      const { data, error: sessionError } = await client.auth.getSession();
-      if (sessionError) throw sessionError;
-      if (!active) return;
-      const currentSession = data.session;
-      setSession(currentSession);
-      if (currentSession) {
-        await loadSellerData(currentSession);
-        await createApplication(currentSession);
-      }
-    };
-    void initialize()
-      .catch((cause: unknown) => {
-        console.error("Could not load the SupreCart seller account.", cause);
-        if (active)
-          setError(cause instanceof Error ? cause.message : "Could not load seller account.");
-      })
-      .finally(() => {
-        if (active) setBusy(false);
-      });
-    const { data } = client.auth.onAuthStateChange((event, nextSession) => {
-      setSession(nextSession);
-      if (event === "SIGNED_IN" && nextSession) {
-        setBusy(true);
-        void loadSellerData(nextSession)
-          .then(() => createApplication(nextSession))
-          .catch((cause: unknown) => {
-            console.error("Could not load the SupreCart seller account.", cause);
-            setError(cause instanceof Error ? cause.message : "Could not load seller account.");
-          })
-          .finally(() => setBusy(false));
-      }
-      if (event === "SIGNED_OUT") {
-        setApplication(null);
-        setStats(null);
-        setSubmitted(false);
-      }
-    });
-    return () => {
-      active = false;
-      window.clearTimeout(timer);
-      data.subscription.unsubscribe();
-    };
-  }, [createApplication, loadSellerData]);
+    setBusy(false);
+    return () => window.clearTimeout(timer);
+  }, []);
 
   useEffect(() => {
     if (!demoAccount) {
@@ -535,6 +347,16 @@ export default function SellerPortal({ standalone = false }: { standalone?: bool
     const syncApplication = () => setSellerApplication(getSellerApplication(demoAccount.email));
     syncApplication();
     return subscribeSellerApplications(syncApplication);
+  }, [demoAccount]);
+
+  useEffect(() => {
+    if (!demoAccount) {
+      setSellerAvatar("");
+      return;
+    }
+    const syncAvatar = () => setSellerAvatar(accountAvatar(demoAccount));
+    syncAvatar();
+    return subscribeAccountPreferences(syncAvatar);
   }, [demoAccount]);
 
   useEffect(() => {
@@ -564,7 +386,6 @@ export default function SellerPortal({ standalone = false }: { standalone?: bool
         description: String(form.get("description")).trim(),
         bankName: String(form.get("bankName")).trim(),
         accountNumber: String(form.get("accountNumber")).trim(),
-        files,
       };
       const account = await createLocalAccount({
         email,
@@ -572,13 +393,23 @@ export default function SellerPortal({ standalone = false }: { standalone?: bool
         role: "seller",
         password: String(form.get("password")),
       });
-      await saveApplicationDraft(draft);
       saveDemoAccount(account);
+      const application = saveSellerApplication({
+        email,
+        name: `${draft.firstName} ${draft.lastName}`.trim(),
+        storeName: `${draft.firstName}'s shop`,
+        phone: "",
+        productDescription: draft.description,
+        bankName: draft.bankName,
+        bankAccountNumber: draft.accountNumber,
+      });
       trackSignUp("seller_preview");
       setDemoAccount(account);
+      setSellerApplication(application);
+      setSubmitted(true);
       setDemoProfile(getDemoProfile(account.email, account.name));
-      setNotice("Your seller account is saved in this browser. No email verification is needed.");
-      await clearApplicationDraft();
+      setLocalProducts(readLocalSellerProducts(account.email));
+      setNotice("Your seller application is saved in this browser and pending review.");
     } catch (cause) {
       console.error("Could not submit the SupreCart seller application.", cause);
       setError(cause instanceof Error ? cause.message : "Could not submit your application.");
@@ -611,7 +442,9 @@ export default function SellerPortal({ standalone = false }: { standalone?: bool
       saveDemoAccount(localDemoAccount);
       trackLogin("seller_preview");
       setDemoAccount(localDemoAccount);
+      setSellerApplication(getSellerApplication(localDemoAccount.email));
       setDemoProfile(getDemoProfile(localDemoAccount.email, localDemoAccount.name));
+      setLocalProducts(readLocalSellerProducts(localDemoAccount.email));
       setNotice("");
       setBusy(false);
     } catch (cause) {
@@ -634,18 +467,16 @@ export default function SellerPortal({ standalone = false }: { standalone?: bool
   async function signOut() {
     clearDemoAccount();
     setDemoAccount(null);
-    setSession(null);
-    setApplication(null);
-    setStats(null);
     setSubmitted(false);
     setSellerApplication(null);
+    setLocalProducts([]);
     setScreen("login");
     window.location.assign(marketplaceBase || "/");
   }
 
   async function addProduct(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!supabase || !session || !stats) return;
+    if (!demoAccount) return;
     const formElement = event.currentTarget;
     setSubmitting(true);
     setError("");
@@ -656,129 +487,64 @@ export default function SellerPortal({ standalone = false }: { standalone?: bool
       if (!productImageTypes.includes(image.type) || image.size > 10 * 1024 * 1024) {
         throw new Error("Product images must be JPG, PNG, or WebP files under 10 MB.");
       }
-      const path = `${session.user.id}/${crypto.randomUUID()}-${image.name}`;
-      const { error: uploadError } = await supabase.storage
-        .from("product-images")
-        .upload(path, image, { contentType: image.type });
-      if (uploadError) throw uploadError;
-      const { error: productError } = await supabase.from("products").insert({
-        seller_id: session.user.id,
+      const imageUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result));
+        reader.onerror = () => reject(new Error("Could not read that product image."));
+        reader.readAsDataURL(image);
+      });
+      const product: SellerProduct = {
+        id: crypto.randomUUID(),
         name: String(form.get("name")).trim(),
         category: String(form.get("category")).trim(),
-        description: String(form.get("description")).trim(),
         price: Number(form.get("price")),
         inventory: Number(form.get("inventory")),
-        image_path: path,
-      });
-      if (productError) throw productError;
+        published: true,
+        image_path: "",
+        image_url: imageUrl,
+        created_at: new Date().toISOString(),
+      };
+      const updated = [product, ...localProducts];
+      setLocalProducts(updated);
+      writeLocalSellerProducts(demoAccount.email, updated);
       formElement.reset();
-      await loadSellerData(session);
-      setNotice("Product added to your SupreCart listings.");
+      setNotice("Product added to your local preview listings.");
     } catch (cause) {
-      console.error("Could not add the seller's SupreCart product.", cause);
+      console.error("Could not add the seller's product.", cause);
       setError(cause instanceof Error ? cause.message : "Could not add product.");
     } finally {
       setSubmitting(false);
     }
   }
 
-  async function requestPayout(event: FormEvent<HTMLFormElement>) {
+  function requestPayout(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!supabase || !session) return;
-    const formElement = event.currentTarget;
-    setSubmitting(true);
-    setError("");
-    try {
-      const amount = Number(new FormData(formElement).get("amount"));
-      const { error: payoutError } = await supabase.rpc("request_seller_payout", {
-        requested_amount: amount,
-      });
-      if (payoutError) throw payoutError;
-      await loadSellerData(session);
-      setNotice("Payout request submitted for review. Funds have not been transferred.");
-      formElement.reset();
-    } catch (cause) {
-      console.error("Could not request a seller payout.", cause);
-      setError(cause instanceof Error ? cause.message : "Could not request payout.");
-    } finally {
-      setSubmitting(false);
-    }
+    setNotice("Payout requests are preview-only. No money has moved.");
+    event.currentTarget.reset();
   }
 
-  async function updateSellerAccount(event: FormEvent<HTMLFormElement>) {
+  function updateSellerAccount(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (demoAccount) {
-      const form = new FormData(event.currentTarget);
-      const name = String(form.get("name")).trim();
-      const phone = String(form.get("phone")).trim();
-      if (!name) {
-        setError("Enter a display name before saving.");
-        return;
-      }
-      saveDemoProfile(demoAccount.email, { name, phone });
-      setDemoProfile({ name, phone });
-      setError("");
-      setNotice("Demo profile saved in this browser only; no Supabase account was changed.");
+    if (!demoAccount) return;
+    const form = new FormData(event.currentTarget);
+    const name = String(form.get("name")).trim();
+    const phone = String(form.get("phone")).trim();
+    if (!name) {
+      setError("Enter a display name before saving.");
       return;
     }
-    if (!supabase || !session) {
-      setError("Sign in with a Supabase seller account to update account settings.");
-      return;
-    }
-    const formElement = event.currentTarget;
-    const form = new FormData(formElement);
-    const email = String(form.get("email")).trim().toLowerCase();
-    const password = String(form.get("password"));
-    if (!email && !password) {
-      setError("Enter a new email address or password to save a change.");
-      return;
-    }
-    setSubmitting(true);
+    saveDemoProfile(demoAccount.email, { name, phone });
+    setDemoAccount({ ...demoAccount, name });
+    setDemoProfile({ name, phone });
     setError("");
-    setNotice("");
-    const update: { email?: string; password?: string } = {};
-    if (email && email !== session.user.email) update.email = email;
-    if (password) update.password = password;
-    if (!Object.keys(update).length) {
-      setError("No account settings have changed.");
-      setSubmitting(false);
-      return;
-    }
-    const { error: updateError } = await supabase.auth.updateUser(update);
-    if (updateError) {
-      console.error("Could not update seller account settings.", updateError);
-      setError(updateError.message);
-    } else {
-      setNotice(
-        update.email
-          ? "Check your inbox to confirm the new email address. The current address remains active until confirmation."
-          : "Your password has been changed.",
-      );
-      formElement.reset();
-    }
-    setSubmitting(false);
+    setNotice("Your seller profile has been updated in this browser.");
   }
 
-  const deliveredOrderIds = useMemo(
-    () =>
-      new Set(
-        (stats?.orders ?? [])
-          .filter((order) => order.status === "delivered")
-          .map((order) => order.id),
-      ),
-    [stats?.orders],
-  );
-  const deliveredItems = useMemo(
-    () => (stats?.items ?? []).filter((item) => deliveredOrderIds.has(item.order_id)),
-    [deliveredOrderIds, stats?.items],
-  );
-  const earnings = deliveredItems.reduce((sum, item) => sum + Number(item.seller_net), 0);
-  const balance = Math.max(0, earnings - (stats?.committedPayouts ?? 0));
-  const soldCount = deliveredItems.reduce((sum, item) => sum + item.quantity, 0);
-  const demoStats = useMemo(
-    () => (demoAccount ? demoSellerStats(demoAccount.email) : null),
-    [demoAccount],
-  );
+  const demoStats = useMemo(() => {
+    if (!demoAccount) return null;
+    const base = demoSellerStats(demoAccount.email);
+    return { ...base, products: [...localProducts, ...base.products] };
+  }, [demoAccount, localProducts]);
   const demoDeliveredItems =
     demoStats?.items.filter((item) =>
       demoStats.orders.some((order) => order.id === item.order_id && order.status === "delivered"),
@@ -791,9 +557,7 @@ export default function SellerPortal({ standalone = false }: { standalone?: bool
 
   if (loadingScreen) return <SellerLoadingScreen />;
 
-  const showDashboard =
-    Boolean(demoAccount && sellerApplication?.status === "approved") ||
-    (Boolean(session) && application?.status === "approved");
+  const showDashboard = Boolean(demoAccount && sellerApplication?.status === "approved");
 
   return (
     <main className="seller-site">
@@ -805,10 +569,49 @@ export default function SellerPortal({ standalone = false }: { standalone?: bool
           <Store size={15} /> SELLER STUDIO
         </span>
         <div className="seller-header-actions">
-          {session || demoAccount ? (
-            <button type="button" className="seller-text-button" onClick={() => void signOut()}>
-              <LogOut size={15} /> Sign out
-            </button>
+          {demoAccount ? (
+            <div className="seller-account-menu">
+              <button
+                type="button"
+                className="seller-account-trigger"
+                aria-expanded={accountMenuOpen}
+                aria-haspopup="menu"
+                onClick={() => setAccountMenuOpen((open) => !open)}
+              >
+                <span className="seller-account-avatar">
+                  {sellerAvatar ? (
+                    <img src={sellerAvatar} alt="" />
+                  ) : (
+                    (demoProfile.name || demoAccount.name).trim().charAt(0).toUpperCase()
+                  )}
+                </span>
+                <span className="seller-account-name">
+                  <small>Seller account</small>
+                  <strong>{demoProfile.name || demoAccount.name}</strong>
+                </span>
+                <ChevronDown size={15} />
+              </button>
+              {accountMenuOpen && (
+                <div className="seller-account-dropdown" role="menu">
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      setAccountMenuOpen(false);
+                      goToPage("settings");
+                    }}
+                  >
+                    <Settings size={15} /> Account settings
+                  </button>
+                  <a role="menuitem" href={marketplaceUrl}>
+                    <Store size={15} /> Buyer homepage
+                  </a>
+                  <button type="button" role="menuitem" onClick={() => void signOut()}>
+                    <LogOut size={15} /> Sign out
+                  </button>
+                </div>
+              )}
+            </div>
           ) : (
             <a className="seller-text-button" href={loginHref}>
               Buyer sign in <ArrowRight size={15} />
@@ -871,14 +674,12 @@ export default function SellerPortal({ standalone = false }: { standalone?: bool
               </button>
             </>
           )}
-          {(session || demoAccount) && (
+          {demoAccount && (
             <a
               className="seller-side-link"
-              href={
-                demoAccount
-                  ? `${marketplaceUrl.replace(/\/$/, "")}/messages?demoEmail=${encodeURIComponent(demoAccount.email)}&demoRole=seller`
-                  : `${marketplaceUrl.replace(/\/$/, "")}/messages`
-              }
+              href={`${marketplaceUrl.replace(/\/$/, "")}/messages?demoEmail=${encodeURIComponent(
+                demoAccount.email,
+              )}&demoRole=seller`}
             >
               <MessageCircle size={16} /> Messages
             </a>
@@ -929,14 +730,12 @@ export default function SellerPortal({ standalone = false }: { standalone?: bool
               </button>
             </>
           )}
-          {(session || demoAccount) && (
+          {demoAccount && (
             <a
               className="seller-side-link"
-              href={
-                demoAccount
-                  ? `${marketplaceUrl.replace(/\/$/, "")}/messages?demoEmail=${encodeURIComponent(demoAccount.email)}&demoRole=seller`
-                  : `${marketplaceUrl.replace(/\/$/, "")}/messages`
-              }
+              href={`${marketplaceUrl.replace(/\/$/, "")}/messages?demoEmail=${encodeURIComponent(
+                demoAccount.email,
+              )}&demoRole=seller`}
             >
               <MessageCircle size={16} /> Messages
             </a>
@@ -988,9 +787,9 @@ export default function SellerPortal({ standalone = false }: { standalone?: bool
               earnings={demoEarnings}
               balance={demoBalance}
               soldCount={demoSoldCount}
-              error=""
-              notice=""
-              submitting={false}
+              error={error}
+              notice={notice}
+              submitting={submitting}
               demoMode
               demoProfile={demoProfile}
               demoFundEntries={demoWalletEntries}
@@ -1000,27 +799,6 @@ export default function SellerPortal({ standalone = false }: { standalone?: bool
               onRequestPayout={requestPayout}
               onUpdateAccount={updateSellerAccount}
             />
-          ) : session && application ? (
-            application.status === "approved" ? (
-              <SellerDashboard
-                application={application}
-                stats={stats}
-                earnings={earnings}
-                balance={balance}
-                soldCount={soldCount}
-                error={error}
-                notice={notice}
-                submitting={submitting}
-                session={session}
-                page={page}
-                onNavigate={goToPage}
-                onAddProduct={addProduct}
-                onRequestPayout={requestPayout}
-                onUpdateAccount={updateSellerAccount}
-              />
-            ) : (
-              <ApplicationStatus status={application.status} name={application.first_name} />
-            )
           ) : !demoAccount ? (
             <SellerRedirectPanel />
           ) : !sellerApplication ? (
@@ -1029,7 +807,9 @@ export default function SellerPortal({ standalone = false }: { standalone?: bool
             <ApplicationStatus
               status={sellerApplication.status === "rejected" ? "rejected" : "pending"}
               name={(demoProfile.name || demoAccount.name).split(/\s+/)[0] ?? demoAccount.name}
-              {...(sellerApplication.reviewNote ? { reviewNote: sellerApplication.reviewNote } : {})}
+              {...(sellerApplication.reviewNote
+                ? { reviewNote: sellerApplication.reviewNote }
+                : {})}
               accountHref={buyerAccountHref}
             />
           )}
@@ -1125,7 +905,9 @@ function ApplicationForm({
               minLength={10}
               required
             />
-            <small>At least 10 characters. Stored in this browser so you can sign in again later.</small>
+            <small>
+              At least 10 characters. Stored in this browser so you can sign in again later.
+            </small>
           </label>
           <label className="seller-field-full">
             What do you make or sell?
@@ -1238,11 +1020,7 @@ function SignInPanel({
           </label>
           <label className="seller-field-full">
             Password
-            <input
-              name="password"
-              type="password"
-              autoComplete="current-password"
-            />
+            <input name="password" type="password" autoComplete="current-password" />
             <small>
               Preview seller accounts can sign in without a password. Accounts you create here use
               the password you chose.
@@ -1368,7 +1146,6 @@ function SellerDashboard({
   error,
   notice,
   submitting,
-  session = null,
   demoMode = false,
   demoProfile,
   demoFundEntries = [],
@@ -1386,7 +1163,6 @@ function SellerDashboard({
   error: string;
   notice: string;
   submitting: boolean;
-  session?: Session | null;
   demoMode?: boolean;
   demoProfile?: { name: string; phone: string };
   demoFundEntries?: DemoFundEntry[];
@@ -1561,7 +1337,9 @@ function SellerDashboard({
   }
 
   async function signOutOtherSessions() {
-    setSettingsNotice("Seller accounts are browser-only, so there are no other sessions to sign out.");
+    setSettingsNotice(
+      "Seller accounts are browser-only, so there are no other sessions to sign out.",
+    );
   }
 
   function removeSellerAccount() {
@@ -1607,7 +1385,7 @@ function SellerDashboard({
       {demoMode && (
         <p className="seller-form-notice" role="status">
           DEMO FIXTURES · These example orders, ratings, and NGN figures are fictional and local to
-          this preview. No purchases, payouts, or Supabase records exist.
+          this preview. No purchases, payouts, or backend records exist.
         </p>
       )}
       {error && (
@@ -1794,11 +1572,7 @@ function SellerDashboard({
               (stats?.products ?? []).map((product) => {
                 const rating = ratings.find((item) => item.product_id === product.id);
                 const fee = calculateCommission(Number(product.price));
-                const image =
-                  product.image_url ??
-                  supabase?.storage.from("product-images").getPublicUrl(product.image_path).data
-                    .publicUrl ??
-                  "";
+                const image = product.image_url ?? "";
                 return (
                   <article className="seller-product-row" key={product.id}>
                     <img src={image} alt="" />
@@ -2006,7 +1780,7 @@ function SellerDashboard({
                 <strong>{demoMode ? "Local demo seller" : application.email}</strong>
                 <span>
                   {demoMode
-                    ? "This local identity is not a Supabase account."
+                    ? "This seller account is stored in this browser only."
                     : `${application.first_name} ${application.last_name} · ${application.status} application`}
                 </span>
               </div>

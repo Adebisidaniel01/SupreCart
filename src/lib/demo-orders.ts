@@ -1,4 +1,4 @@
-import { isDemoAccountDeleted } from "./demo-accounts";
+import { isDemoAccountDeleted, updateDemoAccountName } from "./demo-accounts";
 
 export type DemoOrder = {
   id: string;
@@ -104,7 +104,6 @@ export function getDemoOrders(email: string) {
 }
 
 export function getDemoProfile(email: string, fallbackName: string) {
-  if (!import.meta.env.DEV) return { name: fallbackName, phone: "" };
   try {
     const saved = window.localStorage.getItem(`suprecart-demo-profile:${email.toLowerCase()}`);
     if (!saved) return { name: fallbackName, phone: "" };
@@ -120,14 +119,17 @@ export function getDemoProfile(email: string, fallbackName: string) {
 }
 
 export function saveDemoProfile(email: string, profile: { name: string; phone: string }) {
-  if (!import.meta.env.DEV) return;
-  window.localStorage.setItem(
-    `suprecart-demo-profile:${email.toLowerCase()}`,
-    JSON.stringify(profile),
-  );
+  try {
+    window.localStorage.setItem(
+      `suprecart-demo-profile:${email.toLowerCase()}`,
+      JSON.stringify(profile),
+    );
+  } catch (cause) {
+    console.error("Could not save the local SupreCart demo profile.", cause);
+  }
+  updateDemoAccountName(email, profile.name);
 }
 
 export function deleteDemoProfile(email: string) {
-  if (!import.meta.env.DEV) return;
   window.localStorage.removeItem(`suprecart-demo-profile:${email.toLowerCase()}`);
 }

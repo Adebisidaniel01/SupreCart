@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { ArrowRight, ArrowUpRight, BadgeCheck, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ProductCard, Wordmark } from "@/components/storefront";
+import { accountFirstName, useActiveAccount } from "@/hooks/use-active-account";
 import { products, categories, money, type Product } from "@/lib/catalog";
 
 const editProducts = [1, 6, 7, 8]
@@ -60,45 +61,88 @@ export const Route = createFileRoute("/")({
 });
 
 function Index() {
+  const { account } = useActiveAccount();
+  const firstName = accountFirstName(account);
+  const isSeller = account?.role === "seller";
+
   return (
-    <main className="home-main home-hybrid">
-      <HomeSplash />
+    <main className={`home-main home-hybrid${account ? " home-signed-in" : ""}`}>
+      {!account && <HomeSplash />}
 
       <div className="home-hybrid-hero">
         <section className="page-width editorial-hero">
           <div className="editorial-hero-copy">
-            <p className="editorial-eyebrow">THE SUPRECART EDIT · VOL. 01</p>
+            <p className="editorial-eyebrow">
+              {account
+                ? `${isSeller ? "Seller studio" : "Your SupreCart"} · ${firstName}`
+                : "THE SUPRECART EDIT · VOL. 01"}
+            </p>
             <h1>
-              Objects with
-              <br />
-              <em>a life of their own.</em>
+              {account ? (
+                <>
+                  Welcome back,
+                  <br />
+                  <em>{firstName}.</em>
+                </>
+              ) : (
+                <>
+                  Objects with
+                  <br />
+                  <em>a life of their own.</em>
+                </>
+              )}
             </h1>
             <p className="editorial-hero-lead">
-              Independent makers, considered pieces and the quiet pleasure of finding something that
-              feels like yours. Gathered slowly, from people who care how things are made.
+              {account
+                ? isSeller
+                  ? "Your store, orders and buyer conversations are ready. Keep your listings fresh, then step back into the marketplace whenever you want to shop."
+                  : "Your edit is exactly where you left it. Keep browsing the pieces you love, check your saved finds and pick up where you left off."
+                : "Independent makers, considered pieces and the quiet pleasure of finding something that feels like yours. Gathered slowly, from people who care how things are made."}
             </p>
             <div className="editorial-hero-actions">
               <Button size="lg" asChild>
-                <Link to="/shop" search={{ filter: "All", query: "" }}>
-                  Shop the edit <ArrowRight size={15} />
-                </Link>
+                {isSeller ? (
+                  <Link to="/sellers">
+                    Open seller studio <ArrowRight size={15} />
+                  </Link>
+                ) : (
+                  <Link to="/shop" search={{ filter: "All", query: "" }}>
+                    Shop the edit <ArrowRight size={15} />
+                  </Link>
+                )}
               </Button>
-              <a href="#categories" className="editorial-text-link">
-                Browse categories <ArrowUpRight size={15} />
-              </a>
+              {account ? (
+                isSeller ? (
+                  <Link
+                    to="/shop"
+                    search={{ filter: "All", query: "" }}
+                    className="editorial-text-link"
+                  >
+                    Browse marketplace <ArrowUpRight size={15} />
+                  </Link>
+                ) : (
+                  <Link to="/account" className="editorial-text-link">
+                    View your account <ArrowUpRight size={15} />
+                  </Link>
+                )
+              ) : (
+                <a href="#categories" className="editorial-text-link">
+                  Browse categories <ArrowUpRight size={15} />
+                </a>
+              )}
             </div>
             <dl className="editorial-hero-facts">
               <div>
-                <dt>Curated finds</dt>
-                <dd>{products.length}</dd>
+                <dt>{account ? "Signed in as" : "Curated finds"}</dt>
+                <dd>{account ? firstName : products.length}</dd>
               </div>
               <div>
-                <dt>Independent sellers</dt>
-                <dd>24</dd>
+                <dt>{account ? "Account type" : "Independent sellers"}</dt>
+                <dd>{account ? (isSeller ? "Seller" : "Buyer") : "24"}</dd>
               </div>
               <div>
-                <dt>Average rating</dt>
-                <dd>{averageRating}</dd>
+                <dt>{account ? "Curated finds" : "Average rating"}</dt>
+                <dd>{account ? products.length : averageRating}</dd>
               </div>
             </dl>
           </div>
@@ -130,30 +174,36 @@ function Index() {
             ))}
             <div className="editorial-hero-stamp">
               <BadgeCheck size={15} />
-              <span>Independent sellers, checked by real people</span>
+              <span>
+                {account
+                  ? `Signed in — you'll stay signed in until you choose to log out`
+                  : "Independent sellers, checked by real people"}
+              </span>
             </div>
           </div>
         </section>
       </div>
 
       <div className="page-width home-hybrid-body">
-        <section className="home-value-strip" aria-label="Why shop SupreCart">
-          <div>
-            <span>01</span>
-            <strong>Curated, not crowded</strong>
-            <p>A considered mix of pieces worth making room for.</p>
-          </div>
-          <div>
-            <span>02</span>
-            <strong>Sellers with a story</strong>
-            <p>Independent businesses, makers and local favourites.</p>
-          </div>
-          <div>
-            <span>03</span>
-            <strong>Easy to explore</strong>
-            <p>Clear categories, useful details and a wishlist for later.</p>
-          </div>
-        </section>
+        {!account && (
+          <section className="home-value-strip" aria-label="Why shop SupreCart">
+            <div>
+              <span>01</span>
+              <strong>Curated, not crowded</strong>
+              <p>A considered mix of pieces worth making room for.</p>
+            </div>
+            <div>
+              <span>02</span>
+              <strong>Sellers with a story</strong>
+              <p>Independent businesses, makers and local favourites.</p>
+            </div>
+            <div>
+              <span>03</span>
+              <strong>Easy to explore</strong>
+              <p>Clear categories, useful details and a wishlist for later.</p>
+            </div>
+          </section>
+        )}
 
         <section className="category-section" id="categories">
           <div className="section-heading">
@@ -186,48 +236,50 @@ function Index() {
           </div>
         </section>
 
-        <section className="sponsored-grid home-edits" aria-label="Marketplace edits">
-          <Link
-            to="/shop"
-            search={{ filter: "Home", query: "" }}
-            className="sponsored-card sponsored-home"
-          >
-            <span className="sponsored-label">
-              <Sparkles size={13} /> THE HOME EDIT
-            </span>
-            <strong>
-              Make room
-              <br />
-              for good things.
-            </strong>
-            <span className="sponsored-card-link">
-              Explore home <ArrowRight size={14} />
-            </span>
-          </Link>
-          <Link
-            to="/shop"
-            search={{ filter: "Beauty", query: "" }}
-            className="sponsored-card sponsored-beauty"
-          >
-            <span className="sponsored-label">
-              <Sparkles size={13} /> EVERYDAY BEAUTY
-            </span>
-            <strong>
-              A softer kind
-              <br />
-              of everyday.
-            </strong>
-            <span className="sponsored-card-link">
-              Explore beauty <ArrowRight size={14} />
-            </span>
-          </Link>
-        </section>
+        {!account && (
+          <section className="sponsored-grid home-edits" aria-label="Marketplace edits">
+            <Link
+              to="/shop"
+              search={{ filter: "Home", query: "" }}
+              className="sponsored-card sponsored-home"
+            >
+              <span className="sponsored-label">
+                <Sparkles size={13} /> THE HOME EDIT
+              </span>
+              <strong>
+                Make room
+                <br />
+                for good things.
+              </strong>
+              <span className="sponsored-card-link">
+                Explore home <ArrowRight size={14} />
+              </span>
+            </Link>
+            <Link
+              to="/shop"
+              search={{ filter: "Beauty", query: "" }}
+              className="sponsored-card sponsored-beauty"
+            >
+              <span className="sponsored-label">
+                <Sparkles size={13} /> EVERYDAY BEAUTY
+              </span>
+              <strong>
+                A softer kind
+                <br />
+                of everyday.
+              </strong>
+              <span className="sponsored-card-link">
+                Explore beauty <ArrowRight size={14} />
+              </span>
+            </Link>
+          </section>
+        )}
 
         <section className="bestsellers home-edit">
           <div className="section-heading">
             <div>
-              <p className="eyebrow">THE SUPRECART EDIT</p>
-              <h2>Finds worth a closer look</h2>
+              <p className="eyebrow">{account ? "PICKED FOR YOU" : "THE SUPRECART EDIT"}</p>
+              <h2>{account ? `Finds for ${firstName}` : "Finds worth a closer look"}</h2>
             </div>
             <Link to="/shop" search={{ filter: "All", query: "" }} className="view-all">
               Shop everything <ArrowRight size={14} />
@@ -240,39 +292,41 @@ function Index() {
           </div>
         </section>
 
-        <section className="sponsored-banner home-maker-banner">
-          <div>
-            <span className="sponsored-label">
-              <Sparkles size={13} /> FOR INDEPENDENT SELLERS
-            </span>
-            <h2>
-              Good finds deserve
-              <br />a good home.
-            </h2>
-            <p>
-              Bring your products to a marketplace built around discovery, thoughtful browsing and
-              the people behind every find.
-            </p>
-            <Button asChild>
-              <Link to="/sellers">
-                Sell on SupreCart <ArrowRight />
-              </Link>
-            </Button>
-          </div>
-          <div className="sponsored-stamp">
-            More room
-            <br />
-            <strong>to grow</strong>
-            <br />
-            by design
-          </div>
-        </section>
+        {!account && (
+          <section className="sponsored-banner home-maker-banner">
+            <div>
+              <span className="sponsored-label">
+                <Sparkles size={13} /> FOR INDEPENDENT SELLERS
+              </span>
+              <h2>
+                Good finds deserve
+                <br />a good home.
+              </h2>
+              <p>
+                Bring your products to a marketplace built around discovery, thoughtful browsing and
+                the people behind every find.
+              </p>
+              <Button asChild>
+                <Link to="/sellers">
+                  Sell on SupreCart <ArrowRight />
+                </Link>
+              </Button>
+            </div>
+            <div className="sponsored-stamp">
+              More room
+              <br />
+              <strong>to grow</strong>
+              <br />
+              by design
+            </div>
+          </section>
+        )}
 
         <section className="bestsellers latest-finds">
           <div className="section-heading">
             <div>
-              <p className="eyebrow">MORE REASONS TO BROWSE</p>
-              <h2>Fresh from the marketplace</h2>
+              <p className="eyebrow">{account ? "KEEP EXPLORING" : "MORE REASONS TO BROWSE"}</p>
+              <h2>{account ? `More to discover, ${firstName}` : "Fresh from the marketplace"}</h2>
             </div>
             <Link to="/shop" search={{ filter: "All", query: "" }} className="view-all">
               See all <ArrowRight size={14} />

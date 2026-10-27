@@ -191,6 +191,7 @@ export function defaultAccountPreferences(): AccountPreferences {
 }
 
 const storagePrefix = "suprecart-account-preferences:";
+const preferencesChangeEvent = "suprecart-account-preferences-change";
 
 const clone = (value: AccountPreferences): AccountPreferences => JSON.parse(JSON.stringify(value));
 
@@ -234,6 +235,7 @@ export function saveAccountPreferences(scope: string, preferences: AccountPrefer
       `${storagePrefix}${scope.toLowerCase()}`,
       JSON.stringify(clone(preferences)),
     );
+    window.dispatchEvent(new Event(preferencesChangeEvent));
   } catch (cause) {
     console.error("Could not save the SupreCart account preferences.", cause);
   }
@@ -242,6 +244,24 @@ export function saveAccountPreferences(scope: string, preferences: AccountPrefer
 export function clearAccountPreferences(scope: string) {
   if (typeof window === "undefined") return;
   window.localStorage.removeItem(`${storagePrefix}${scope.toLowerCase()}`);
+  window.dispatchEvent(new Event(preferencesChangeEvent));
+}
+
+export function subscribeAccountPreferences(listener: () => void) {
+  if (typeof window === "undefined") return () => undefined;
+  const handleStorage = (event: StorageEvent) => {
+    if (event.key?.startsWith(storagePrefix)) listener();
+  };
+  window.addEventListener(preferencesChangeEvent, listener);
+  window.addEventListener("storage", handleStorage);
+  return () => {
+    window.removeEventListener(preferencesChangeEvent, listener);
+    window.removeEventListener("storage", handleStorage);
+  };
+}
+
+export function accountAvatar(account: { email: string; role: "buyer" | "seller" }) {
+  return readAccountPreferences(accountPreferenceScope(account.role, account.email)).avatarDataUrl;
 }
 
 export function createPaymentMethod(input: {

@@ -17,6 +17,7 @@ const presetAccounts: DemoAccount[] = [
 const demoSessionKey = "suprecart-demo-account";
 const localAccountsKey = "suprecart-local-accounts";
 const deletedAccountsKey = "suprecart-deleted-demo-accounts";
+const sessionChangeEvent = "suprecart-session-change";
 
 type StoredAccount = DemoAccount & {
   salt: string;
@@ -144,17 +145,34 @@ export function getDemoAccounts(role: DemoAccount["role"]) {
 export function saveDemoAccount(account: DemoAccount) {
   if (!canUseStorage()) return;
   window.localStorage.setItem(demoSessionKey, JSON.stringify(account));
+  window.dispatchEvent(new Event(sessionChangeEvent));
 }
 
-export function readDemoAccount(role: DemoAccount["role"]) {
+function notifySessionChange() {
+  if (!canUseStorage()) return;
+  window.dispatchEvent(new Event(sessionChangeEvent));
+}
+
+/** Returns the signed-in buyer or seller without assuming a role. */
+export function readActiveAccount(): DemoAccount | null {
   if (!canUseStorage()) return null;
   const savedAccount = window.localStorage.getItem(demoSessionKey);
   if (!savedAccount) return null;
   try {
-    const account = JSON.parse(savedAccount) as DemoAccount;
+    const account = JSON.parse(savedAccount) as Partial<DemoAccount>;
+    if (typeof account.email !== "string") {
+      window.localStorage.removeItem(demoSessionKey);
+      return null;
+    }
+    const role = account.role === "seller" ? "seller" : "buyer";
     const match = findDemoAccount(account.email, role) ?? null;
-    if (!match) window.localStorage.removeItem(demoSessionKey);
-    return match;
+    if (!match) {
+      window.localStorage.removeItem(demoSessionKey);
+      return null;
+    }
+    const sessionName =
+      typeof account.name === "string" && account.name.trim() ? account.name.trim() : match.name;
+    return { email: match.email, name: sessionName, role: match.role };
   } catch (cause) {
     console.error("Could not read the local SupreCart preview account.", cause);
     window.localStorage.removeItem(demoSessionKey);
@@ -162,9 +180,28 @@ export function readDemoAccount(role: DemoAccount["role"]) {
   }
 }
 
+export function subscribeDemoAccount(listener: () => void) {
+  if (!canUseStorage()) return () => undefined;
+  const handleStorage = (event: StorageEvent) => {
+    if (event.key === demoSessionKey) listener();
+  };
+  window.addEventListener(sessionChangeEvent, listener);
+  window.addEventListener("storage", handleStorage);
+  return () => {
+    window.removeEventListener(sessionChangeEvent, listener);
+    window.removeEventListener("storage", handleStorage);
+  };
+}
+
+export function readDemoAccount(role: DemoAccount["role"]) {
+  const account = readActiveAccount();
+  return account?.role === role ? account : null;
+}
+
 export function clearDemoAccount() {
   if (!canUseStorage()) return;
   window.localStorage.removeItem(demoSessionKey);
+  notifySessionChange();
 }
 
 export function deleteDemoAccount(email: string) {
@@ -176,9 +213,49 @@ export function deleteDemoAccount(email: string) {
     const saved = window.localStorage.getItem(demoSessionKey);
     if (saved && normalizeEmail((JSON.parse(saved) as DemoAccount).email) === normalized) {
       window.localStorage.removeItem(demoSessionKey);
+      notifySessionChange();
     }
   } catch {
     window.localStorage.removeItem(demoSessionKey);
+    notifySessionChange();
+  }
+}
+
+/** Gives an approved buyer a seller-side preview identity in this browser. */
+export function ensureSellerAccount(buyer: DemoAccount): DemoAccount {
+  const existing = findDemoAccount(buyer.email, "seller");
+  if (existing) return existing;
+  const accounts = readStoredAccounts();
+  const account: StoredAccount = {
+    email: normalizeEmail(buyer.email),
+    name: buyer.name,
+    role: "seller",
+    salt: "approved-seller",
+    passwordHash: "approved-seller",
+    createdAt: new Date().toISOString(),
+  };
+  writeStoredAccounts([
+    ...accounts.filter((entry) => !(entry.email === account.email && entry.role === account.role)),
+    account,
+  ]);
+  return toDemoAccount(account);
+}
+
+/** Keeps the active session, navbar and stored account in sync after a profile edit. */
+export function updateDemoAccountName(email: string, name: string) {
+  if (!canUseStorage()) return;
+  const normalized = normalizeEmail(email);
+  const trimmed = name.trim();
+  if (!trimmed) return;
+  writeStoredAccounts(
+    readStoredAccounts().map((account) =>
+      account.email === normalized ? { ...account, name: trimmed } : account,
+    ),
+  );
+  const active = readActiveAccount();
+  if (active && active.email === normalized) {
+    window.localStorage.setItem(demoSessionKey, JSON.stringify({ ...active, name: trimmed }));
+    notifySessionChange();
   }
 }
 

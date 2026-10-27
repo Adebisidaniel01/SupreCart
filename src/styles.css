@@ -872,10 +872,10 @@ button {
 .collection-empty h2 {
   font-size: 23px;
 }
-  .header .wordmark img {
-    width: 130px;
-    height: 38px;
-  }
+.header .wordmark img {
+  width: 130px;
+  height: 38px;
+}
 .collection-empty p {
   color: var(--muted-foreground);
   margin-block: 15px 25px;
@@ -1055,7 +1055,8 @@ button {
   }
 }
 @media (max-width: 640px) {
-  html, body {
+  html,
+  body {
     overflow-x: hidden;
   }
   img {
@@ -8833,4 +8834,157 @@ body {
     flex: 1;
     justify-content: center;
   }
+}
+
+/* Signed-in account menu */
+.market-avatar-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  margin-left: 4px;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid #d8ddd8;
+  border-radius: 50%;
+  background: #eef3ec;
+  color: #344a37;
+  font: inherit;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+}
+.market-avatar-button:hover,
+.market-avatar-button[data-state="open"] {
+  border-color: #344a37;
+  box-shadow: 0 0 0 3px rgba(52, 74, 55, 0.12);
+}
+.market-avatar-button img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.account-menu {
+  width: 268px;
+  padding: 6px;
+  border-color: #dfe5dd;
+  border-radius: 12px;
+  background: #ffffff;
+  box-shadow: 0 18px 42px -20px rgba(24, 34, 26, 0.45);
+}
+.account-menu-head {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 10px 9px 11px;
+}
+.account-menu-avatar {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  overflow: hidden;
+  border-radius: 50%;
+  background: #eef3ec;
+  color: #344a37;
+  font-size: 12px;
+  font-weight: 700;
+}
+.account-menu-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.account-menu-identity {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+.account-menu-identity strong {
+  overflow: hidden;
+  color: #1c1d1f;
+  font-size: 13.5px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.account-menu-identity small {
+  overflow: hidden;
+  color: #6a756c;
+  font-size: 11px;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.account-menu [role="menuitem"] {
+  gap: 10px;
+  padding: 9px 10px;
+  border-radius: 7px;
+  color: #2a332b;
+  font-size: 13px;
+  font-weight: 500;
+}
+.account-menu [role="menuitem"] svg {
+  width: 16px;
+  height: 16px;
+  color: #5a6b5c;
+}
+.account-menu [role="menuitem"]:focus {
+  background: #f2f6f0;
+  color: #1f2a21;
+}
+.account-menu-signout {
+  color: #a03c34;
+}
+.account-menu-signout svg {
+  color: #a03c34 !important;
+}
+.account-menu-signout:focus {
+  background: #fdf1ef;
+  color: #8c2f28;
+}
+.market-drawer-account {
+  gap: 11px !important;
+}
+.market-drawer-avatar {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  overflow: hidden;
+  border-radius: 50%;
+  background: #eef3ec;
+  color: #344a37;
+  font-size: 11px;
+  font-weight: 700;
+}
+.market-drawer-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.market-drawer-identity {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+  gap: 1px;
+}
+.market-drawer-identity strong {
+  overflow: hidden;
+  color: #1c1d1f;
+  font-size: 13px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.market-drawer-identity small {
+  color: #6a756c;
+  font-size: 11px;
+  font-weight: 500;
 }

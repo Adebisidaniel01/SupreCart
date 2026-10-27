@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import { ProductCard } from "@/components/storefront";
 import { products, categories, brands } from "@/lib/catalog";
 import { trackFilterProducts, trackViewSearchResults } from "@/lib/analytics";
-import { loadLiveMarketplaceProducts } from "@/lib/marketplace";
 
 export const Route = createFileRoute("/shop")({
   validateSearch: (search: Record<string, unknown>) => ({
@@ -29,28 +28,8 @@ function Shop() {
   const { filter, query } = Route.useSearch();
   const [sort, setSort] = useState("featured");
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [sellerProducts, setSellerProducts] = useState<typeof products>([]);
-  const [sellerProductError, setSellerProductError] = useState("");
-  useEffect(() => {
-    let active = true;
-    void loadLiveMarketplaceProducts()
-      .then((items) => {
-        if (active) setSellerProducts(items);
-      })
-      .catch((error: unknown) => {
-        console.error("Could not load live SupreCart seller listings.", error);
-        if (active) setSellerProductError("Live seller listings could not be loaded right now.");
-      });
-    return () => {
-      active = false;
-    };
-  }, []);
-  const allProducts = useMemo(() => [...sellerProducts, ...products], [sellerProducts]);
-  const options = [
-    "All",
-    ...new Set([...categories, ...sellerProducts.map((product) => product.category)]),
-    ...new Set([...brands, ...sellerProducts.map((product) => product.brand)]),
-  ];
+  const allProducts = useMemo(() => products, []);
+  const options = ["All", ...new Set([...categories, ...brands])];
   const visible = useMemo(
     () =>
       allProducts
@@ -123,11 +102,6 @@ function Shop() {
         <strong>Made with care by independent sellers.</strong>
         <span>Paid placement</span>
       </div>
-      {sellerProductError && (
-        <p className="seller-listing-error" role="status">
-          {sellerProductError}
-        </p>
-      )}
       <div className="product-grid shop-products">
         {visible.map((p) => (
           <ProductCard key={p.id} product={p} />

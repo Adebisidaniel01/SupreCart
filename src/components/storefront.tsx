@@ -12,20 +12,21 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import {
   ArrowRight,
   BadgeCheck,
-  Facebook,
   Heart,
   Instagram,
   LayoutGrid,
-  Linkedin,
+  LogOut,
   Menu,
   Minus,
   Music2,
   MessageCircle,
   Plus,
   Search,
+  Settings,
   ShoppingBag,
   ShoppingCart,
   Star,
+  Store,
   Truck,
   Twitter,
   UserRound,
@@ -33,6 +34,15 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { accountInitials, useActiveAccount } from "@/hooks/use-active-account";
 import {
   products,
   categories,
@@ -97,6 +107,8 @@ export function Storefront({ children }: { children: ReactNode }) {
   const [newsletterNote, setNewsletterNote] = useState("");
   const [notice, setNotice] = useState("");
   const navigate = useNavigate();
+  const { account, avatar, signOut } = useActiveAccount();
+  const initials = accountInitials(account);
   useEffect(() => {
     function closeNavigation(event: KeyboardEvent) {
       if (event.key !== "Escape") return;
@@ -187,6 +199,13 @@ export function Storefront({ children }: { children: ReactNode }) {
     { label: "Home & living", to: "/shop" as const, filter: "Home" },
     { label: "Beauty", to: "/shop" as const, filter: "Beauty" },
   ] as const;
+
+  function handleSignOut() {
+    signOut();
+    setPanel("");
+    setMobileNav(false);
+    void navigate({ to: "/login" });
+  }
 
   function addToCart() {
     if (!selected || !size) return;
@@ -281,26 +300,115 @@ export function Storefront({ children }: { children: ReactNode }) {
               <ShoppingCart />
               {cartCount > 0 && <span className="count-badge">{cartCount}</span>}
             </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              title="Account"
-              aria-label="Account"
-              className="market-icon-button"
-              asChild
-            >
-              <Link to="/account">
-                <UserRound />
-              </Link>
-            </Button>
-            <div className="market-auth-links">
-              <Link to="/login" className="market-button market-button-outline">
-                Log in
-              </Link>
-              <Link to="/signup" className="market-button market-button-solid">
-                Sign up
-              </Link>
-            </div>
+            {account ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    type="button"
+                    className="market-avatar-button"
+                    title={`${account.name} — open account menu`}
+                    aria-label={`Open account menu for ${account.name}`}
+                  >
+                    {avatar ? (
+                      <img src={avatar} alt={`${account.name} profile photo`} />
+                    ) : (
+                      <span aria-hidden="true">{initials}</span>
+                    )}
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" sideOffset={10} className="account-menu">
+                  <DropdownMenuLabel className="account-menu-head">
+                    <span className="account-menu-avatar">
+                      {avatar ? <img src={avatar} alt="" /> : <span>{initials}</span>}
+                    </span>
+                    <span className="account-menu-identity">
+                      <strong>{account.name}</strong>
+                      <small>
+                        {account.role === "seller" ? "Seller account" : "Buyer account"} ·{" "}
+                        {account.email}
+                      </small>
+                    </span>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  {account.role === "seller" ? (
+                    <>
+                      <DropdownMenuItem asChild>
+                        <Link to="/sellers">
+                          <Store /> Seller studio
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link
+                          to="/sellers"
+                          hash="settings"
+                          onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+                        >
+                          <Settings /> Store settings
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link to="/messages">
+                          <MessageCircle /> Messages
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link to="/">
+                          <ShoppingBag /> Marketplace home
+                        </Link>
+                      </DropdownMenuItem>
+                    </>
+                  ) : (
+                    <>
+                      <DropdownMenuItem asChild>
+                        <Link to="/account">
+                          <UserRound /> My account
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onSelect={() => openPanel("wishlist")}>
+                        <Heart /> Wishlist
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link to="/messages">
+                          <MessageCircle /> Messages
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link to="/sellers">
+                          <Store /> Sell on SupreCart
+                        </Link>
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem className="account-menu-signout" onSelect={handleSignOut}>
+                    <LogOut /> Sign out
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  title="Account"
+                  aria-label="Account"
+                  className="market-icon-button"
+                  asChild
+                >
+                  <Link to="/account">
+                    <UserRound />
+                  </Link>
+                </Button>
+                <div className="market-auth-links">
+                  <Link to="/login" className="market-button market-button-outline">
+                    Log in
+                  </Link>
+                  <Link to="/signup" className="market-button market-button-solid">
+                    Sign up
+                  </Link>
+                </div>
+              </>
+            )}
           </nav>
           <div className="market-mobile-tools">
             <Button
@@ -439,29 +547,55 @@ export function Storefront({ children }: { children: ReactNode }) {
               <span>Shopping bag</span>
               <em>{cartCount}</em>
             </button>
-            <Link to="/account" onClick={() => setMobileNav(false)}>
-              <UserRound />
-              <span>My account</span>
-              <ArrowRight />
-            </Link>
+            {account ? (
+              <Link
+                to={account.role === "seller" ? "/sellers" : "/account"}
+                className="market-drawer-account"
+                onClick={() => setMobileNav(false)}
+              >
+                <span className="market-drawer-avatar">
+                  {avatar ? <img src={avatar} alt="" /> : <span>{initials}</span>}
+                </span>
+                <span className="market-drawer-identity">
+                  <strong>{account.name}</strong>
+                  <small>{account.role === "seller" ? "Seller account" : "Buyer account"}</small>
+                </span>
+                <ArrowRight />
+              </Link>
+            ) : (
+              <Link to="/account" onClick={() => setMobileNav(false)}>
+                <UserRound />
+                <span>My account</span>
+                <ArrowRight />
+              </Link>
+            )}
             <Link to="/messages" onClick={() => setMobileNav(false)}>
               <MessageCircle />
               <span>Messages</span>
               <ArrowRight />
             </Link>
+            {account && (
+              <button type="button" onClick={handleSignOut}>
+                <LogOut />
+                <span>Sign out</span>
+                <ArrowRight />
+              </button>
+            )}
           </div>
-          <div className="market-drawer-actions">
-            <Link to="/login" onClick={() => setMobileNav(false)}>
-              Log in
-            </Link>
-            <Link
-              to="/signup"
-              className="market-button market-button-solid"
-              onClick={() => setMobileNav(false)}
-            >
-              Sign up
-            </Link>
-          </div>
+          {!account && (
+            <div className="market-drawer-actions">
+              <Link to="/login" onClick={() => setMobileNav(false)}>
+                Log in
+              </Link>
+              <Link
+                to="/signup"
+                className="market-button market-button-solid"
+                onClick={() => setMobileNav(false)}
+              >
+                Sign up
+              </Link>
+            </div>
+          )}
         </nav>
       </header>
       {children}
@@ -505,12 +639,6 @@ export function Storefront({ children }: { children: ReactNode }) {
                 aria-label="Instagram"
               >
                 <Instagram />
-              </a>
-              <a href="https://facebook.com" target="_blank" rel="noreferrer" aria-label="Facebook">
-                <Facebook />
-              </a>
-              <a href="https://linkedin.com" target="_blank" rel="noreferrer" aria-label="LinkedIn">
-                <Linkedin />
               </a>
               <a href="https://tiktok.com" target="_blank" rel="noreferrer" aria-label="TikTok">
                 <Music2 />

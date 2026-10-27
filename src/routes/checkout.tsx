@@ -14,12 +14,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { useStore } from "@/components/storefront";
 import { money, type Product } from "@/lib/catalog";
-import {
-  trackAddShippingInfo,
-  trackBeginCheckout,
-  trackPreviewOrder,
-} from "@/lib/analytics";
-import { supabase } from "@/lib/supabase";
+import { trackAddShippingInfo, trackBeginCheckout, trackPreviewOrder } from "@/lib/analytics";
 
 type DeliveryMethod = "doorstep" | "pickup";
 type PaymentMethod = "paystack" | "bank-transfer" | "pay-on-delivery";
@@ -62,6 +57,27 @@ type PreviewOrder = {
 };
 
 const VAT_RATE = 0.075;
+const PREVIEW_DOORSTEP_FEE = 2500;
+const PREVIEW_PICKUP_STATIONS: PickupStation[] = [
+  {
+    id: "ilorin-west-gra",
+    name: "GRA Pickup Point",
+    address: "12 Ahmadu Bello Way, GRA",
+    lga: "Ilorin West",
+  },
+  {
+    id: "ilorin-south-tanke",
+    name: "Tanke Pickup Point",
+    address: "8 University Road, Tanke",
+    lga: "Ilorin South",
+  },
+  {
+    id: "ilorin-east-fate",
+    name: "Fate Pickup Point",
+    address: "4 Fate Road, Fate",
+    lga: "Ilorin East",
+  },
+];
 const KWARA_LGAS = [
   "Asa",
   "Baruten",
@@ -110,11 +126,8 @@ function Checkout() {
   const [orderError, setOrderError] = useState("");
   const [deliveryMethod, setDeliveryMethod] = useState<DeliveryMethod>("doorstep");
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("paystack");
-  const [doorstepFee, setDoorstepFee] = useState<number | null>(null);
-  const [pickupStations, setPickupStations] = useState<PickupStation[]>([]);
-  const [loadingDeliveryOptions, setLoadingDeliveryOptions] = useState(true);
-  const [deliveryOptionsError, setDeliveryOptionsError] = useState("");
-  const [savingAddress, setSavingAddress] = useState(false);
+  const doorstepFee = PREVIEW_DOORSTEP_FEE;
+  const pickupStations = PREVIEW_PICKUP_STATIONS;
 
   const sellers = [...new Set(cart.map((item) => item.product.seller))];
   const deliveryFee =
@@ -132,55 +145,9 @@ function Checkout() {
     trackBeginCheckout(cart);
   }, [cart]);
 
-  useEffect(() => {
-    if (!supabase) {
-      setDeliveryOptionsError("Delivery options are unavailable. Supabase is not configured.");
-      setLoadingDeliveryOptions(false);
-      return;
-    }
-    let active = true;
-    void Promise.all([
-      supabase.from("delivery_settings").select("doorstep_fee").eq("singleton", true).single(),
-      supabase
-        .from("pickup_stations")
-        .select("id, name, address, lga")
-        .eq("is_active", true)
-        .order("lga")
-        .order("name"),
-    ])
-      .then(([settingsResult, stationsResult]) => {
-        if (settingsResult.error) throw settingsResult.error;
-        if (stationsResult.error) throw stationsResult.error;
-        if (!active) return;
-        setDoorstepFee(Number(settingsResult.data.doorstep_fee));
-        setPickupStations((stationsResult.data ?? []) as PickupStation[]);
-        setDeliveryOptionsError("");
-      })
-      .catch((cause: unknown) => {
-        console.error("Could not load SupreCart delivery options.", cause);
-        if (active) {
-          setDeliveryOptionsError(
-            cause instanceof Error
-              ? `Delivery options could not be loaded: ${cause.message}`
-              : "Delivery options could not be loaded.",
-          );
-        }
-      })
-      .finally(() => {
-        if (active) setLoadingDeliveryOptions(false);
-      });
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  async function submitDelivery(event: FormEvent<HTMLFormElement>) {
+  function submitDelivery(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const data = new FormData(event.currentTarget);
-    if (deliveryOptionsError) {
-      setOrderError("Resolve the delivery options error before continuing.");
-      return;
-    }
     const method = String(data.get("deliveryMethod")) as DeliveryMethod;
     const station = pickupStations.find((item) => item.id === String(data.get("pickupStationId")));
     if (method === "pickup" && !station) {
@@ -202,40 +169,14 @@ function Checkout() {
       pickupStationAddress: station?.address ?? "",
       note: String(data.get("note")).trim(),
     };
-    setSavingAddress(true);
     setOrderError("");
-    try {
-      if (method === "doorstep" && supabase) {
-        const { data: userResult, error: userError } = await supabase.auth.getUser();
-        if (userError) throw userError;
-        if (userResult.user) {
-          const { error: addressError } = await supabase.from("buyer_addresses").insert({
-            buyer_id: userResult.user.id,
-            first_name: nextDetails.firstName,
-            last_name: nextDetails.lastName,
-            email: nextDetails.email,
-            phone: nextDetails.phone,
-            lga: nextDetails.lga,
-            community: nextDetails.community,
-            street_address: nextDetails.streetAddress,
-            landmark: nextDetails.landmark,
-          });
-          if (addressError) throw addressError;
-        }
-      }
-      setDetails(nextDetails);
-      setStep("receipt");
-      trackAddShippingInfo(
-        cart,
-        nextDetails.method === "pickup" ? "Pickup station" : "Doorstep delivery",
-      );
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    } catch (cause) {
-      console.error("Could not save SupreCart delivery details.", cause);
-      setOrderError(cause instanceof Error ? cause.message : "Could not save delivery details.");
-    } finally {
-      setSavingAddress(false);
-    }
+    setDetails(nextDetails);
+    setStep("receipt");
+    trackAddShippingInfo(
+      cart,
+      nextDetails.method === "pickup" ? "Pickup station" : "Doorstep delivery",
+    );
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   function confirmPreviewOrder() {
@@ -350,12 +291,7 @@ function Checkout() {
                   <p>Delivery is currently available in Kwara State only.</p>
                 </div>
               </div>
-              {deliveryOptionsError && (
-                <p className="form-error" role="alert">
-                  {deliveryOptionsError}
-                </p>
-              )}
-              <fieldset className="delivery-method-options" disabled={loadingDeliveryOptions}>
+              <fieldset className="delivery-method-options">
                 <legend>Delivery option</legend>
                 <label>
                   <input
@@ -367,11 +303,7 @@ function Checkout() {
                   />
                   <span>
                     <strong>Doorstep delivery</strong>
-                    <small>
-                      {doorstepFee === null
-                        ? "Loading fee…"
-                        : `${money(doorstepFee)} per seller shipment`}
-                    </small>
+                    <small>{money(doorstepFee)} per seller shipment</small>
                   </span>
                 </label>
                 <label>
@@ -468,8 +400,8 @@ function Checkout() {
                   {orderError}
                 </p>
               )}
-              <Button size="lg" type="submit" disabled={savingAddress || loadingDeliveryOptions}>
-                {savingAddress ? "Saving details…" : "Review receipt"} <ArrowRight size={16} />
+              <Button size="lg" type="submit">
+                Review receipt <ArrowRight size={16} />
               </Button>
             </form>
           )}
@@ -582,8 +514,8 @@ function Checkout() {
                 </p>
               )}
               <p className="payment-preview">
-                Payment selection is a preview only. No payment will be initiated or collected.
-                Live Paystack checkout requires a secured server integration and verified payment
+                Payment selection is a preview only. No payment will be initiated or collected. Live
+                Paystack checkout requires a secured server integration and verified payment
                 callbacks.
               </p>
             </div>
@@ -641,7 +573,9 @@ function Checkout() {
                 total={order.total}
                 deliveryState={order.deliveryState}
               />
-              <Button onClick={() => navigate({ to: "/shop", search: { filter: "All", query: "" } })}>
+              <Button
+                onClick={() => navigate({ to: "/shop", search: { filter: "All", query: "" } })}
+              >
                 Keep exploring <ArrowRight size={16} />
               </Button>
             </div>

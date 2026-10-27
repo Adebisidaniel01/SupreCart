@@ -138,12 +138,10 @@ function Signup() {
             <p className="account-intro">
               {backendMessage || "Your SupreCart buyer account is ready."}
             </p>
-            <Button size="lg" onClick={() => navigate({ to: "/account" })}>
-              View your account <ArrowRight size={16} />
+            <Button size="lg" onClick={() => navigate({ to: "/" })}>
+              Go to your homepage <ArrowRight size={16} />
             </Button>
-            <p className="demo-disclaimer">
-              Your buyer account is stored in this browser only.
-            </p>
+            <p className="demo-disclaimer">Your buyer account is stored in this browser only.</p>
           </div>
         )}
       </div>

@@ -4,18 +4,20 @@ import { ArrowLeft, ArrowRight, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { trackLogin } from "@/lib/analytics";
 import {
+  ensureSellerAccount,
   findDemoAccount,
   getDemoAccounts,
   isPresetAccount,
   saveDemoAccount,
   verifyAccountPassword,
 } from "@/lib/demo-accounts";
+import { getSellerApplication } from "@/lib/seller-applications";
 
 export const Route = createFileRoute("/login")({
   head: () => ({
     meta: [
       { title: "Sign in — SupreCart" },
-      { name: "description", content: "Sign in to your SupreCart buyer account." },
+      { name: "description", content: "Sign in to your SupreCart buyer or seller account." },
     ],
   }),
   component: Login,
@@ -30,28 +32,47 @@ function Login() {
     const formData = new FormData(event.currentTarget);
     const email = String(formData.get("email")).trim().toLowerCase();
     const password = String(formData.get("password"));
-    const demoAccount = findDemoAccount(email, "buyer");
+    const sellerAccount = findDemoAccount(email, "seller");
+    const buyerAccount = findDemoAccount(email, "buyer");
+    const approvedBuyer =
+      buyerAccount && getSellerApplication(buyerAccount.email)?.status === "approved"
+        ? ensureSellerAccount(buyerAccount)
+        : null;
+    const demoAccount = sellerAccount ?? approvedBuyer ?? buyerAccount;
     if (!demoAccount) {
-      setError("No buyer account matches that email yet. Create an account first.");
+      setError("No account matches that email yet. Create an account first.");
       return;
     }
-    if (!isPresetAccount(email, "buyer")) {
+    const passwordFree =
+      isPresetAccount(email, demoAccount.role) ||
+      Boolean(approvedBuyer && isPresetAccount(email, "buyer"));
+    if (!passwordFree) {
       try {
-        const passwordMatches = await verifyAccountPassword(email, "buyer", password);
+        const passwordRoles = [
+          ...(sellerAccount ? (["seller"] as const) : []),
+          ...(buyerAccount ? (["buyer"] as const) : []),
+        ];
+        let passwordMatches = false;
+        for (const role of passwordRoles) {
+          if (await verifyAccountPassword(email, role, password)) {
+            passwordMatches = true;
+            break;
+          }
+        }
         if (!passwordMatches) {
           setError("That password does not match this account. Please try again.");
           return;
         }
       } catch (cause) {
-        console.error("Could not check the SupreCart buyer password.", cause);
+        console.error("Could not check the SupreCart account password.", cause);
         setError(cause instanceof Error ? cause.message : "Could not sign in.");
         return;
       }
     }
     saveDemoAccount(demoAccount);
-    trackLogin("buyer_preview");
+    trackLogin(demoAccount.role === "seller" ? "seller_preview" : "buyer_preview");
     setError("");
-    await navigate({ to: "/account" });
+    await navigate({ to: demoAccount.role === "seller" ? "/sellers" : "/" });
   }
 
   return (
@@ -76,20 +97,17 @@ function Login() {
           </label>
           <label>
             Password
-            <input
-              type="password"
-              name="password"
-              autoComplete="current-password"
-            />
+            <input type="password" name="password" autoComplete="current-password" />
             <small>
-              Use the password you chose when you created your account. Preview accounts can
-              sign in without one.
+              Use the password you chose when you created your account. Preview accounts can sign in
+              without one.
             </small>
           </label>
           <div className="demo-disclaimer">
             <ShieldCheck size={15} />
             <span>
-              Preview buyer accounts (no password or email verification):
+              Preview buyer accounts and approved seller accounts (no password or email
+              verification):
               {getDemoAccounts("buyer").map((account) => (
                 <span key={account.email}>
                   <br />
