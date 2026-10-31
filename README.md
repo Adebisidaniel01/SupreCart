@@ -31,6 +31,15 @@ npm run dev:sellers   # standalone seller portal on port 8082
 npm run build:sellers # standalone seller build
 ```
 
+## Dependency audit
+
+`npm audit --omit=dev` reports **0 production vulnerabilities**. `npm audit` also reports 14 moderate advisories from the development lint tooling (`minimatch` ReDoS via ESLint, `@typescript-eslint`, and related packages).
+
+- These packages are development-only and are not included in the built application.
+- npm reports **"No fix available"** for this advisory chain, so `npm audit fix --force` will not clear it.
+- Do not force `minimatch@11` through `overrides`; that can break ESLint.
+- Recheck after ESLint/minimatch publish a patched dependency chain.
+
 ## Demo accounts
 
 Local credentials live in `src/lib/demo-accounts.ts`:
