@@ -6858,45 +6858,95 @@ body {
   padding: 0 0 20px;
 }
 .account-page.account-dashboard-layout .account-dashboard-body {
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
+  display: grid;
+  grid-template-columns: 250px minmax(0, 1fr);
+  align-items: start;
+  gap: 0;
 }
 .account-page.account-dashboard-layout .account-dashboard-main {
   width: 100%;
-  padding-left: 0;
+  padding-left: 26px;
 }
 .account-page.account-dashboard-layout .account-section-nav {
-  display: flex;
   flex: none;
-  flex-direction: row;
-  align-items: center;
+  flex-direction: column;
   gap: 4px;
+  margin: 0;
+  padding: 20px 13px;
+  border: 0;
+  border-right: 1px solid #e8ece6;
+  border-radius: 0;
+  background: #fff;
   width: 100%;
-  padding: 6px;
-  overflow-x: auto;
-  border: 1px solid #e6e8e0;
-  border-radius: 10px;
-  background: #f7f8f3;
-  scrollbar-width: none;
+  overflow: visible;
 }
 .account-page.account-dashboard-layout .account-section-nav::-webkit-scrollbar {
   display: none;
 }
 .account-page.account-dashboard-layout .account-section-nav > button,
-.account-page.account-dashboard-layout .account-section-nav > a {
+.account-page.account-dashboard-layout .account-section-nav > a,
+.account-page.account-dashboard-layout .account-nav-group > button {
+  display: flex;
+  width: 100%;
+  min-height: 40px;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 10px;
+  padding: 0 11px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #59645a;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 650;
+  cursor: pointer;
   flex: 0 0 auto;
-  width: auto;
-  min-height: 38px;
-  justify-content: center;
-  padding: 0 14px;
-  border-radius: 7px;
   white-space: nowrap;
-  font-size: 10.5px;
 }
-.account-page.account-dashboard-layout .account-section-nav > button.active {
-  background: #fff;
-  box-shadow: 0 1px 5px rgb(33 45 34 / 10%);
+.account-page.account-dashboard-layout .account-section-nav > button.active,
+.account-page.account-dashboard-layout .account-section-nav > a.active,
+.account-page.account-dashboard-layout .account-nav-group > button.active {
+  background: #eff5ef;
+  color: #256347;
+  box-shadow: none;
+}
+.account-page.account-dashboard-layout .account-nav-group {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+.account-page.account-dashboard-layout .account-nav-submenu {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 4px;
+  padding-left: 18px;
+}
+.account-page.account-dashboard-layout .account-nav-submenu > button {
+  display: flex;
+  width: 100%;
+  min-height: 36px;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 10px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #59645a;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 650;
+  cursor: pointer;
+}
+.account-page.account-dashboard-layout .account-nav-submenu > button.active {
+  background: #eff5ef;
+  color: #256347;
+}
+.account-page.account-dashboard-layout .account-settings-section-header h2 {
+  font-size: 16px;
+  margin-bottom: 12px;
 }
 .account-dashboard-heading {
   flex-wrap: wrap;
@@ -7101,6 +7151,22 @@ body {
   .account-page.account-dashboard-layout {
     width: calc(100% - 32px);
     margin: 20px auto 42px;
+  }
+  .account-page.account-dashboard-layout .account-dashboard-body {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  .account-page.account-dashboard-layout .account-dashboard-main {
+    padding-left: 0;
+  }
+  .account-page.account-dashboard-layout .account-section-nav {
+    border-right: 0;
+    border-bottom: 1px solid #e8ece6;
+    border-radius: 8px;
+    padding: 7px;
+  }
+  .account-page.account-dashboard-layout .account-nav-submenu {
+    padding-left: 14px;
   }
   .account-dashboard-heading {
     align-items: flex-start;

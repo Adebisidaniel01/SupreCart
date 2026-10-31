@@ -8,7 +8,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { Link, useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import {
   ArrowRight,
   BadgeCheck,
@@ -93,6 +93,7 @@ export function Wordmark() {
 }
 
 export function Storefront({ children }: { children: ReactNode }) {
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
   const [favorites, setFavorites] = useState<number[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [ready, setReady] = useState(false);
@@ -584,7 +585,11 @@ export function Storefront({ children }: { children: ReactNode }) {
           </div>
           {!account && (
             <div className="market-drawer-actions">
-              <Link to="/login" onClick={() => setMobileNav(false)}>
+              <Link
+                to="/login"
+                className="market-button market-button-outline"
+                onClick={() => setMobileNav(false)}
+              >
                 Log in
               </Link>
               <Link
@@ -599,25 +604,27 @@ export function Storefront({ children }: { children: ReactNode }) {
         </nav>
       </header>
       {children}
-      <section className="benefits page-width">
-        {[
-          [Truck, "Independent sellers", "One marketplace, many makers"],
-          [BadgeCheck, "Seller ratings", "Shop with useful context"],
-          [ShoppingBag, "Easy to explore", "Good finds, all in one place"],
-          [Heart, "Save your finds", "Keep a wishlist for later"],
-        ].map(([Icon, title, text]) => {
-          const BenefitIcon = Icon as typeof Truck;
-          return (
-            <div className="benefit" key={String(title)}>
-              <BenefitIcon strokeWidth={1.5} />
-              <div>
-                <strong>{String(title)}</strong>
-                <p>{String(text)}</p>
+      {pathname === "/" && (
+        <section className="benefits page-width">
+          {[
+            [Truck, "Independent sellers", "One marketplace, many makers"],
+            [BadgeCheck, "Seller ratings", "Shop with useful context"],
+            [ShoppingBag, "Easy to explore", "Good finds, all in one place"],
+            [Heart, "Save your finds", "Keep a wishlist for later"],
+          ].map(([Icon, title, text]) => {
+            const BenefitIcon = Icon as typeof Truck;
+            return (
+              <div className="benefit" key={String(title)}>
+                <BenefitIcon strokeWidth={1.5} />
+                <div>
+                  <strong>{String(title)}</strong>
+                  <p>{String(text)}</p>
+                </div>
               </div>
-            </div>
-          );
-        })}
-      </section>
+            );
+          })}
+        </section>
+      )}
       <footer className="footer">
         <div className="footer-main page-width">
           <div className="footer-about">

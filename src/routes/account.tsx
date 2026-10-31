@@ -131,6 +131,7 @@ function BuyerAccount() {
   const [addresses, setAddresses] = useState<BuyerAddress[]>([]);
   const [section, setSection] = useState<AccountSection>("overview");
   const [settingsTab, setSettingsTab] = useState<SettingsTab>("profile");
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [preferences, setPreferences] = useState<AccountPreferences>(defaultAccountPreferences);
   const [preferencesScope, setPreferencesScope] = useState("");
   const [sellerApplication, setSellerApplication] = useState<SellerApplication | null>(null);
@@ -169,7 +170,14 @@ function BuyerAccount() {
 
   useEffect(() => {
     const syncSection = () => {
-      if (window.location.hash === "#seller") setSection("seller");
+      if (window.location.hash === "#seller") {
+        setSection("seller");
+        setSettingsOpen(false);
+      } else if (window.location.hash === "#settings") {
+        setSection("settings");
+        setSettingsTab("profile");
+        setSettingsOpen(true);
+      }
     };
     syncSection();
     window.addEventListener("hashchange", syncSection);
@@ -407,7 +415,6 @@ function BuyerAccount() {
                     ["orders", "Orders", Package],
                     ["addresses", "Addresses", MapPin],
                     ["seller", "Sell with us", Store],
-                    ["settings", "Account settings", Settings],
                   ] as const
                 ).map(([key, label, Icon]) => (
                   <button
@@ -416,6 +423,7 @@ function BuyerAccount() {
                     className={section === key ? "active" : ""}
                     onClick={() => {
                       setSection(key);
+                      setSettingsOpen(false);
                       setError("");
                       setNotice("");
                     }}
@@ -423,6 +431,43 @@ function BuyerAccount() {
                     <Icon size={16} /> {label}
                   </button>
                 ))}
+                <div className="account-nav-group">
+                  <button
+                    type="button"
+                    className={section === "settings" ? "active" : ""}
+                    onClick={() => {
+                      setSettingsOpen((v) => !v);
+                      if (section !== "settings") {
+                        setSection("settings");
+                        setSettingsTab("profile");
+                        setError("");
+                        setNotice("");
+                      }
+                    }}
+                  >
+                    <Settings size={16} /> Account settings
+                  </button>
+                  {settingsOpen && (
+                    <div className="account-nav-submenu">
+                      {settingsTabs.map(([key, label, Icon]) => (
+                        <button
+                          type="button"
+                          key={key}
+                          className={section === "settings" && settingsTab === key ? "active" : ""}
+                          onClick={() => {
+                            setSection("settings");
+                            setSettingsTab(key as SettingsTab);
+                            setError("");
+                            setNotice("");
+                            setConfirmDelete(false);
+                          }}
+                        >
+                          <Icon size={15} /> {label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
                 <Link to="/messages" search={{ productId: undefined }}>
                   <MessageCircle size={16} /> Messages
                 </Link>
@@ -869,27 +914,13 @@ function BuyerAccount() {
                 )}
                 {section === "settings" && (
                   <>
-                    <nav className="account-settings-tabs" aria-label="Account settings sections">
-                      {settingsTabs.map(([key, label, Icon]) => (
-                        <button
-                          type="button"
-                          key={key}
-                          className={settingsTab === key ? "active" : ""}
-                          onClick={() => {
-                            setSettingsTab(key);
-                            setError("");
-                            setNotice("");
-                            setConfirmDelete(false);
-                          }}
-                        >
-                          <Icon size={15} /> {label}
-                        </button>
-                      ))}
-                    </nav>
-
+                    <div className="account-settings-section-header">
+                      <h2>
+                        {settingsTabs.find(([k]) => k === settingsTab)?.[1] || "Account settings"}
+                      </h2>
+                    </div>
                     {settingsTab === "profile" && (
                       <section className="account-dashboard-card">
-                        <h2>Profile</h2>
                         <div className="account-profile-photo">
                           <span className="account-avatar account-avatar-lg">
                             {preferences.avatarDataUrl ? (
@@ -950,7 +981,6 @@ function BuyerAccount() {
 
                     {settingsTab === "notifications" && (
                       <section className="account-dashboard-card">
-                        <h2>Notifications</h2>
                         <p className="account-intro">
                           Choose what SupreCart should tell you about. These preferences are saved
                           in this browser while messaging is still a preview.
@@ -989,7 +1019,6 @@ function BuyerAccount() {
 
                     {settingsTab === "region" && (
                       <section className="account-dashboard-card">
-                        <h2>Region &amp; language</h2>
                         <p className="account-intro">
                           Set how prices and dates are shown to you across the marketplace.
                         </p>
@@ -1039,7 +1068,6 @@ function BuyerAccount() {
 
                     {settingsTab === "payments" && (
                       <section className="account-dashboard-card">
-                        <h2>Payment methods</h2>
                         <p className="account-intro">
                           Sample payment methods for the preview checkout. SupreCart never stores a
                           full card number and this preview collects no payments.
@@ -1118,7 +1146,6 @@ function BuyerAccount() {
 
                     {settingsTab === "security" && (
                       <section className="account-dashboard-card">
-                        <h2>Security</h2>
                         <div className="account-toggle-list">
                           <label className="account-toggle-row">
                             <span>
@@ -1166,7 +1193,6 @@ function BuyerAccount() {
 
                     {settingsTab === "danger" && (
                       <section className="account-dashboard-card account-danger-zone">
-                        <h2>Danger zone</h2>
                         <p className="account-intro">
                           {demoAccount
                             ? "Permanently delete this local demo account, its profile, orders, messages, seller application and saved preferences from this browser."
