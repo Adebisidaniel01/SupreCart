@@ -17,7 +17,25 @@ const presetAccounts: DemoAccount[] = [
 const demoSessionKey = "suprecart-demo-account";
 const localAccountsKey = "suprecart-local-accounts";
 const deletedAccountsKey = "suprecart-deleted-demo-accounts";
+const moderationKey = "suprecart-account-moderation";
 const sessionChangeEvent = "suprecart-session-change";
+const moderationChangeEvent = "suprecart-account-moderation-change";
+
+export type AccountModerationStatus = "active" | "warned" | "banned";
+
+export type AccountModeration = {
+  email: string;
+  status: AccountModerationStatus;
+  reason: string;
+  updatedAt: string;
+};
+
+const defaultModeration: AccountModeration = {
+  email: "",
+  status: "active",
+  reason: "",
+  updatedAt: "",
+};
 
 type StoredAccount = DemoAccount & {
   salt: string;
@@ -50,6 +68,81 @@ function readDeletedAccounts(): string[] {
 
 export function isDemoAccountDeleted(email: string) {
   return readDeletedAccounts().includes(normalizeEmail(email));
+}
+
+function isModerationStatus(value: unknown): value is AccountModerationStatus {
+  return value === "active" || value === "warned" || value === "banned";
+}
+
+function readModerationMap(): Record<string, AccountModeration> {
+  if (!canUseStorage()) return {};
+  try {
+    const raw = window.localStorage.getItem(moderationKey);
+    if (!raw) return {};
+    const parsed: unknown = JSON.parse(raw);
+    if (typeof parsed !== "object" || parsed === null) return {};
+    const map: Record<string, AccountModeration> = {};
+    for (const [email, value] of Object.entries(parsed as Record<string, unknown>)) {
+      if (typeof value !== "object" || value === null) continue;
+      const entry = value as Partial<AccountModeration>;
+      if (!isModerationStatus(entry.status)) continue;
+      map[normalizeEmail(email)] = {
+        email: normalizeEmail(email),
+        status: entry.status,
+        reason: typeof entry.reason === "string" ? entry.reason : "",
+        updatedAt: typeof entry.updatedAt === "string" ? entry.updatedAt : "",
+      };
+    }
+    return map;
+  } catch (cause) {
+    console.error("Could not read the SupreCart account moderation state.", cause);
+    return {};
+  }
+}
+
+function writeModerationMap(map: Record<string, AccountModeration>) {
+  if (!canUseStorage()) return;
+  window.localStorage.setItem(moderationKey, JSON.stringify(map));
+  window.dispatchEvent(new Event(moderationChangeEvent));
+}
+
+export function getAccountModeration(email: string): AccountModeration {
+  const normalized = normalizeEmail(email);
+  return (
+    readModerationMap()[normalized] ?? {
+      ...defaultModeration,
+      email: normalized,
+    }
+  );
+}
+
+export function setAccountModeration(
+  email: string,
+  status: AccountModerationStatus,
+  reason = "",
+): AccountModeration {
+  const normalized = normalizeEmail(email);
+  const entry: AccountModeration = {
+    email: normalized,
+    status,
+    reason: reason.trim(),
+    updatedAt: new Date().toISOString(),
+  };
+  writeModerationMap({ ...readModerationMap(), [normalized]: entry });
+  return entry;
+}
+
+export function subscribeAccountModeration(listener: () => void) {
+  if (!canUseStorage()) return () => undefined;
+  const handleStorage = (event: StorageEvent) => {
+    if (event.key === moderationKey) listener();
+  };
+  window.addEventListener(moderationChangeEvent, listener);
+  window.addEventListener("storage", handleStorage);
+  return () => {
+    window.removeEventListener(moderationChangeEvent, listener);
+    window.removeEventListener("storage", handleStorage);
+  };
 }
 
 function markDemoAccountDeleted(email: string) {
@@ -142,6 +235,20 @@ export function getDemoAccounts(role: DemoAccount["role"]) {
   ];
 }
 
+/** Every buyer and seller account known to this browser, without duplicates. */
+export function getAllDemoAccounts(): DemoAccount[] {
+  const seen = new Set<string>();
+  return [
+    ...presetAccounts.filter((account) => !isDemoAccountDeleted(account.email)),
+    ...readStoredAccounts().map(toDemoAccount),
+  ].filter((account) => {
+    const key = `${account.role}:${normalizeEmail(account.email)}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
 export function saveDemoAccount(account: DemoAccount) {
   if (!canUseStorage()) return;
   window.localStorage.setItem(demoSessionKey, JSON.stringify(account));
@@ -166,7 +273,7 @@ export function readActiveAccount(): DemoAccount | null {
     }
     const role = account.role === "seller" ? "seller" : "buyer";
     const match = findDemoAccount(account.email, role) ?? null;
-    if (!match) {
+    if (!match || getAccountModeration(match.email).status === "banned") {
       window.localStorage.removeItem(demoSessionKey);
       return null;
     }
@@ -209,6 +316,11 @@ export function deleteDemoAccount(email: string) {
   const normalized = normalizeEmail(email);
   writeStoredAccounts(readStoredAccounts().filter((account) => account.email !== normalized));
   markDemoAccountDeleted(normalized);
+  const moderation = readModerationMap();
+  if (moderation[normalized]) {
+    delete moderation[normalized];
+    writeModerationMap(moderation);
+  }
   try {
     const saved = window.localStorage.getItem(demoSessionKey);
     if (saved && normalizeEmail((JSON.parse(saved) as DemoAccount).email) === normalized) {

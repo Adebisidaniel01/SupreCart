@@ -1,9 +1,11 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState, type FormEvent } from "react";
 import {
+  AlertTriangle,
   ArrowLeft,
   ArrowRight,
   ArrowUpRight,
+  Ban,
   Check,
   Eye,
   KeyRound,
@@ -12,12 +14,24 @@ import {
   ShoppingBag,
   Sparkles,
   Store,
+  Trash2,
+  UserRound,
   Users,
   UserPlus,
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { checkAdminSession, getAdminDashboard, signInToAdmin, signOutOfAdmin } from "@/lib/admin";
+import { accountAvatar } from "@/lib/account-preferences";
+import { deleteDemoAccountData } from "@/lib/demo-account-cleanup";
+import {
+  getAllDemoAccounts,
+  getAccountModeration,
+  setAccountModeration,
+  subscribeAccountModeration,
+  type AccountModerationStatus,
+  type DemoAccount,
+} from "@/lib/demo-accounts";
 import {
   readSellerApplications,
   reviewSellerApplication,
@@ -26,6 +40,12 @@ import {
 } from "@/lib/seller-applications";
 
 type AdminDashboard = Awaited<ReturnType<typeof getAdminDashboard>>;
+
+type AdminPerson = DemoAccount & {
+  avatar: string;
+  status: AccountModerationStatus;
+  reason: string;
+};
 
 export const Route = createFileRoute("/admin")({
   head: () => ({
@@ -46,6 +66,9 @@ function Admin() {
   const [submitting, setSubmitting] = useState(false);
   const [sellerApplications, setSellerApplications] = useState<SellerApplication[]>([]);
   const [reviewNotes, setReviewNotes] = useState<Record<string, string>>({});
+  const [people, setPeople] = useState<AdminPerson[]>([]);
+  const [peopleFilter, setPeopleFilter] = useState<"all" | "buyer" | "seller">("all");
+  const [moderationNotes, setModerationNotes] = useState<Record<string, string>>({});
 
   useEffect(() => {
     let active = true;
@@ -83,6 +106,76 @@ function Admin() {
     syncApplications();
     return subscribeSellerApplications(syncApplications);
   }, [dashboard]);
+
+  useEffect(() => {
+    if (!dashboard) {
+      setPeople([]);
+      return;
+    }
+    const syncPeople = () =>
+      setPeople(
+        getAllDemoAccounts().map((account) => {
+          const moderation = getAccountModeration(account.email);
+          return {
+            ...account,
+            avatar: accountAvatar(account),
+            status: moderation.status,
+            reason: moderation.reason,
+          };
+        }),
+      );
+    syncPeople();
+    const unsubscribe = subscribeAccountModeration(syncPeople);
+    const handleStorage = (event: StorageEvent) => {
+      if (
+        event.key === null ||
+        event.key === "suprecart-local-accounts" ||
+        event.key === "suprecart-account-moderation"
+      ) {
+        syncPeople();
+      }
+    };
+    window.addEventListener("storage", handleStorage);
+    return () => {
+      unsubscribe();
+      window.removeEventListener("storage", handleStorage);
+    };
+  }, [dashboard]);
+
+  function refreshPeople() {
+    setPeople(
+      getAllDemoAccounts().map((account) => {
+        const moderation = getAccountModeration(account.email);
+        return {
+          ...account,
+          avatar: accountAvatar(account),
+          status: moderation.status,
+          reason: moderation.reason,
+        };
+      }),
+    );
+  }
+
+  function moderatePerson(person: AdminPerson, status: AccountModerationStatus) {
+    const note = moderationNotes[person.email] ?? person.reason;
+    setAccountModeration(person.email, status, note);
+    refreshPeople();
+    setModerationNotes((current) => ({ ...current, [person.email]: "" }));
+    setMessage(
+      status === "banned"
+        ? `${person.name} is banned and can no longer sign in.`
+        : status === "warned"
+          ? `${person.name} was warned. The note is visible on their account record.`
+          : `${person.name} is active again.`,
+    );
+  }
+
+  function removePerson(person: AdminPerson) {
+    deleteDemoAccountData(person.email);
+    refreshPeople();
+    setSellerApplications(readSellerApplications());
+    setMessage(`${person.name}'s local account and data were deleted.`);
+  }
 
   function reviewApplication(application: SellerApplication, status: "approved" | "rejected") {
     const reviewed = reviewSellerApplication(
@@ -164,7 +257,7 @@ function Admin() {
             Good to have you <span>back.</span>
           </h1>
           <p className="admin-login-intro">
-            Sign in with your admin password to open the marketplace overview.
+            Sign in with your admin username and password to open the marketplace overview.
           </p>
           <form className="admin-login-form" onSubmit={handleSignIn}>
             <label htmlFor="admin-username">Admin username</label>
@@ -202,8 +295,9 @@ function Admin() {
             <ShieldCheck size={15} /> Protected by a secure, server-verified session.
           </p>
           <p className="admin-setup-note">
-            Configure <code>ADMIN_USERNAME</code>, <code>ADMIN_PASSWORD</code>, and a 32+ character{" "}
-            <code>ADMIN_SESSION_SECRET</code> in your server environment.
+            Configure <code>ADMIN_USERNAME</code> and either <code>ADMIN_PASSWORD</code> or{" "}
+            <code>ADMIN_PASSWORD_HASH</code> in your server environment. No session secret is
+            required until the admin site moves to a domain.
           </p>
         </section>
         <aside className="admin-login-art" aria-hidden="true">
@@ -225,6 +319,12 @@ function Admin() {
   const pendingSellerApplications = sellerApplications.filter(
     (application) => application.status === "pending",
   ).length;
+  const filteredPeople = people.filter(
+    (person) => peopleFilter === "all" || person.role === peopleFilter,
+  );
+  const buyerCount = people.filter((person) => person.role === "buyer").length;
+  const sellerCount = people.filter((person) => person.role === "seller").length;
+  const bannedCount = people.filter((person) => person.status === "banned").length;
 
   return (
     <main className="admin-shell">
@@ -252,9 +352,16 @@ function Admin() {
             <span className="admin-side-count">{pendingSellerApplications}</span>
           )}
         </a>
-        <a className="admin-side-link" href="#activity">
+        <a className="admin-side-link" href="#people">
           <span className="admin-side-icon">
             <Users size={17} />
+          </span>{" "}
+          People
+          {bannedCount > 0 && <span className="admin-side-count">{bannedCount}</span>}
+        </a>
+        <a className="admin-side-link" href="#activity">
+          <span className="admin-side-icon">
+            <UserRound size={17} />
           </span>{" "}
           Community
         </a>
@@ -418,6 +525,133 @@ function Admin() {
             ) : (
               <p className="admin-seller-empty">
                 No seller applications have been submitted in this browser yet.
+              </p>
+            )}
+          </section>
+          <section className="admin-panel admin-people-panel" id="people">
+            <div className="admin-panel-heading">
+              <div>
+                <span className="admin-panel-overline">REGISTERED PEOPLE</span>
+                <h2>Everyone on the marketplace.</h2>
+              </div>
+              <span className="admin-live-label">
+                <span /> {people.length} ACCOUNTS
+              </span>
+            </div>
+            <div className="admin-people-summary">
+              <span>
+                <strong>{buyerCount}</strong> buyers
+              </span>
+              <span>
+                <strong>{sellerCount}</strong> sellers
+              </span>
+              <span>
+                <strong>{bannedCount}</strong> banned
+              </span>
+            </div>
+            <div className="admin-people-filters" role="tablist" aria-label="Filter people">
+              {(
+                [
+                  ["all", "All"],
+                  ["buyer", "Buyers"],
+                  ["seller", "Sellers"],
+                ] as const
+              ).map(([key, label]) => (
+                <button
+                  type="button"
+                  key={key}
+                  role="tab"
+                  aria-selected={peopleFilter === key}
+                  className={peopleFilter === key ? "active" : ""}
+                  onClick={() => setPeopleFilter(key)}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            {filteredPeople.length ? (
+              <div className="admin-people-list">
+                {filteredPeople.map((person) => (
+                  <article className={`admin-person-row is-${person.status}`} key={`${person.role}:${person.email}`}>
+                    <span className="admin-person-avatar" aria-hidden="true">
+                      {person.avatar ? (
+                        <img src={person.avatar} alt="" />
+                      ) : (
+                        person.name
+                          .split(/\s+/)
+                          .slice(0, 2)
+                          .map((word) => word[0])
+                          .join("")
+                          .toUpperCase()
+                      )}
+                    </span>
+                    <div className="admin-person-main">
+                      <div className="admin-person-title">
+                        <strong>{person.name}</strong>
+                        <span className={`admin-role-chip is-${person.role}`}>{person.role}</span>
+                        <span className={`admin-seller-chip is-${person.status}`}>
+                          {person.status}
+                        </span>
+                      </div>
+                      <p>{person.email}</p>
+                      {person.reason && (
+                        <p className="admin-person-note">
+                          <AlertTriangle size={12} /> {person.reason}
+                        </p>
+                      )}
+                      <div className="admin-person-actions">
+                        <input
+                          aria-label={`Moderation note for ${person.name}`}
+                          placeholder="Optional note for this account"
+                          value={moderationNotes[person.email] ?? ""}
+                          onChange={(event) =>
+                            setModerationNotes((current) => ({
+                              ...current,
+                              [person.email]: event.target.value,
+                            }))
+                          }
+                        />
+                        {person.status === "banned" ? (
+                          <button
+                            type="button"
+                            className="admin-seller-approve"
+                            onClick={() => moderatePerson(person, "active")}
+                          >
+                            <Check size={14} /> Unban
+                          </button>
+                        ) : (
+                          <>
+                            <button
+                              type="button"
+                              className="admin-person-warn"
+                              onClick={() => moderatePerson(person, "warned")}
+                            >
+                              <AlertTriangle size={14} /> Warn
+                            </button>
+                            <button
+                              type="button"
+                              className="admin-seller-reject"
+                              onClick={() => moderatePerson(person, "banned")}
+                            >
+                              <Ban size={14} /> Ban
+                            </button>
+                          </>
+                        )}
+                        <button
+                          type="button"
+                          className="admin-person-delete"
+                          onClick={() => removePerson(person)}
+                        >
+                          <Trash2 size={14} /> Delete
+                        </button>
+                      </div>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <p className="admin-seller-empty">
+                No {peopleFilter === "all" ? "" : `${peopleFilter} `}accounts in this browser yet.
               </p>
             )}
           </section>

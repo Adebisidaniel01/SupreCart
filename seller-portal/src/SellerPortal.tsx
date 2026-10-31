@@ -34,6 +34,7 @@ import {
   clearDemoAccount,
   createLocalAccount,
   findDemoAccount,
+  getAccountModeration,
   getDemoAccounts,
   isPresetAccount,
   readActiveAccount,
@@ -428,6 +429,14 @@ export default function SellerPortal({ standalone = false }: { standalone?: bool
       const localDemoAccount = findDemoAccount(email, "seller");
       if (!localDemoAccount) {
         throw new Error("No seller account matches that email yet. Submit an application first.");
+      }
+      const moderation = getAccountModeration(localDemoAccount.email);
+      if (moderation.status === "banned") {
+        throw new Error(
+          moderation.reason
+            ? `This account is banned: ${moderation.reason}`
+            : "This account has been banned by an administrator.",
+        );
       }
       if (!isPresetAccount(email, "seller")) {
         const passwordMatches = await verifyAccountPassword(

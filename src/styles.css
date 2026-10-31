@@ -4722,7 +4722,7 @@ body {
 .admin-login,
 .admin-loading,
 .admin-shell {
-  --admin-bg: #ffffff;
+  --admin-bg: #f6f1e7;
   --admin-ink: #172820;
   --admin-muted: #7b877e;
   --admin-green: #315b48;
@@ -4971,8 +4971,8 @@ body {
   height: 100vh;
   flex-direction: column;
   padding: 25px 15px 16px;
-  border-right: 1px solid #e7e9e3;
-  background: #fbfcf9;
+  border-right: 1px solid #e7e0d2;
+  background: #f3ecdf;
 }
 .admin-sidebar-brand {
   display: flex;
@@ -8577,6 +8577,176 @@ body {
   margin: 13px 0 2px;
   color: #7d8378;
   font-size: 10px;
+}
+.admin-people-panel {
+  margin-top: 14px;
+}
+.admin-people-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+.admin-people-summary span {
+  padding: 5px 9px;
+  border: 1px solid #e7e1d4;
+  border-radius: 999px;
+  background: #fbf7ef;
+  color: #7a7364;
+  font-size: 9px;
+}
+.admin-people-summary strong {
+  color: #3d4b3f;
+}
+.admin-people-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 13px;
+}
+.admin-people-filters button {
+  min-height: 30px;
+  padding: 0 11px;
+  border: 1px solid #e4ded1;
+  border-radius: 999px;
+  background: #fffdf8;
+  color: #6f786b;
+  font: inherit;
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.admin-people-filters button.active {
+  border-color: #315b48;
+  background: #315b48;
+  color: #fff;
+}
+.admin-people-list {
+  margin-top: 12px;
+}
+.admin-person-row {
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr);
+  gap: 11px;
+  padding: 13px 0;
+  border-top: 1px solid #efeae0;
+}
+.admin-person-row.is-banned {
+  margin-inline: -10px;
+  padding-inline: 10px;
+  border-radius: 8px;
+  background: #fdf3f0;
+}
+.admin-person-avatar {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 50%;
+  background: #edf1e8;
+  color: #62764f;
+  font-size: 10px;
+  font-weight: 700;
+}
+.admin-person-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.admin-person-main {
+  min-width: 0;
+}
+.admin-person-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 7px;
+}
+.admin-person-title strong {
+  font-size: 11px;
+}
+.admin-person-main > p {
+  margin: 3px 0 0;
+  overflow-wrap: anywhere;
+  color: #89948b;
+  font-size: 9px;
+}
+.admin-person-note {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: #a06a3a;
+}
+.admin-role-chip {
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: #eef3ea;
+  color: #5b7355;
+  font-size: 8px;
+  font-weight: 750;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.admin-role-chip.is-seller {
+  background: #eaf3ef;
+  color: #2f6f59;
+}
+.admin-seller-chip.is-active {
+  background: #eaf4eb;
+  color: #31734a;
+}
+.admin-seller-chip.is-warned {
+  background: #fdf4e3;
+  color: #9a6c20;
+}
+.admin-seller-chip.is-banned {
+  background: #fdecea;
+  color: #a33f34;
+}
+.admin-person-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 9px;
+}
+.admin-person-actions input {
+  flex: 1 1 170px;
+  min-width: 0;
+  height: 32px;
+  padding: 0 9px;
+  border: 1px solid #e2ddd2;
+  border-radius: 6px;
+  background: #fff;
+  font: inherit;
+  font-size: 10px;
+}
+.admin-person-warn,
+.admin-person-delete {
+  min-height: 32px;
+  padding: 0 10px;
+  border: 1px solid #e4ded1;
+  border-radius: 6px;
+  background: #fffdf8;
+  color: #6c7468;
+  font: inherit;
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.admin-person-warn {
+  border-color: #ecd9b5;
+  background: #fdf7ea;
+  color: #9a6c20;
+}
+.admin-person-delete {
+  border-color: #ecd4cf;
+  background: #fdf4f2;
+  color: #9a4b42;
+}
+.admin-person-actions .admin-seller-approve,
+.admin-person-actions .admin-seller-reject {
+  min-height: 32px;
 }
 
 @media (max-width: 1100px) {

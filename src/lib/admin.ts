@@ -1,25 +1,49 @@
 import { createServerFn } from "@tanstack/react-start";
 import { setResponseHeader, useSession } from "@tanstack/react-start/server";
-import { scryptSync, timingSafeEqual } from "node:crypto";
+import { createHash, scryptSync, timingSafeEqual } from "node:crypto";
 import { z } from "zod";
 
 const sessionLifetime = 60 * 60 * 8;
 
-function getServerSecret(name: "ADMIN_USERNAME" | "ADMIN_PASSWORD" | "ADMIN_SESSION_SECRET") {
+function getServerSecret(name: "ADMIN_USERNAME" | "ADMIN_PASSWORD") {
   const secret = process.env[name];
   if (!secret) {
     throw new Error(`${name} must be configured as a server-side environment secret.`);
   }
-  if (name === "ADMIN_SESSION_SECRET" && secret && secret.length < 32) {
-    throw new Error("ADMIN_SESSION_SECRET must contain at least 32 characters.");
-  }
   return secret;
+}
+
+/**
+ * Sessions are signed with ADMIN_SESSION_SECRET when it is configured. Until a
+ * domain is connected, a stable secret is derived from the admin credentials so
+ * only ADMIN_USERNAME and a password (plain or hash) are required.
+ */
+function getSessionPassword() {
+  const configured = process.env["ADMIN_SESSION_SECRET"];
+  if (configured) {
+    if (configured.length < 32) {
+      throw new Error("ADMIN_SESSION_SECRET must contain at least 32 characters.");
+    }
+    return configured;
+  }
+
+  const username = getServerSecret("ADMIN_USERNAME");
+  const passwordMaterial =
+    process.env["ADMIN_PASSWORD"] ?? process.env["ADMIN_PASSWORD_HASH"];
+  if (!passwordMaterial) {
+    throw new Error(
+      "ADMIN_PASSWORD or ADMIN_PASSWORD_HASH must be configured as a server-side environment secret.",
+    );
+  }
+  return createHash("sha256")
+    .update(`suprecart-admin-session:${username}:${passwordMaterial}`)
+    .digest("hex");
 }
 
 function useAdminSession() {
   return useSession<{ authenticated?: boolean }>({
     name: "suprecart_admin",
-    password: getServerSecret("ADMIN_SESSION_SECRET"),
+    password: getSessionPassword(),
     maxAge: sessionLifetime,
     cookie: {
       httpOnly: true,

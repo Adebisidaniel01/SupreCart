@@ -6,6 +6,7 @@ import { trackLogin } from "@/lib/analytics";
 import {
   ensureSellerAccount,
   findDemoAccount,
+  getAccountModeration,
   getDemoAccounts,
   isPresetAccount,
   saveDemoAccount,
@@ -41,6 +42,15 @@ function Login() {
     const demoAccount = sellerAccount ?? approvedBuyer ?? buyerAccount;
     if (!demoAccount) {
       setError("No account matches that email yet. Create an account first.");
+      return;
+    }
+    const moderation = getAccountModeration(demoAccount.email);
+    if (moderation.status === "banned") {
+      setError(
+        moderation.reason
+          ? `This account is banned: ${moderation.reason}`
+          : "This account has been banned by an administrator.",
+      );
       return;
     }
     const passwordFree =
