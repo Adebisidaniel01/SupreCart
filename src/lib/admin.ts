@@ -96,13 +96,16 @@ export const checkAdminSession = createServerFn().handler(async () => {
 export const signInToAdmin = createServerFn({ method: "POST" })
   .validator(
     z.object({
+      username: z.string().min(1).max(256),
       password: z.string().min(1).max(256),
     }),
   )
   .handler(async ({ data }) => {
     setResponseHeader("Cache-Control", "no-store");
     const username = getServerSecret("ADMIN_USERNAME");
-    if (!verifyAdminPassword(data.password, username)) return false;
+    const validUsername = constantTimeEqual(data.username, username);
+    const validPassword = verifyAdminPassword(data.password, username);
+    if (!validUsername || !validPassword) return false;
 
     const session = await useAdminSession();
     await session.update({ authenticated: true });

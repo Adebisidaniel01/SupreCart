@@ -59,6 +59,7 @@ export const Route = createFileRoute("/admin")({
 
 function Admin() {
   const [dashboard, setDashboard] = useState<AdminDashboard | null>(null);
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(true);
@@ -197,11 +198,12 @@ function Admin() {
     setSubmitting(true);
     setMessage("");
     try {
-      const success = await signInToAdmin({ data: { password } });
+      const success = await signInToAdmin({ data: { username, password } });
       if (!success) {
-        setMessage("That password didn't match. Please try again.");
+        setMessage("That username and password didn't match. Please try again.");
         return;
       }
+      setUsername("");
       setPassword("");
       setDashboard(await getAdminDashboard());
     } catch (error) {
@@ -255,9 +257,20 @@ function Admin() {
             Good to have you <span>back.</span>
           </h1>
           <p className="admin-login-intro">
-            Enter your admin password to open the marketplace overview.
+            Sign in with your admin username and password to open the marketplace overview.
           </p>
           <form className="admin-login-form" onSubmit={handleSignIn}>
+            <label htmlFor="admin-username">Admin username</label>
+            <input
+              id="admin-username"
+              name="username"
+              type="text"
+              autoComplete="username"
+              value={username}
+              onChange={(event) => setUsername(event.target.value)}
+              placeholder="Enter your username"
+              required
+            />
             <label htmlFor="admin-password">Admin password</label>
             <input
               id="admin-password"
@@ -283,8 +296,8 @@ function Admin() {
           </p>
           <p className="admin-setup-note">
             Configure <code>ADMIN_USERNAME</code> and either <code>ADMIN_PASSWORD</code> or{" "}
-            <code>ADMIN_PASSWORD_HASH</code> in your server environment. The form only asks for the
-            password, and no session secret is required until the admin site moves to a domain.
+            <code>ADMIN_PASSWORD_HASH</code> in your server environment. No session secret is
+            required until the admin site moves to a domain.
           </p>
         </section>
         <aside className="admin-login-art" aria-hidden="true">

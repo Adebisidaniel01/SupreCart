@@ -52,7 +52,7 @@ Preset demo accounts can sign in with any password. New accounts are saved in th
 
 ## Admin access
 
-Set `ADMIN_USERNAME` and either `ADMIN_PASSWORD` or `ADMIN_PASSWORD_HASH` in the server environment (`.env` locally), then sign in at `/admin` with the admin password. The login form only asks for the password. `ADMIN_SESSION_SECRET` is optional: when it is omitted, the admin session key is derived from the configured credentials. Warnings, bans, and account deletions are applied to local browser accounts only.
+Set `ADMIN_USERNAME` and either `ADMIN_PASSWORD` or `ADMIN_PASSWORD_HASH` in the server environment (`.env` locally), then sign in at `/admin` with the admin username and password. `ADMIN_SESSION_SECRET` is optional: when it is omitted, the admin session key is derived from the configured credentials. Warnings, bans, and account deletions are applied to local browser accounts only.
 
 ## Local data and safety
 

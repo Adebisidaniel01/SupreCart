@@ -14,7 +14,12 @@ export default defineConfig({
       config(_config, { mode }) {
         if (mode !== "development") return;
         const localEnv = loadEnv(mode, process.cwd(), "");
-        for (const name of ["ADMIN_USERNAME", "ADMIN_PASSWORD", "ADMIN_SESSION_SECRET"] as const) {
+        for (const name of [
+          "ADMIN_USERNAME",
+          "ADMIN_PASSWORD",
+          "ADMIN_PASSWORD_HASH",
+          "ADMIN_SESSION_SECRET",
+        ] as const) {
           const value = localEnv[name];
           if (value && !process.env[name]) process.env[name] = value;
         }
