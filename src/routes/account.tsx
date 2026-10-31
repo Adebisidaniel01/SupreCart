@@ -26,7 +26,12 @@ import {
   UserRound,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { clearDemoAccount, readActiveAccount, type DemoAccount } from "@/lib/demo-accounts";
+import {
+  clearDemoAccount,
+  getAccountModeration,
+  readActiveAccount,
+  type DemoAccount,
+} from "@/lib/demo-accounts";
 import { deleteDemoAccountData } from "@/lib/demo-account-cleanup";
 import { getDemoOrders, getDemoProfile, saveDemoProfile } from "@/lib/demo-orders";
 import {
@@ -36,6 +41,7 @@ import {
   type SellerApplication,
 } from "@/lib/seller-applications";
 import { trackEvent } from "@/lib/analytics";
+import { avatarErrorMessage, processAvatarFile } from "@/lib/avatar";
 import {
   accountPreferenceScope,
   createPaymentMethod,
@@ -185,6 +191,7 @@ function BuyerAccount() {
   }, []);
 
   const identity = demoAccount?.email ?? "";
+  const moderation = demoAccount ? getAccountModeration(demoAccount.email) : null;
   const preferencesKey = useMemo(
     () => (identity ? accountPreferenceScope("buyer", identity) : ""),
     [identity],
@@ -234,23 +241,19 @@ function BuyerAccount() {
     trackEvent("seller_application_submitted", { status: "pending" });
   }
 
-  function onAvatarFile(event: FormEvent<HTMLInputElement>) {
-    const file = event.currentTarget.files?.[0];
+  async function onAvatarFile(event: FormEvent<HTMLInputElement>) {
+    const input = event.currentTarget;
+    const file = input.files?.[0];
     if (!file) return;
-    if (
-      !["image/jpeg", "image/png", "image/webp"].includes(file.type) ||
-      file.size > 2 * 1024 * 1024
-    ) {
-      setError("Choose a JPG, PNG, or WebP photo under 2 MB.");
+    const result = await processAvatarFile(file);
+    input.value = "";
+    if (!result.ok) {
+      setError(avatarErrorMessage(result.code));
       return;
     }
-    const reader = new FileReader();
-    reader.onload = () => {
-      updatePreferences({ ...preferences, avatarDataUrl: String(reader.result) });
-      setError("");
-      setNotice("Profile photo saved in this browser only.");
-    };
-    reader.readAsDataURL(file);
+    updatePreferences({ ...preferences, avatarDataUrl: result.dataUrl });
+    setError("");
+    setNotice("Profile photo saved in this browser only.");
   }
 
   function removeAvatar() {
@@ -473,6 +476,12 @@ function BuyerAccount() {
                 </Link>
               </nav>
               <div className="account-dashboard-main">
+                {moderation?.status === "warned" && (
+                  <p className="account-warning-note" role="alert">
+                    <AlertTriangle size={14} />
+                    {moderation.reason || "An administrator has warned this account."}
+                  </p>
+                )}
                 {notice && (
                   <p className="account-success-note" role="status">
                     {notice}

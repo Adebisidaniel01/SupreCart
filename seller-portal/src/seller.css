@@ -3,9 +3,9 @@
   --seller-ink: #17251f;
   --seller-muted: #748078;
   --seller-green: #118f7a;
-  --seller-line: #e4e9e3;
+  --seller-line: #e7e0d2;
   min-height: 100vh;
-  background: #f7f8f5;
+  background: #f6f1e7;
   color: var(--seller-ink);
   font-family: "Space Grotesk", Arial, sans-serif;
   font-size: 13px;
@@ -553,12 +553,18 @@
   padding: 5px 0;
 }
 .seller-form-error,
-.seller-form-notice {
+.seller-form-notice,
+.seller-form-warning {
   margin: 0;
   padding: 11px 12px;
   border-radius: 6px;
   font-size: 10px;
   line-height: 1.55;
+}
+.seller-form-warning {
+  border: 1px solid #ecd9b5;
+  background: #fdf7ea;
+  color: #8a5f1e;
 }
 .seller-form-error {
   border: 1px solid #f1d3cc;

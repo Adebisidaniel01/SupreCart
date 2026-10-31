@@ -10,6 +10,6 @@ export default defineConfig({
   envDir: resolve(portalDirectory, ".."),
   plugins: [react()],
   publicDir: resolve(portalDirectory, "../public"),
-  server: { host: true, port: 5181 },
+  server: { host: "127.0.0.1", port: 5181 },
   build: { outDir: "dist", emptyOutDir: true },
 });

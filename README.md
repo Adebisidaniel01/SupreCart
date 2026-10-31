@@ -11,6 +11,7 @@ The app is built with **TanStack Start (React)**, **TanStack Router**, and **Tai
 - **Messages** (`/messages`) — local buyer/seller conversations with read receipts.
 - **Seller studio** (`/sellers`) — applications, products, sample orders, payouts, and store settings.
 - **Sign in / sign up** (`/login`, `/signup`) — local buyer and seller accounts.
+- **Admin** (`/admin`) — marketplace overview, seller application review, and account moderation.
 
 ## Development
 
@@ -27,7 +28,7 @@ Useful commands:
 npm run test          # Vitest
 npm run lint          # ESLint
 npm run build         # buyer app
-npm run dev:sellers   # standalone seller portal on port 8082
+npm run dev:sellers   # standalone seller portal on http://127.0.0.1:5181
 npm run build:sellers # standalone seller build
 ```
 
@@ -48,6 +49,10 @@ Local credentials live in `src/lib/demo-accounts.ts`:
 - `shewa@gmail.com` — buyer with a seeded approved seller application, `Bello-lawal Dorcas`.
 
 Preset demo accounts can sign in with any password. New accounts are saved in this browser only. Approved buyers get a local seller session when they sign in; new seller applications remain pending until reviewed locally.
+
+## Admin access
+
+Set `ADMIN_USERNAME` and either `ADMIN_PASSWORD` or `ADMIN_PASSWORD_HASH` in the server environment (`.env` locally), then sign in at `/admin` with the admin password. The login form only asks for the password. `ADMIN_SESSION_SECRET` is optional: when it is omitted, the admin session key is derived from the configured credentials. Warnings, bans, and account deletions are applied to local browser accounts only.
 
 ## Local data and safety
 

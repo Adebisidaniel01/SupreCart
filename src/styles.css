@@ -2509,6 +2509,22 @@ body {
   color: #3d6045;
   font-size: 11px;
 }
+.account-warning-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  padding: 11px 13px;
+  border: 1px solid #ecd9b5;
+  border-radius: 6px;
+  background: #fdf7ea;
+  color: #8a5f1e;
+  font-size: 11px;
+  line-height: 1.5;
+}
+.account-warning-note svg {
+  flex: 0 0 auto;
+  margin-top: 1px;
+}
 .account-address-list {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -5584,22 +5600,43 @@ body {
     grid-template-columns: 1fr;
   }
   .admin-sidebar {
-    position: static;
+    position: sticky;
+    top: 0;
+    z-index: 20;
     height: auto;
+    flex-wrap: wrap;
     flex-direction: row;
     align-items: center;
-    padding: 9px 15px;
+    gap: 4px;
+    padding: 9px 12px;
     border-right: 0;
-    border-bottom: 1px solid #e7e9e3;
+    border-bottom: 1px solid #e7e0d2;
+    background: #f3ecdf;
   }
   .admin-sidebar-brand {
+    margin-right: auto;
     padding: 0;
   }
+  .admin-sidebar-brand > span:last-child,
   .admin-sidebar-brand small,
   .admin-sidebar-label,
-  .admin-side-link,
   .admin-sidebar-bottom > span {
     display: none;
+  }
+  .admin-sidebar .admin-brand-mark {
+    width: 34px;
+    height: 34px;
+  }
+  .admin-side-link {
+    display: inline-flex;
+    flex: 0 0 auto;
+    width: auto;
+    min-height: 32px;
+    padding: 0 9px;
+    font-size: 9px;
+  }
+  .admin-side-link .admin-side-icon {
+    width: auto;
   }
   .admin-sidebar-bottom {
     margin: 0 0 0 auto;
@@ -5654,6 +5691,7 @@ body {
     flex: 0 0 auto;
   }
   .admin-stat-grid {
+    grid-template-columns: 1fr;
     gap: 9px;
   }
   .admin-stat-card {
@@ -8747,6 +8785,14 @@ body {
 .admin-person-actions .admin-seller-approve,
 .admin-person-actions .admin-seller-reject {
   min-height: 32px;
+}
+@media (max-width: 520px) {
+  .admin-person-actions input {
+    flex-basis: 100%;
+  }
+  .admin-people-summary {
+    gap: 6px;
+  }
 }
 
 @media (max-width: 1100px) {

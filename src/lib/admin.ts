@@ -28,8 +28,7 @@ function getSessionPassword() {
   }
 
   const username = getServerSecret("ADMIN_USERNAME");
-  const passwordMaterial =
-    process.env["ADMIN_PASSWORD"] ?? process.env["ADMIN_PASSWORD_HASH"];
+  const passwordMaterial = process.env["ADMIN_PASSWORD"] ?? process.env["ADMIN_PASSWORD_HASH"];
   if (!passwordMaterial) {
     throw new Error(
       "ADMIN_PASSWORD or ADMIN_PASSWORD_HASH must be configured as a server-side environment secret.",
@@ -97,16 +96,13 @@ export const checkAdminSession = createServerFn().handler(async () => {
 export const signInToAdmin = createServerFn({ method: "POST" })
   .validator(
     z.object({
-      username: z.string().min(1).max(256),
       password: z.string().min(1).max(256),
     }),
   )
   .handler(async ({ data }) => {
     setResponseHeader("Cache-Control", "no-store");
     const username = getServerSecret("ADMIN_USERNAME");
-    const validUsername = constantTimeEqual(data.username, username ?? "");
-    const validPassword = verifyAdminPassword(data.password, username ?? "");
-    if (!validUsername || !validPassword) return false;
+    if (!verifyAdminPassword(data.password, username)) return false;
 
     const session = await useAdminSession();
     await session.update({ authenticated: true });

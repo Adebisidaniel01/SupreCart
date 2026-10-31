@@ -1190,6 +1190,7 @@ function SellerDashboard({
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [productPrice, setProductPrice] = useState("");
   const preferencesKey = accountPreferenceScope("seller", application.email);
+  const moderation = getAccountModeration(application.email);
 
   useEffect(() => {
     setPreferences(readAccountPreferences(preferencesKey));
@@ -1395,6 +1396,11 @@ function SellerDashboard({
         <p className="seller-form-notice" role="status">
           DEMO FIXTURES · These example orders, ratings, and NGN figures are fictional and local to
           this preview. No purchases, payouts, or backend records exist.
+        </p>
+      )}
+      {moderation.status === "warned" && (
+        <p className="seller-form-warning" role="alert">
+          Admin warning: {moderation.reason || "please review the marketplace rules."}
         </p>
       )}
       {error && (
