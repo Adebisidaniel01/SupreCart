@@ -14,6 +14,7 @@ import {
   Lock,
   LogOut,
   MapPin,
+  Menu,
   MessageCircle,
   Package,
   Plus,
@@ -24,12 +25,16 @@ import {
   Trash2,
   Upload,
   UserRound,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   clearDemoAccount,
+  ensureSellerAccount,
+  findDemoAccount,
   getAccountModeration,
   readActiveAccount,
+  saveDemoAccount,
   type DemoAccount,
 } from "@/lib/demo-accounts";
 import { deleteDemoAccountData } from "@/lib/demo-account-cleanup";
@@ -138,6 +143,7 @@ function BuyerAccount() {
   const [section, setSection] = useState<AccountSection>("overview");
   const [settingsTab, setSettingsTab] = useState<SettingsTab>("profile");
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [navOpen, setNavOpen] = useState(false);
   const [preferences, setPreferences] = useState<AccountPreferences>(defaultAccountPreferences);
   const [preferencesScope, setPreferencesScope] = useState("");
   const [sellerApplication, setSellerApplication] = useState<SellerApplication | null>(null);
@@ -369,6 +375,20 @@ function BuyerAccount() {
     await navigate({ to: "/login" });
   }
 
+  async function openSellerStudio() {
+    if (!demoAccount) return;
+    const sellerAccount =
+      findDemoAccount(demoAccount.email, "seller") ??
+      (sellerApplication?.status === "approved" ? ensureSellerAccount(demoAccount) : null);
+    if (!sellerAccount) {
+      setSection("seller");
+      setNavOpen(false);
+      return;
+    }
+    saveDemoAccount(sellerAccount);
+    await navigate({ to: "/sellers" });
+  }
+
   const firstName = demoProfile.name || "there";
   const [addressFirstName = "", ...addressLastNameParts] = firstName.split(/\s+/);
   const addressLastName = addressLastNameParts.join(" ");
@@ -410,8 +430,24 @@ function BuyerAccount() {
         )}
         {!loading && (
           <>
+            <div className="account-mobile-nav-bar">
+              <button
+                type="button"
+                className="account-mobile-nav-toggle"
+                aria-expanded={navOpen}
+                aria-controls="account-section-nav"
+                onClick={() => setNavOpen((open) => !open)}
+              >
+                {navOpen ? <X size={17} /> : <Menu size={17} />}
+                <span>Account menu</span>
+              </button>
+            </div>
             <div className="account-dashboard-body">
-              <nav className="account-section-nav" aria-label="Account sections">
+              <nav
+                id="account-section-nav"
+                className={`account-section-nav${navOpen ? " is-open" : ""}`}
+                aria-label="Account sections"
+              >
                 {(
                   [
                     ["overview", "Overview", House],
@@ -429,6 +465,7 @@ function BuyerAccount() {
                       setSettingsOpen(false);
                       setError("");
                       setNotice("");
+                      setNavOpen(false);
                     }}
                   >
                     <Icon size={16} /> {label}
@@ -463,6 +500,7 @@ function BuyerAccount() {
                             setError("");
                             setNotice("");
                             setConfirmDelete(false);
+                            setNavOpen(false);
                           }}
                         >
                           <Icon size={15} /> {label}
@@ -471,7 +509,11 @@ function BuyerAccount() {
                     </div>
                   )}
                 </div>
-                <Link to="/messages" search={{ productId: undefined }}>
+                <Link
+                  to="/messages"
+                  search={{ productId: undefined }}
+                  onClick={() => setNavOpen(false)}
+                >
                   <MessageCircle size={16} /> Messages
                 </Link>
               </nav>
@@ -524,7 +566,7 @@ function BuyerAccount() {
                           type="button"
                           onClick={() =>
                             sellerApplication?.status === "approved"
-                              ? void navigate({ to: "/sellers" })
+                              ? void openSellerStudio()
                               : setSection("seller")
                           }
                         >
@@ -806,10 +848,8 @@ function BuyerAccount() {
                             preview keeps seller changes in this browser only.
                           </p>
                         </div>
-                        <Button asChild>
-                          <Link to="/sellers">
-                            Open seller studio <ArrowRight size={15} />
-                          </Link>
+                        <Button onClick={() => void openSellerStudio()}>
+                          Open seller studio <ArrowRight size={15} />
                         </Button>
                       </section>
                     ) : sellerApplication?.status === "pending" ? (

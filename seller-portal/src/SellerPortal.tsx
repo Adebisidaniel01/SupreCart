@@ -15,6 +15,7 @@ import {
   Globe,
   Landmark,
   LogOut,
+  Menu,
   MessageCircle,
   PackagePlus,
   Percent,
@@ -28,6 +29,7 @@ import {
   Truck,
   Upload,
   UserRound,
+  X,
 } from "lucide-react";
 import { products as demoCatalog } from "../../src/lib/catalog";
 import {
@@ -300,6 +302,7 @@ export default function SellerPortal({ standalone = false }: { standalone?: bool
   const [localProducts, setLocalProducts] = useState<SellerProduct[]>([]);
   const [sellerAvatar, setSellerAvatar] = useState("");
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [busy, setBusy] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [notice, setNotice] = useState("");
@@ -320,6 +323,7 @@ export default function SellerPortal({ standalone = false }: { standalone?: bool
 
   function goToPage(next: SellerPage) {
     setPage(next);
+    setMobileNavOpen(false);
     trackEvent("seller_page_view", { page: next });
     if (readSellerPage() !== next) {
       window.history.pushState(null, "", `#${next}`);
@@ -483,6 +487,16 @@ export default function SellerPortal({ standalone = false }: { standalone?: bool
     window.location.assign(marketplaceBase || "/");
   }
 
+  function switchToBuyerAccount() {
+    if (!demoAccount) return;
+    const buyerAccount = findDemoAccount(demoAccount.email, "buyer");
+    if (!buyerAccount) return;
+    saveDemoAccount(buyerAccount);
+    setAccountMenuOpen(false);
+    setMobileNavOpen(false);
+    window.location.assign(`${marketplaceBase}/account`);
+  }
+
   async function addProduct(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!demoAccount) return;
@@ -567,6 +581,7 @@ export default function SellerPortal({ standalone = false }: { standalone?: bool
   if (loadingScreen) return <SellerLoadingScreen />;
 
   const showDashboard = Boolean(demoAccount && sellerApplication?.status === "approved");
+  const linkedBuyerAccount = demoAccount ? findDemoAccount(demoAccount.email, "buyer") : null;
 
   return (
     <main className="seller-site">
@@ -578,6 +593,18 @@ export default function SellerPortal({ standalone = false }: { standalone?: bool
           <Store size={15} /> SELLER STUDIO
         </span>
         <div className="seller-header-actions">
+          {demoAccount && (
+            <button
+              type="button"
+              className="seller-mobile-toggle"
+              aria-label="Toggle seller menu"
+              aria-expanded={mobileNavOpen}
+              aria-controls="seller-section-nav"
+              onClick={() => setMobileNavOpen((open) => !open)}
+            >
+              {mobileNavOpen ? <X size={19} /> : <Menu size={19} />}
+            </button>
+          )}
           {demoAccount ? (
             <div className="seller-account-menu">
               <button
@@ -615,6 +642,11 @@ export default function SellerPortal({ standalone = false }: { standalone?: bool
                   <a role="menuitem" href={marketplaceUrl}>
                     <Store size={15} /> Buyer homepage
                   </a>
+                  {linkedBuyerAccount && (
+                    <button type="button" role="menuitem" onClick={switchToBuyerAccount}>
+                      <UserRound size={15} /> Switch to buyer account
+                    </button>
+                  )}
                   <button type="button" role="menuitem" onClick={() => void signOut()}>
                     <LogOut size={15} /> Sign out
                   </button>
@@ -699,7 +731,11 @@ export default function SellerPortal({ standalone = false }: { standalone?: bool
           </div>
         </aside>
 
-        <nav className="seller-mobile-nav" aria-label="Seller sections">
+        <nav
+          id="seller-section-nav"
+          className={`seller-mobile-nav${mobileNavOpen ? " is-open" : ""}`}
+          aria-label="Seller sections"
+        >
           <button
             type="button"
             className={`seller-side-link ${showDashboard && page === "overview" ? "active" : ""}`}
@@ -748,6 +784,11 @@ export default function SellerPortal({ standalone = false }: { standalone?: bool
             >
               <MessageCircle size={16} /> Messages
             </a>
+          )}
+          {linkedBuyerAccount && (
+            <button type="button" className="seller-side-link" onClick={switchToBuyerAccount}>
+              <UserRound size={16} /> Buyer account
+            </button>
           )}
         </nav>
 

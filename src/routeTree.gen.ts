@@ -19,6 +19,10 @@ import { Route as MessagesRouteImport } from './routes/messages'
 import { Route as SellersRouteImport } from './routes/sellers'
 import { Route as ShopRouteImport } from './routes/shop'
 import { Route as SignupRouteImport } from './routes/signup'
+import { Route as AdminIndexRouteImport } from './routes/admin.index'
+import { Route as AdminCommunityRouteImport } from './routes/admin.community'
+import { Route as AdminPeopleRouteImport } from './routes/admin.people'
+import { Route as AdminSellersRouteImport } from './routes/admin.sellers'
 import { Route as InfoSlugRouteImport } from './routes/info.$slug'
 
 const IndexRoute = IndexRouteImport.update({
@@ -71,6 +75,26 @@ const SignupRoute = SignupRouteImport.update({
   path: '/signup',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminIndexRoute = AdminIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminCommunityRoute = AdminCommunityRouteImport.update({
+  id: '/community',
+  path: '/community',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminPeopleRoute = AdminPeopleRouteImport.update({
+  id: '/people',
+  path: '/people',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminSellersRoute = AdminSellersRouteImport.update({
+  id: '/sellers',
+  path: '/sellers',
+  getParentRoute: () => AdminRoute,
+} as any)
 const InfoSlugRoute = InfoSlugRouteImport.update({
   id: '/info/$slug',
   path: '/info/$slug',
@@ -80,7 +104,7 @@ const InfoSlugRoute = InfoSlugRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/account': typeof AccountRoute
-  '/admin': typeof AdminRoute
+  '/admin': typeof AdminRouteWithChildren
   '/careers': typeof CareersRoute
   '/checkout': typeof CheckoutRoute
   '/login': typeof LoginRoute
@@ -88,12 +112,15 @@ export interface FileRoutesByFullPath {
   '/sellers': typeof SellersRoute
   '/shop': typeof ShopRoute
   '/signup': typeof SignupRoute
+  '/admin/community': typeof AdminCommunityRoute
+  '/admin/people': typeof AdminPeopleRoute
+  '/admin/sellers': typeof AdminSellersRoute
   '/info/$slug': typeof InfoSlugRoute
+  '/admin/': typeof AdminIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/account': typeof AccountRoute
-  '/admin': typeof AdminRoute
   '/careers': typeof CareersRoute
   '/checkout': typeof CheckoutRoute
   '/login': typeof LoginRoute
@@ -101,13 +128,17 @@ export interface FileRoutesByTo {
   '/sellers': typeof SellersRoute
   '/shop': typeof ShopRoute
   '/signup': typeof SignupRoute
+  '/admin/community': typeof AdminCommunityRoute
+  '/admin/people': typeof AdminPeopleRoute
+  '/admin/sellers': typeof AdminSellersRoute
   '/info/$slug': typeof InfoSlugRoute
+  '/admin': typeof AdminIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/account': typeof AccountRoute
-  '/admin': typeof AdminRoute
+  '/admin': typeof AdminRouteWithChildren
   '/careers': typeof CareersRoute
   '/checkout': typeof CheckoutRoute
   '/login': typeof LoginRoute
@@ -115,7 +146,11 @@ export interface FileRoutesById {
   '/sellers': typeof SellersRoute
   '/shop': typeof ShopRoute
   '/signup': typeof SignupRoute
+  '/admin/community': typeof AdminCommunityRoute
+  '/admin/people': typeof AdminPeopleRoute
+  '/admin/sellers': typeof AdminSellersRoute
   '/info/$slug': typeof InfoSlugRoute
+  '/admin/': typeof AdminIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -130,12 +165,15 @@ export interface FileRouteTypes {
     | '/sellers'
     | '/shop'
     | '/signup'
+    | '/admin/community'
+    | '/admin/people'
+    | '/admin/sellers'
     | '/info/$slug'
+    | '/admin/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/account'
-    | '/admin'
     | '/careers'
     | '/checkout'
     | '/login'
@@ -143,7 +181,11 @@ export interface FileRouteTypes {
     | '/sellers'
     | '/shop'
     | '/signup'
+    | '/admin/community'
+    | '/admin/people'
+    | '/admin/sellers'
     | '/info/$slug'
+    | '/admin'
   id:
     | '__root__'
     | '/'
@@ -156,13 +198,17 @@ export interface FileRouteTypes {
     | '/sellers'
     | '/shop'
     | '/signup'
+    | '/admin/community'
+    | '/admin/people'
+    | '/admin/sellers'
     | '/info/$slug'
+    | '/admin/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AccountRoute: typeof AccountRoute
-  AdminRoute: typeof AdminRoute
+  AdminRoute: typeof AdminRouteWithChildren
   CareersRoute: typeof CareersRoute
   CheckoutRoute: typeof CheckoutRoute
   LoginRoute: typeof LoginRoute
@@ -245,6 +291,34 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SignupRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/': {
+      id: '/admin/'
+      path: '/'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof AdminIndexRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/community': {
+      id: '/admin/community'
+      path: '/community'
+      fullPath: '/admin/community'
+      preLoaderRoute: typeof AdminCommunityRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/people': {
+      id: '/admin/people'
+      path: '/people'
+      fullPath: '/admin/people'
+      preLoaderRoute: typeof AdminPeopleRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/sellers': {
+      id: '/admin/sellers'
+      path: '/sellers'
+      fullPath: '/admin/sellers'
+      preLoaderRoute: typeof AdminSellersRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/info/$slug': {
       id: '/info/$slug'
       path: '/info/$slug'
@@ -255,10 +329,26 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface AdminRouteChildren {
+  AdminCommunityRoute: typeof AdminCommunityRoute
+  AdminPeopleRoute: typeof AdminPeopleRoute
+  AdminSellersRoute: typeof AdminSellersRoute
+  AdminIndexRoute: typeof AdminIndexRoute
+}
+
+const AdminRouteChildren: AdminRouteChildren = {
+  AdminCommunityRoute: AdminCommunityRoute,
+  AdminPeopleRoute: AdminPeopleRoute,
+  AdminSellersRoute: AdminSellersRoute,
+  AdminIndexRoute: AdminIndexRoute,
+}
+
+const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AccountRoute: AccountRoute,
-  AdminRoute: AdminRoute,
+  AdminRoute: AdminRouteWithChildren,
   CareersRoute: CareersRoute,
   CheckoutRoute: CheckoutRoute,
   LoginRoute: LoginRoute,

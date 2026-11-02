@@ -1,28 +1,25 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
 import { useEffect, useState, type FormEvent } from "react";
 import {
-  AlertTriangle,
   ArrowLeft,
   ArrowRight,
-  ArrowUpRight,
-  Ban,
-  Check,
-  Eye,
   KeyRound,
   LogOut,
   ShieldCheck,
-  ShoppingBag,
   Sparkles,
   Store,
-  Trash2,
   UserRound,
   Users,
-  UserPlus,
-  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { checkAdminSession, getAdminDashboard, signInToAdmin, signOutOfAdmin } from "@/lib/admin";
 import { accountAvatar } from "@/lib/account-preferences";
+import {
+  AdminWorkspaceContext,
+  type AdminPerson,
+  type AdminWorkspaceValue,
+  type PeopleFilter,
+} from "@/lib/admin-workspace";
 import { deleteDemoAccountData } from "@/lib/demo-account-cleanup";
 import {
   getAllDemoAccounts,
@@ -30,7 +27,6 @@ import {
   setAccountModeration,
   subscribeAccountModeration,
   type AccountModerationStatus,
-  type DemoAccount,
 } from "@/lib/demo-accounts";
 import {
   readSellerApplications,
@@ -41,10 +37,11 @@ import {
 
 type AdminDashboard = Awaited<ReturnType<typeof getAdminDashboard>>;
 
-type AdminPerson = DemoAccount & {
-  avatar: string;
-  status: AccountModerationStatus;
-  reason: string;
+const sectionLabels: Record<string, string> = {
+  "/admin": "Overview",
+  "/admin/sellers": "Seller applications",
+  "/admin/people": "People",
+  "/admin/community": "Community",
 };
 
 export const Route = createFileRoute("/admin")({
@@ -54,10 +51,11 @@ export const Route = createFileRoute("/admin")({
       { name: "description", content: "Private SupreCart marketplace administration dashboard." },
     ],
   }),
-  component: Admin,
+  component: AdminLayout,
 });
 
-function Admin() {
+function AdminLayout() {
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
   const [dashboard, setDashboard] = useState<AdminDashboard | null>(null);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -67,7 +65,7 @@ function Admin() {
   const [sellerApplications, setSellerApplications] = useState<SellerApplication[]>([]);
   const [reviewNotes, setReviewNotes] = useState<Record<string, string>>({});
   const [people, setPeople] = useState<AdminPerson[]>([]);
-  const [peopleFilter, setPeopleFilter] = useState<"all" | "buyer" | "seller">("all");
+  const [peopleFilter, setPeopleFilter] = useState<PeopleFilter>("all");
   const [moderationNotes, setModerationNotes] = useState<Record<string, string>>({});
 
   useEffect(() => {
@@ -315,438 +313,184 @@ function Admin() {
     );
   }
 
-  const icons = [ShoppingBag, Users, UserPlus, Eye];
   const pendingSellerApplications = sellerApplications.filter(
     (application) => application.status === "pending",
   ).length;
-  const filteredPeople = people.filter(
-    (person) => peopleFilter === "all" || person.role === peopleFilter,
-  );
   const buyerCount = people.filter((person) => person.role === "buyer").length;
   const sellerCount = people.filter((person) => person.role === "seller").length;
   const bannedCount = people.filter((person) => person.status === "banned").length;
+  const currentSection =
+    sectionLabels[pathname] ??
+    (pathname.startsWith("/admin/sellers")
+      ? sectionLabels["/admin/sellers"]
+      : pathname.startsWith("/admin/people")
+        ? sectionLabels["/admin/people"]
+        : pathname.startsWith("/admin/community")
+          ? sectionLabels["/admin/community"]
+          : "Overview");
+
+  const workspace: AdminWorkspaceValue = {
+    dashboard,
+    sellerApplications,
+    pendingSellerApplications,
+    reviewNotes,
+    onReviewNoteChange: (email, value) =>
+      setReviewNotes((current) => ({ ...current, [email]: value })),
+    reviewApplication,
+    people,
+    peopleFilter,
+    onPeopleFilterChange: setPeopleFilter,
+    moderationNotes,
+    onModerationNoteChange: (email, value) =>
+      setModerationNotes((current) => ({ ...current, [email]: value })),
+    moderatePerson,
+    removePerson,
+    buyerCount,
+    sellerCount,
+    bannedCount,
+    signOut: handleSignOut,
+    signingOut: submitting,
+  };
 
   return (
-    <main className="admin-shell">
-      <aside className="admin-sidebar">
-        <Link to="/" className="admin-sidebar-brand" aria-label="SupreCart home">
-          <img className="admin-brand-mark" src="/suprecart-logo.png" alt="SupreCart" />
-          <span>
-            SUPRECART
-            <small>ADMIN STUDIO</small>
-          </span>
-        </Link>
-        <div className="admin-sidebar-label">WORKSPACE</div>
-        <a className="admin-side-link admin-side-link-active" href="#overview">
-          <span className="admin-side-icon">
-            <Sparkles size={17} />
-          </span>{" "}
-          Overview
-        </a>
-        <a className="admin-side-link" href="#sellers">
-          <span className="admin-side-icon">
-            <Store size={17} />
-          </span>{" "}
-          Seller applications
-          {pendingSellerApplications > 0 && (
-            <span className="admin-side-count">{pendingSellerApplications}</span>
-          )}
-        </a>
-        <a className="admin-side-link" href="#people">
-          <span className="admin-side-icon">
-            <Users size={17} />
-          </span>{" "}
-          People
-          {bannedCount > 0 && <span className="admin-side-count">{bannedCount}</span>}
-        </a>
-        <a className="admin-side-link" href="#activity">
-          <span className="admin-side-icon">
-            <UserRound size={17} />
-          </span>{" "}
-          Community
-        </a>
-        <div className="admin-sidebar-bottom">
-          <span className="admin-online-dot" />
-          <span>Preview workspace</span>
-          <button
-            type="button"
-            aria-label="Sign out"
-            title="Sign out"
-            onClick={handleSignOut}
-            disabled={submitting}
-          >
-            <LogOut size={16} />
-          </button>
-        </div>
-      </aside>
-      <section className="admin-main">
-        <header className="admin-topbar">
-          <div className="admin-breadcrumb">
-            Workspace <span>/</span> Overview
-          </div>
-          <div className="admin-topbar-right">
-            <span className="admin-preview-pill">
-              <span /> PREVIEW DATA
-            </span>
-            <span className="admin-avatar">CC</span>
-          </div>
-        </header>
-        <div className="admin-content" id="overview">
-          <div className="admin-welcome">
-            <div>
-              <p className="admin-kicker">THURSDAY · YOUR MARKETPLACE AT A GLANCE</p>
-              <h1>
-                Make good <span>moves.</span>
-              </h1>
-              <p className="admin-welcome-copy">
-                A little clarity goes a long way. Here’s the latest from your corner of the
-                internet.
-              </p>
-            </div>
-            <div className="admin-period">
-              Last 30 days <span>⌄</span>
-            </div>
-          </div>
-          <div className="admin-preview-banner">
-            <Sparkles size={15} />
+    <AdminWorkspaceContext.Provider value={workspace}>
+      <main className="admin-shell">
+        <aside className="admin-sidebar">
+          <Link to="/" className="admin-sidebar-brand" aria-label="SupreCart home">
+            <img className="admin-brand-mark" src="/suprecart-logo.png" alt="SupreCart" />
             <span>
-              These are illustrative sample figures. Connect your analytics and finance services to
-              see live data.
+              SUPRECART
+              <small>ADMIN STUDIO</small>
             </span>
-            <span className="admin-banner-tag">DEMO</span>
+          </Link>
+          <div className="admin-sidebar-label">WORKSPACE</div>
+          <Link
+            to="/admin"
+            className="admin-side-link"
+            activeProps={{ className: "admin-side-link admin-side-link-active" }}
+            activeOptions={{ exact: true }}
+          >
+            <span className="admin-side-icon">
+              <Sparkles size={17} />
+            </span>{" "}
+            Overview
+          </Link>
+          <Link
+            to="/admin/sellers"
+            className="admin-side-link"
+            activeProps={{ className: "admin-side-link admin-side-link-active" }}
+          >
+            <span className="admin-side-icon">
+              <Store size={17} />
+            </span>{" "}
+            Seller applications
+            {pendingSellerApplications > 0 && (
+              <span className="admin-side-count">{pendingSellerApplications}</span>
+            )}
+          </Link>
+          <Link
+            to="/admin/people"
+            className="admin-side-link"
+            activeProps={{ className: "admin-side-link admin-side-link-active" }}
+          >
+            <span className="admin-side-icon">
+              <Users size={17} />
+            </span>{" "}
+            People
+            {bannedCount > 0 && <span className="admin-side-count">{bannedCount}</span>}
+          </Link>
+          <Link
+            to="/admin/community"
+            className="admin-side-link"
+            activeProps={{ className: "admin-side-link admin-side-link-active" }}
+          >
+            <span className="admin-side-icon">
+              <UserRound size={17} />
+            </span>{" "}
+            Community
+          </Link>
+          <div className="admin-sidebar-bottom">
+            <span className="admin-online-dot" />
+            <span>Preview workspace</span>
+            <button
+              type="button"
+              aria-label="Sign out"
+              title="Sign out"
+              onClick={handleSignOut}
+              disabled={submitting}
+            >
+              <LogOut size={16} />
+            </button>
           </div>
-          <section className="admin-stat-grid" aria-label="Marketplace summary">
-            {dashboard.stats.map((stat, index) => {
-              const Icon = icons[index] ?? Sparkles;
-              return (
-                <article className="admin-stat-card" key={stat.label}>
-                  <div className="admin-stat-top">
-                    <span>{stat.label}</span>
-                    <span className={`admin-stat-icon admin-stat-icon-${index}`}>
-                      <Icon size={16} />
-                    </span>
-                  </div>
-                  <strong className="admin-stat-value">{stat.value}</strong>
-                  <div className="admin-stat-foot">
-                    <span className="admin-stat-change">
-                      <ArrowUpRight size={13} /> {stat.change}
-                    </span>
-                    <span>{stat.detail}</span>
-                  </div>
-                </article>
-              );
-            })}
-          </section>
-          <section className="admin-panel admin-seller-panel" id="sellers">
-            <div className="admin-panel-heading">
-              <div>
-                <span className="admin-panel-overline">SELLER APPLICATIONS</span>
-                <h2>Who wants to join.</h2>
-              </div>
-              <span className="admin-live-label">
-                <span /> {pendingSellerApplications} PENDING
-              </span>
+        </aside>
+        <section className="admin-main">
+          <header className="admin-topbar">
+            <div className="admin-breadcrumb">
+              Workspace <span>/</span> {currentSection}
             </div>
-            {sellerApplications.length ? (
-              <div className="admin-seller-list">
-                {sellerApplications.map((application) => (
-                  <article
-                    className={`admin-seller-row is-${application.status}`}
-                    key={application.email}
-                  >
-                    <span className="admin-seller-monogram" aria-hidden="true">
-                      {application.storeName
-                        .split(/\s+/)
-                        .slice(0, 2)
-                        .map((word) => word[0])
-                        .join("")
-                        .toUpperCase()}
-                    </span>
-                    <div className="admin-seller-main">
-                      <div className="admin-seller-title">
-                        <strong>{application.storeName}</strong>
-                        <span className={`admin-seller-chip is-${application.status}`}>
-                          {application.status}
-                        </span>
-                      </div>
-                      <p>
-                        {application.name} · {application.email} · {application.phone}
-                      </p>
-                      <small>{application.productDescription}</small>
-                      <div className="admin-seller-meta">
-                        <span>
-                          {application.bankName} · {application.bankAccountNumber}
-                        </span>
-                        <span>
-                          Submitted{" "}
-                          {new Date(application.submittedAt).toLocaleDateString(undefined, {
-                            day: "numeric",
-                            month: "short",
-                            year: "numeric",
-                          })}
-                        </span>
-                      </div>
-                      {application.reviewNote && (
-                        <p className="admin-seller-review-note">{application.reviewNote}</p>
-                      )}
-                      {application.status === "pending" && (
-                        <div className="admin-seller-actions">
-                          <input
-                            aria-label={`Review note for ${application.storeName}`}
-                            placeholder="Optional note for the applicant"
-                            value={reviewNotes[application.email] ?? ""}
-                            onChange={(event) =>
-                              setReviewNotes((current) => ({
-                                ...current,
-                                [application.email]: event.target.value,
-                              }))
-                            }
-                          />
-                          <button
-                            type="button"
-                            className="admin-seller-approve"
-                            onClick={() => reviewApplication(application, "approved")}
-                          >
-                            <Check size={14} /> Approve
-                          </button>
-                          <button
-                            type="button"
-                            className="admin-seller-reject"
-                            onClick={() => reviewApplication(application, "rejected")}
-                          >
-                            <X size={14} /> Decline
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  </article>
-                ))}
-              </div>
-            ) : (
-              <p className="admin-seller-empty">
-                No seller applications have been submitted in this browser yet.
-              </p>
+            <div className="admin-topbar-right">
+              <span className="admin-preview-pill">
+                <span /> PREVIEW DATA
+              </span>
+              <span className="admin-avatar">CC</span>
+            </div>
+          </header>
+          <div className="admin-content">
+            <Outlet />
+            <footer className="admin-footer">
+              <span>SUPRECART ADMIN STUDIO</span>
+              <span>Preview mode · No live data connected</span>
+            </footer>
+          </div>
+        </section>
+        <nav className="admin-mobile-nav" aria-label="Admin sections">
+          <Link
+            to="/admin"
+            className="admin-mobile-link"
+            activeProps={{ className: "admin-mobile-link is-active" }}
+            activeOptions={{ exact: true }}
+          >
+            <Sparkles size={18} />
+            <span>Overview</span>
+          </Link>
+          <Link
+            to="/admin/sellers"
+            className="admin-mobile-link"
+            activeProps={{ className: "admin-mobile-link is-active" }}
+          >
+            <Store size={18} />
+            <span>Sellers</span>
+            {pendingSellerApplications > 0 && (
+              <span className="admin-mobile-count">{pendingSellerApplications}</span>
             )}
-          </section>
-          <section className="admin-panel admin-people-panel" id="people">
-            <div className="admin-panel-heading">
-              <div>
-                <span className="admin-panel-overline">REGISTERED PEOPLE</span>
-                <h2>Everyone on the marketplace.</h2>
-              </div>
-              <span className="admin-live-label">
-                <span /> {people.length} ACCOUNTS
-              </span>
-            </div>
-            <div className="admin-people-summary">
-              <span>
-                <strong>{buyerCount}</strong> buyers
-              </span>
-              <span>
-                <strong>{sellerCount}</strong> sellers
-              </span>
-              <span>
-                <strong>{bannedCount}</strong> banned
-              </span>
-            </div>
-            <div className="admin-people-filters" role="tablist" aria-label="Filter people">
-              {(
-                [
-                  ["all", "All"],
-                  ["buyer", "Buyers"],
-                  ["seller", "Sellers"],
-                ] as const
-              ).map(([key, label]) => (
-                <button
-                  type="button"
-                  key={key}
-                  role="tab"
-                  aria-selected={peopleFilter === key}
-                  className={peopleFilter === key ? "active" : ""}
-                  onClick={() => setPeopleFilter(key)}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-            {filteredPeople.length ? (
-              <div className="admin-people-list">
-                {filteredPeople.map((person) => (
-                  <article
-                    className={`admin-person-row is-${person.status}`}
-                    key={`${person.role}:${person.email}`}
-                  >
-                    <span className="admin-person-avatar" aria-hidden="true">
-                      {person.avatar ? (
-                        <img src={person.avatar} alt="" />
-                      ) : (
-                        person.name
-                          .split(/\s+/)
-                          .slice(0, 2)
-                          .map((word) => word[0])
-                          .join("")
-                          .toUpperCase()
-                      )}
-                    </span>
-                    <div className="admin-person-main">
-                      <div className="admin-person-title">
-                        <strong>{person.name}</strong>
-                        <span className={`admin-role-chip is-${person.role}`}>{person.role}</span>
-                        <span className={`admin-seller-chip is-${person.status}`}>
-                          {person.status}
-                        </span>
-                      </div>
-                      <p>{person.email}</p>
-                      {person.reason && (
-                        <p className="admin-person-note">
-                          <AlertTriangle size={12} /> {person.reason}
-                        </p>
-                      )}
-                      <div className="admin-person-actions">
-                        <input
-                          aria-label={`Moderation note for ${person.name}`}
-                          placeholder="Optional note for this account"
-                          value={moderationNotes[person.email] ?? ""}
-                          onChange={(event) =>
-                            setModerationNotes((current) => ({
-                              ...current,
-                              [person.email]: event.target.value,
-                            }))
-                          }
-                        />
-                        {person.status === "banned" ? (
-                          <button
-                            type="button"
-                            className="admin-seller-approve"
-                            onClick={() => moderatePerson(person, "active")}
-                          >
-                            <Check size={14} /> Unban
-                          </button>
-                        ) : (
-                          <>
-                            <button
-                              type="button"
-                              className="admin-person-warn"
-                              onClick={() => moderatePerson(person, "warned")}
-                            >
-                              <AlertTriangle size={14} /> Warn
-                            </button>
-                            <button
-                              type="button"
-                              className="admin-seller-reject"
-                              onClick={() => moderatePerson(person, "banned")}
-                            >
-                              <Ban size={14} /> Ban
-                            </button>
-                          </>
-                        )}
-                        <button
-                          type="button"
-                          className="admin-person-delete"
-                          onClick={() => removePerson(person)}
-                        >
-                          <Trash2 size={14} /> Delete
-                        </button>
-                      </div>
-                    </div>
-                  </article>
-                ))}
-              </div>
-            ) : (
-              <p className="admin-seller-empty">
-                No {peopleFilter === "all" ? "" : `${peopleFilter} `}accounts in this browser yet.
-              </p>
-            )}
-          </section>
-          <section className="admin-panel-grid">
-            <article className="admin-panel admin-visits-panel">
-              <div className="admin-panel-heading">
-                <div>
-                  <span className="admin-panel-overline">TRAFFIC</span>
-                  <h2>People are finding you.</h2>
-                </div>
-                <button type="button" className="admin-chart-menu" aria-label="Chart options">
-                  ···
-                </button>
-              </div>
-              <div className="admin-visits-total">
-                <strong>24,892</strong>
-                <span>
-                  <ArrowUpRight size={14} /> 5.7%
-                </span>
-              </div>
-              <p className="admin-chart-caption">Marketplace visits this week</p>
-              <div
-                className="admin-bar-chart"
-                role="img"
-                aria-label="Sample daily visits: Monday 42, Tuesday 64, Wednesday 52, Thursday 78, Friday 60, Saturday 92, Sunday 72 percent of peak."
-              >
-                {dashboard.visits.map((item) => (
-                  <div className="admin-chart-day" key={item.day}>
-                    <div className="admin-chart-bar-wrap">
-                      <span className="admin-chart-bar" style={{ height: `${item.value}%` }} />
-                    </div>
-                    <span>{item.day}</span>
-                  </div>
-                ))}
-              </div>
-            </article>
-            <article className="admin-panel admin-insight-panel">
-              <span className="admin-panel-overline">COMMUNITY MOMENTUM</span>
-              <div className="admin-insight-number">
-                342<span>new faces</span>
-              </div>
-              <p>
-                Your community is growing. Sign-ups are up <strong>16.4%</strong> compared with last
-                month.
-              </p>
-              <div className="admin-avatar-stack" aria-hidden="true">
-                <span>AM</span>
-                <span>DO</span>
-                <span>TN</span>
-                <span>FK</span>
-                <span>+338</span>
-              </div>
-              <div className="admin-insight-foot">
-                A good thing is catching on <ArrowUpRight size={15} />
-              </div>
-            </article>
-          </section>
-          <section className="admin-panel admin-activity-panel" id="activity">
-            <div className="admin-panel-heading">
-              <div>
-                <span className="admin-panel-overline">THE COMMUNITY</span>
-                <h2>Recent activity</h2>
-              </div>
-              <span className="admin-live-label">
-                <span /> SAMPLE ACTIVITY
-              </span>
-            </div>
-            <div className="admin-activity-list">
-              {dashboard.activity.map((item) => (
-                <div className="admin-activity-row" key={`${item.name}-${item.time}`}>
-                  <span className="admin-activity-avatar">{item.initials}</span>
-                  <strong>{item.name}</strong>
-                  <span className="admin-activity-event">{item.event}</span>
-                  <span className="admin-activity-time">{item.time}</span>
-                </div>
-              ))}
-            </div>
-          </section>
-          <footer className="admin-footer">
-            <span>SUPRECART ADMIN STUDIO</span>
-            <span>Preview mode · No live data connected</span>
-          </footer>
-        </div>
-      </section>
-      {message && (
-        <div role="status" className="admin-toast">
-          {message}
-          <button type="button" onClick={() => setMessage("")} aria-label="Dismiss message">
-            ×
-          </button>
-        </div>
-      )}
-    </main>
+          </Link>
+          <Link
+            to="/admin/people"
+            className="admin-mobile-link"
+            activeProps={{ className: "admin-mobile-link is-active" }}
+          >
+            <Users size={18} />
+            <span>People</span>
+            {bannedCount > 0 && <span className="admin-mobile-count">{bannedCount}</span>}
+          </Link>
+          <Link
+            to="/admin/community"
+            className="admin-mobile-link"
+            activeProps={{ className: "admin-mobile-link is-active" }}
+          >
+            <UserRound size={18} />
+            <span>Community</span>
+          </Link>
+        </nav>
+        {message && (
+          <div role="status" className="admin-toast">
+            {message}
+            <button type="button" onClick={() => setMessage("")} aria-label="Dismiss message">
+              ×
+            </button>
+          </div>
+        )}
+      </main>
+    </AdminWorkspaceContext.Provider>
   );
 }

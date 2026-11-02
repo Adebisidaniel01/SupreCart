@@ -134,7 +134,9 @@ function RootComponent() {
       <Analytics />
       <CookieConsent policyHref="/info/cookies" />
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-      {pathname === "/admin" || pathname.startsWith("/sellers") ? (
+      {pathname === "/admin" ||
+      pathname.startsWith("/admin/") ||
+      pathname.startsWith("/sellers") ? (
         <Outlet />
       ) : (
         <Storefront>
