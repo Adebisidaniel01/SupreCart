@@ -97,6 +97,26 @@ const KWARA_LGAS = [
   "Pategi",
 ];
 
+type BagDetails = { recipient: string; phone: string; city: string; note: string };
+
+function readBagDetails(): BagDetails | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem("suprecart-bag-details");
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<BagDetails>;
+    if (typeof parsed !== "object" || parsed === null) return null;
+    return {
+      recipient: typeof parsed.recipient === "string" ? parsed.recipient : "",
+      phone: typeof parsed.phone === "string" ? parsed.phone : "",
+      city: typeof parsed.city === "string" ? parsed.city : "",
+      note: typeof parsed.note === "string" ? parsed.note : "",
+    };
+  } catch {
+    return null;
+  }
+}
+
 function createReference(prefix: string) {
   const token = globalThis.crypto?.randomUUID?.().replaceAll("-", "").slice(0, 12).toUpperCase();
   if (!token) throw new Error("Secure preview order references are not available in this browser.");
@@ -126,6 +146,10 @@ function Checkout() {
   const [orderError, setOrderError] = useState("");
   const [deliveryMethod, setDeliveryMethod] = useState<DeliveryMethod>("doorstep");
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("paystack");
+  const [bagDetails] = useState(readBagDetails);
+  const bagNameParts = (bagDetails?.recipient ?? "").trim().split(/\s+/).filter(Boolean);
+  const bagFirstName = bagNameParts[0] ?? "";
+  const bagLastName = bagNameParts.slice(1).join(" ");
   const doorstepFee = PREVIEW_DOORSTEP_FEE;
   const pickupStations = PREVIEW_PICKUP_STATIONS;
 
@@ -323,11 +347,21 @@ function Checkout() {
               <div className="field-pair">
                 <label>
                   First name
-                  <input name="firstName" autoComplete="given-name" required />
+                  <input
+                    name="firstName"
+                    autoComplete="given-name"
+                    defaultValue={bagFirstName}
+                    required
+                  />
                 </label>
                 <label>
                   Last name
-                  <input name="lastName" autoComplete="family-name" required />
+                  <input
+                    name="lastName"
+                    autoComplete="family-name"
+                    defaultValue={bagLastName}
+                    required
+                  />
                 </label>
               </div>
               <div className="field-pair">
@@ -337,7 +371,14 @@ function Checkout() {
                 </label>
                 <label>
                   Phone number
-                  <input type="tel" name="phone" autoComplete="tel" placeholder="+234" required />
+                  <input
+                    type="tel"
+                    name="phone"
+                    autoComplete="tel"
+                    placeholder="+234"
+                    defaultValue={bagDetails?.phone ?? ""}
+                    required
+                  />
                 </label>
               </div>
               {deliveryMethod === "doorstep" ? (
@@ -356,7 +397,12 @@ function Checkout() {
                     </label>
                     <label>
                       Community / area
-                      <input name="community" autoComplete="address-level2" required />
+                      <input
+                        name="community"
+                        autoComplete="address-level2"
+                        defaultValue={bagDetails?.city ?? ""}
+                        required
+                      />
                     </label>
                   </div>
                   <label>
@@ -392,6 +438,7 @@ function Checkout() {
                 <textarea
                   name="note"
                   rows={3}
+                  defaultValue={bagDetails?.note ?? ""}
                   placeholder="Anything the delivery person should know?"
                 />
               </label>

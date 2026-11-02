@@ -31,7 +31,7 @@ import {
   UserRound,
   X,
 } from "lucide-react";
-import { products as demoCatalog } from "../../src/lib/catalog";
+import { categories as catalogCategories, products as demoCatalog } from "../../src/lib/catalog";
 import {
   clearDemoAccount,
   createLocalAccount,
@@ -97,6 +97,9 @@ type SellerProduct = {
   id: string;
   name: string;
   category: string;
+  description?: string;
+  brand?: string;
+  condition?: string;
   price: number;
   inventory: number;
   published: boolean;
@@ -500,6 +503,10 @@ export default function SellerPortal({ standalone = false }: { standalone?: bool
   async function addProduct(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!demoAccount) return;
+    if (sellerApplication?.status !== "approved") {
+      setError("Only approved SupreCart sellers can list products.");
+      return;
+    }
     const formElement = event.currentTarget;
     setSubmitting(true);
     setError("");
@@ -516,12 +523,31 @@ export default function SellerPortal({ standalone = false }: { standalone?: bool
         reader.onerror = () => reject(new Error("Could not read that product image."));
         reader.readAsDataURL(image);
       });
+      const name = String(form.get("name")).trim();
+      const category = String(form.get("category")).trim();
+      const description = String(form.get("description")).trim();
+      const price = Number(form.get("price"));
+      const inventory = Number(form.get("inventory"));
+      if (!name) throw new Error("Enter a product name.");
+      if (!category || !catalogCategories.includes(category)) {
+        throw new Error("Choose a product category from the list.");
+      }
+      if (description.length < 30) {
+        throw new Error("Add a detailed product description of at least 30 characters.");
+      }
+      if (!Number.isFinite(price) || price <= 0) throw new Error("Enter a valid product price.");
+      if (!Number.isInteger(inventory) || inventory < 0) {
+        throw new Error("Available quantity must be a whole number.");
+      }
       const product: SellerProduct = {
         id: crypto.randomUUID(),
-        name: String(form.get("name")).trim(),
-        category: String(form.get("category")).trim(),
-        price: Number(form.get("price")),
-        inventory: Number(form.get("inventory")),
+        name,
+        category,
+        description,
+        brand: String(form.get("brand")).trim() || "Independent",
+        condition: String(form.get("condition")).trim() || "New",
+        price,
+        inventory,
         published: true,
         image_path: "",
         image_url: imageUrl,
@@ -593,17 +619,100 @@ export default function SellerPortal({ standalone = false }: { standalone?: bool
           <Store size={15} /> SELLER STUDIO
         </span>
         <div className="seller-header-actions">
-          {demoAccount && (
+          {demoAccount && showDashboard && (
             <button
               type="button"
-              className="seller-mobile-toggle"
-              aria-label="Toggle seller menu"
-              aria-expanded={mobileNavOpen}
-              aria-controls="seller-section-nav"
-              onClick={() => setMobileNavOpen((open) => !open)}
+              className="seller-mobile-settings"
+              aria-label="Open account settings"
+              onClick={() => {
+                setMobileNavOpen(false);
+                setAccountMenuOpen(false);
+                goToPage("settings");
+              }}
             >
-              {mobileNavOpen ? <X size={19} /> : <Menu size={19} />}
+              <Settings size={17} />
             </button>
+          )}
+          {demoAccount && (
+            <div className="seller-mobile-menu">
+              <button
+                type="button"
+                className="seller-mobile-toggle"
+                aria-label="Toggle seller menu"
+                aria-expanded={mobileNavOpen}
+                aria-controls="seller-section-nav"
+                onClick={() => setMobileNavOpen((open) => !open)}
+              >
+                {mobileNavOpen ? <X size={19} /> : <Menu size={19} />}
+              </button>
+              {mobileNavOpen && (
+                <div id="seller-section-nav" className="seller-mobile-dropdown" role="menu">
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className={showDashboard && page === "overview" ? "active" : ""}
+                    onClick={() => goToPage("overview")}
+                  >
+                    <Box size={16} /> Overview
+                  </button>
+                  {showDashboard && (
+                    <>
+                      <button
+                        type="button"
+                        role="menuitem"
+                        className={page === "products" ? "active" : ""}
+                        onClick={() => goToPage("products")}
+                      >
+                        <PackagePlus size={16} /> Products
+                      </button>
+                      <button
+                        type="button"
+                        role="menuitem"
+                        className={page === "orders" ? "active" : ""}
+                        onClick={() => goToPage("orders")}
+                      >
+                        <Box size={16} /> Orders
+                      </button>
+                      <button
+                        type="button"
+                        role="menuitem"
+                        className={page === "payouts" ? "active" : ""}
+                        onClick={() => goToPage("payouts")}
+                      >
+                        <CircleDollarSign size={16} /> Payouts
+                      </button>
+                      <button
+                        type="button"
+                        role="menuitem"
+                        className={page === "settings" ? "active" : ""}
+                        onClick={() => goToPage("settings")}
+                      >
+                        <Settings size={16} /> Account settings
+                      </button>
+                    </>
+                  )}
+                  <a
+                    role="menuitem"
+                    href={`${marketplaceUrl.replace(/\/$/, "")}/messages?demoEmail=${encodeURIComponent(
+                      demoAccount.email,
+                    )}&demoRole=seller`}
+                  >
+                    <MessageCircle size={16} /> Messages
+                  </a>
+                  <a role="menuitem" href={marketplaceUrl}>
+                    <Store size={16} /> Buyer homepage
+                  </a>
+                  {linkedBuyerAccount && (
+                    <button type="button" role="menuitem" onClick={switchToBuyerAccount}>
+                      <UserRound size={16} /> Switch to buyer account
+                    </button>
+                  )}
+                  <button type="button" role="menuitem" onClick={() => void signOut()}>
+                    <LogOut size={16} /> Sign out
+                  </button>
+                </div>
+              )}
+            </div>
           )}
           {demoAccount ? (
             <div className="seller-account-menu">
@@ -730,67 +839,6 @@ export default function SellerPortal({ standalone = false }: { standalone?: bool
             <span>Your information is protected by SupreCart.</span>
           </div>
         </aside>
-
-        <nav
-          id="seller-section-nav"
-          className={`seller-mobile-nav${mobileNavOpen ? " is-open" : ""}`}
-          aria-label="Seller sections"
-        >
-          <button
-            type="button"
-            className={`seller-side-link ${showDashboard && page === "overview" ? "active" : ""}`}
-            onClick={() => goToPage("overview")}
-          >
-            <Box size={16} /> Overview
-          </button>
-          {showDashboard && (
-            <>
-              <button
-                type="button"
-                className={`seller-side-link ${page === "products" ? "active" : ""}`}
-                onClick={() => goToPage("products")}
-              >
-                <PackagePlus size={16} /> Products
-              </button>
-              <button
-                type="button"
-                className={`seller-side-link ${page === "orders" ? "active" : ""}`}
-                onClick={() => goToPage("orders")}
-              >
-                <Box size={16} /> Orders
-              </button>
-              <button
-                type="button"
-                className={`seller-side-link ${page === "payouts" ? "active" : ""}`}
-                onClick={() => goToPage("payouts")}
-              >
-                <CircleDollarSign size={16} /> Payouts
-              </button>
-              <button
-                type="button"
-                className={`seller-side-link ${page === "settings" ? "active" : ""}`}
-                onClick={() => goToPage("settings")}
-              >
-                <Settings size={16} /> Account settings
-              </button>
-            </>
-          )}
-          {demoAccount && (
-            <a
-              className="seller-side-link"
-              href={`${marketplaceUrl.replace(/\/$/, "")}/messages?demoEmail=${encodeURIComponent(
-                demoAccount.email,
-              )}&demoRole=seller`}
-            >
-              <MessageCircle size={16} /> Messages
-            </a>
-          )}
-          {linkedBuyerAccount && (
-            <button type="button" className="seller-side-link" onClick={switchToBuyerAccount}>
-              <UserRound size={16} /> Buyer account
-            </button>
-          )}
-        </nav>
 
         <section className="seller-content" id="seller-content">
           {busy ? (
@@ -1474,8 +1522,8 @@ function SellerDashboard({
                 </p>
               </div>
             </div>
-            {!demoMode && (
-              <div className="seller-dashboard-actions">
+            <div className="seller-dashboard-actions">
+              {!demoMode && (
                 <button
                   className="seller-outline-button"
                   type="button"
@@ -1486,18 +1534,18 @@ function SellerDashboard({
                 >
                   <ArrowDownToLine size={16} /> Withdraw
                 </button>
-                <button
-                  className="seller-primary-button"
-                  type="button"
-                  onClick={() => {
-                    setProductFormOpen(true);
-                    onNavigate("products");
-                  }}
-                >
-                  <PackagePlus size={16} /> Add a product
-                </button>
-              </div>
-            )}
+              )}
+              <button
+                className="seller-primary-button"
+                type="button"
+                onClick={() => {
+                  setProductFormOpen(true);
+                  onNavigate("products");
+                }}
+              >
+                <PackagePlus size={16} /> Add a product
+              </button>
+            </div>
           </div>
           <div className="seller-metric-grid">
             <article className="seller-metric-card seller-metric-balance">
@@ -1547,17 +1595,15 @@ function SellerDashboard({
               <p className="seller-eyebrow">YOUR CATALOGUE</p>
               <h2>Products</h2>
             </div>
-            {!demoMode && (
-              <button
-                type="button"
-                className="seller-outline-button"
-                onClick={() => setProductFormOpen((open) => !open)}
-              >
-                <PackagePlus size={15} /> Add product
-              </button>
-            )}
+            <button
+              type="button"
+              className="seller-outline-button"
+              onClick={() => setProductFormOpen((open) => !open)}
+            >
+              <PackagePlus size={15} /> Add product
+            </button>
           </div>
-          {productFormOpen && !demoMode && (
+          {productFormOpen && (
             <form
               className="seller-product-form"
               onSubmit={(event) => {
@@ -1571,12 +1617,30 @@ function SellerDashboard({
               </label>
               <label>
                 Category
-                <input
-                  name="category"
-                  maxLength={50}
-                  placeholder="Fashion, home, beauty…"
-                  required
-                />
+                <select name="category" defaultValue="" required>
+                  <option value="" disabled>
+                    Choose a category…
+                  </option>
+                  {catalogCategories.map((category) => (
+                    <option key={category} value={category}>
+                      {category}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Brand / maker
+                <input name="brand" maxLength={60} placeholder="e.g. Shewa Studio" />
+              </label>
+              <label>
+                Condition
+                <select name="condition" defaultValue="New">
+                  {["New", "Refurbished", "Pre-owned"].map((condition) => (
+                    <option key={condition} value={condition}>
+                      {condition}
+                    </option>
+                  ))}
+                </select>
               </label>
               <label>
                 Price (NGN)
@@ -1594,13 +1658,28 @@ function SellerDashboard({
                 <input name="inventory" type="number" min="0" step="1" defaultValue="1" required />
               </label>
               <label className="seller-field-full">
-                Product description
-                <textarea name="description" rows={3} maxLength={4000} required />
+                Detailed product description
+                <textarea
+                  name="description"
+                  rows={4}
+                  minLength={30}
+                  maxLength={4000}
+                  placeholder="Materials, dimensions, care instructions, what's included, and anything a buyer should know…"
+                  required
+                />
+                <small>
+                  At least 30 characters. Clear details help buyers decide with confidence.
+                </small>
               </label>
               <label className="seller-field-full">
                 Product image
                 <input type="file" name="image" accept=".jpg,.jpeg,.png,.webp" required />
+                <small>JPG, PNG, or WebP · max 10 MB. Use a bright, clear product photo.</small>
               </label>
+              <p className="seller-product-access-note seller-field-full">
+                <ShieldCheck size={14} /> Listings are available to approved SupreCart sellers only.
+                New products are saved in this browser and shown in your catalogue immediately.
+              </p>
               {Number(productPrice) > 0 && (
                 <p className="seller-fee-preview seller-field-full" role="status">
                   SupreCart commission{" "}
@@ -1619,7 +1698,7 @@ function SellerDashboard({
                 type="submit"
                 disabled={submitting}
               >
-                {submitting ? "Saving product�?�" : "Publish product"} <ArrowRight size={15} />
+                {submitting ? "Saving product…" : "Publish product"} <ArrowRight size={15} />
               </button>
             </form>
           )}
@@ -1634,7 +1713,14 @@ function SellerDashboard({
                     <img src={image} alt="" />
                     <div className="seller-product-name">
                       <strong>{product.name}</strong>
-                      <span>{product.category}</span>
+                      <span>
+                        {product.category}
+                        {product.condition ? ` · ${product.condition}` : ""}
+                        {product.brand ? ` · ${product.brand}` : ""}
+                      </span>
+                      {product.description && (
+                        <p className="seller-product-description">{product.description}</p>
+                      )}
                       <small className="seller-product-net">
                         Net {formatMoney(fee.sellerNet)} · fee {formatMoney(fee.commission)}
                       </small>
@@ -1656,21 +1742,17 @@ function SellerDashboard({
             ) : (
               <div className="seller-empty-products">
                 <PackagePlus size={21} />
-                <strong>{demoMode ? "No demo products" : "Your first product is waiting."}</strong>
+                <strong>Your first product is waiting.</strong>
                 <span>
-                  {demoMode
-                    ? "This test account has no saved catalogue."
-                    : "Add a product to start building your storefront."}
+                  Add a product with a detailed description and category to start selling.
                 </span>
-                {!demoMode && (
-                  <button
-                    type="button"
-                    className="seller-switch-link"
-                    onClick={() => setProductFormOpen(true)}
-                  >
-                    Add your first product <ArrowRight size={14} />
-                  </button>
-                )}
+                <button
+                  type="button"
+                  className="seller-switch-link"
+                  onClick={() => setProductFormOpen(true)}
+                >
+                  Add your first product <ArrowRight size={14} />
+                </button>
               </div>
             )}
           </div>

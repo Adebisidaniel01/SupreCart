@@ -68,12 +68,16 @@ function productSellerVerified(product: Product): boolean {
 }
 
 type CartItem = { product: Product; size: string; quantity: number };
+type BagDetails = { recipient: string; phone: string; city: string; note: string };
+const emptyBagDetails: BagDetails = { recipient: "", phone: "", city: "", note: "" };
 type Store = {
   favorites: number[];
   cart: CartItem[];
   cartCount: number;
   cartSubtotal: number;
   setCart: React.Dispatch<React.SetStateAction<CartItem[]>>;
+  bagDetails: BagDetails;
+  setBagDetails: React.Dispatch<React.SetStateAction<BagDetails>>;
   toggleFavorite: (id: number) => void;
   openProduct: (product: Product) => void;
   openPanel: (panel: string) => void;
@@ -96,6 +100,7 @@ export function Storefront({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const [favorites, setFavorites] = useState<number[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
+  const [bagDetails, setBagDetails] = useState<BagDetails>(emptyBagDetails);
   const [ready, setReady] = useState(false);
   const [panel, setPanel] = useState("");
   const [selected, setSelected] = useState<Product | null>(null);
@@ -155,8 +160,13 @@ export function Storefront({ children }: { children: ReactNode }) {
     try {
       const savedCart = localStorage.getItem("suprecart-cart");
       const savedFavorites = localStorage.getItem("suprecart-favorites");
+      const savedBagDetails = localStorage.getItem("suprecart-bag-details");
       if (savedCart) setCart(JSON.parse(savedCart) as CartItem[]);
       if (savedFavorites) setFavorites(JSON.parse(savedFavorites) as number[]);
+      if (savedBagDetails) {
+        const parsed = JSON.parse(savedBagDetails) as Partial<BagDetails>;
+        setBagDetails({ ...emptyBagDetails, ...parsed });
+      }
     } catch (error) {
       console.error("Could not restore the saved SupreCart preview basket.", error);
       setNotice("Your saved basket could not be restored in this browser.");
@@ -169,11 +179,12 @@ export function Storefront({ children }: { children: ReactNode }) {
     try {
       localStorage.setItem("suprecart-cart", JSON.stringify(cart));
       localStorage.setItem("suprecart-favorites", JSON.stringify(favorites));
+      localStorage.setItem("suprecart-bag-details", JSON.stringify(bagDetails));
     } catch (error) {
       console.error("Could not save the SupreCart preview basket in this browser.", error);
       setNotice("Your browser could not save this basket. Keep this tab open to preserve it.");
     }
-  }, [cart, favorites, ready]);
+  }, [cart, favorites, bagDetails, ready]);
 
   const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
   const cartSubtotal = cart.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
@@ -186,11 +197,13 @@ export function Storefront({ children }: { children: ReactNode }) {
       cartCount,
       cartSubtotal,
       setCart,
+      bagDetails,
+      setBagDetails,
       toggleFavorite,
       openProduct,
       openPanel,
     }),
-    [favorites, cart, cartCount, cartSubtotal, toggleFavorite, openProduct, openPanel],
+    [favorites, cart, cartCount, cartSubtotal, toggleFavorite, openProduct, openPanel, bagDetails],
   );
   const navItems = [
     { label: "Home", to: "/" as const },
@@ -980,6 +993,65 @@ export function Storefront({ children }: { children: ReactNode }) {
                       </div>
                     </div>
                   ))}
+                  <section className="bag-extras" aria-label="Bag delivery details">
+                    <div className="bag-extras-head">
+                      <strong>
+                        <Truck size={14} /> Delivery details
+                      </strong>
+                      <span>Optional · saved on this device</span>
+                    </div>
+                    <div className="bag-extras-grid">
+                      <label>
+                        Recipient name
+                        <input
+                          name="recipient"
+                          value={bagDetails.recipient}
+                          onChange={(event) =>
+                            setBagDetails((current) => ({
+                              ...current,
+                              recipient: event.target.value,
+                            }))
+                          }
+                          placeholder="Who should receive this?"
+                        />
+                      </label>
+                      <label>
+                        Phone number
+                        <input
+                          name="bag-phone"
+                          type="tel"
+                          value={bagDetails.phone}
+                          onChange={(event) =>
+                            setBagDetails((current) => ({ ...current, phone: event.target.value }))
+                          }
+                          placeholder="+234"
+                        />
+                      </label>
+                      <label className="bag-extras-full">
+                        Delivery city / area
+                        <input
+                          name="bag-city"
+                          value={bagDetails.city}
+                          onChange={(event) =>
+                            setBagDetails((current) => ({ ...current, city: event.target.value }))
+                          }
+                          placeholder="e.g. Ilorin West"
+                        />
+                      </label>
+                      <label className="bag-extras-full">
+                        Order note
+                        <textarea
+                          name="bag-note"
+                          rows={2}
+                          value={bagDetails.note}
+                          onChange={(event) =>
+                            setBagDetails((current) => ({ ...current, note: event.target.value }))
+                          }
+                          placeholder="Delivery instructions or a note for the seller"
+                        />
+                      </label>
+                    </div>
+                  </section>
                   <div className="cart-total">
                     <span>Subtotal</span>
                     <strong>{money(cartSubtotal)}</strong>
@@ -994,7 +1066,10 @@ export function Storefront({ children }: { children: ReactNode }) {
                   >
                     Continue to checkout <ArrowRight />
                   </Button>
-                  <p className="sample-note">Checkout preview only · No payments are collected.</p>
+                  <p className="sample-note">
+                    Bag details are saved on this device to speed up checkout preview. Checkout is
+                    preview-only; no payments are collected.
+                  </p>
                 </>
               )}
               {notice && (
