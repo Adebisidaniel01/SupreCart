@@ -205,8 +205,11 @@
   position: relative;
   display: none;
 }
-.seller-mobile-settings {
-  display: none;
+.seller-settings-menu {
+  position: relative;
+}
+.seller-settings-trigger {
+  display: grid;
   width: 38px;
   height: 38px;
   place-items: center;
@@ -216,9 +219,70 @@
   color: #24372c;
   cursor: pointer;
 }
-.seller-mobile-settings:hover {
+.seller-settings-trigger:hover {
   border-color: #b9cbbd;
   background: #f7faf6;
+  color: var(--seller-green);
+}
+.seller-settings-dropdown {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 10px);
+  right: 0;
+  display: grid;
+  min-width: 232px;
+  padding: 7px;
+  border: 1px solid #e2e8df;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 20px 44px rgb(32 54 40 / 18%);
+  animation: seller-dropdown-in 0.16s ease-out;
+}
+.seller-settings-dropdown::before {
+  content: "";
+  position: absolute;
+  top: -6px;
+  right: 14px;
+  width: 11px;
+  height: 11px;
+  transform: rotate(45deg);
+  border-top: 1px solid #e2e8df;
+  border-left: 1px solid #e2e8df;
+  background: #fff;
+}
+.seller-settings-dropdown-label {
+  margin: 2px 0 6px;
+  padding: 0 12px;
+  color: #7b8d81;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.seller-settings-dropdown button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: #30443a;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 650;
+  text-align: left;
+  cursor: pointer;
+}
+.seller-settings-dropdown button svg {
+  color: #6b8f7d;
+}
+.seller-settings-dropdown button:hover,
+.seller-settings-dropdown button.active {
+  background: #f1f6ef;
+  color: var(--seller-green);
+}
+.seller-settings-dropdown button.active svg {
   color: var(--seller-green);
 }
 .seller-mobile-dropdown {
@@ -1842,6 +1906,9 @@
   .seller-order-list time {
     grid-column: 2 / -1;
   }
+  .seller-settings-tabs {
+    display: none;
+  }
   .seller-settings-card {
     padding: 14px;
   }
@@ -1908,7 +1975,7 @@
     display: grid;
   }
   .seller-mobile-menu,
-  .seller-mobile-settings {
+  .seller-settings-menu {
     display: grid;
   }
   .seller-product-table,

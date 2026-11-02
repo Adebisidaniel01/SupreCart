@@ -306,6 +306,8 @@ export default function SellerPortal({ standalone = false }: { standalone?: bool
   const [sellerAvatar, setSellerAvatar] = useState("");
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [settingsMenuOpen, setSettingsMenuOpen] = useState(false);
+  const [settingsTab, setSettingsTab] = useState<SellerSettingsTab>("account");
   const [busy, setBusy] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [notice, setNotice] = useState("");
@@ -327,12 +329,28 @@ export default function SellerPortal({ standalone = false }: { standalone?: bool
   function goToPage(next: SellerPage) {
     setPage(next);
     setMobileNavOpen(false);
+    setAccountMenuOpen(false);
+    setSettingsMenuOpen(false);
     trackEvent("seller_page_view", { page: next });
     if (readSellerPage() !== next) {
       window.history.pushState(null, "", `#${next}`);
     }
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
+
+  function goToSettingsTab(next: SellerSettingsTab) {
+    setSettingsTab(next);
+    goToPage("settings");
+  }
+
+  useEffect(() => {
+    if (!settingsMenuOpen) return;
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") setSettingsMenuOpen(false);
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [settingsMenuOpen]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => setLoadingScreen(false), 1050);
@@ -620,18 +638,39 @@ export default function SellerPortal({ standalone = false }: { standalone?: bool
         </span>
         <div className="seller-header-actions">
           {demoAccount && showDashboard && (
-            <button
-              type="button"
-              className="seller-mobile-settings"
-              aria-label="Open account settings"
-              onClick={() => {
-                setMobileNavOpen(false);
-                setAccountMenuOpen(false);
-                goToPage("settings");
-              }}
-            >
-              <Settings size={17} />
-            </button>
+            <div className="seller-settings-menu">
+              <button
+                type="button"
+                className="seller-settings-trigger"
+                aria-label="Open account settings"
+                aria-haspopup="menu"
+                aria-expanded={settingsMenuOpen}
+                aria-controls="seller-settings-dropdown"
+                onClick={() => {
+                  setSettingsMenuOpen((open) => !open);
+                  setMobileNavOpen(false);
+                  setAccountMenuOpen(false);
+                }}
+              >
+                <Settings size={17} />
+              </button>
+              {settingsMenuOpen && (
+                <div id="seller-settings-dropdown" className="seller-settings-dropdown" role="menu">
+                  <p className="seller-settings-dropdown-label">Account settings</p>
+                  {sellerSettingsTabs.map(([key, label, Icon]) => (
+                    <button
+                      type="button"
+                      role="menuitem"
+                      key={key}
+                      className={page === "settings" && settingsTab === key ? "active" : ""}
+                      onClick={() => goToSettingsTab(key)}
+                    >
+                      <Icon size={15} /> {label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           )}
           {demoAccount && (
             <div className="seller-mobile-menu">
@@ -641,7 +680,11 @@ export default function SellerPortal({ standalone = false }: { standalone?: bool
                 aria-label="Toggle seller menu"
                 aria-expanded={mobileNavOpen}
                 aria-controls="seller-section-nav"
-                onClick={() => setMobileNavOpen((open) => !open)}
+                onClick={() => {
+                  setMobileNavOpen((open) => !open);
+                  setSettingsMenuOpen(false);
+                  setAccountMenuOpen(false);
+                }}
               >
                 {mobileNavOpen ? <X size={19} /> : <Menu size={19} />}
               </button>
@@ -721,7 +764,11 @@ export default function SellerPortal({ standalone = false }: { standalone?: bool
                 className="seller-account-trigger"
                 aria-expanded={accountMenuOpen}
                 aria-haspopup="menu"
-                onClick={() => setAccountMenuOpen((open) => !open)}
+                onClick={() => {
+                  setAccountMenuOpen((open) => !open);
+                  setSettingsMenuOpen(false);
+                  setMobileNavOpen(false);
+                }}
               >
                 <span className="seller-account-avatar">
                   {sellerAvatar ? (
@@ -892,6 +939,8 @@ export default function SellerPortal({ standalone = false }: { standalone?: bool
               demoProfile={demoProfile}
               demoFundEntries={demoWalletEntries}
               page={page}
+              settingsTab={settingsTab}
+              onSettingsTabChange={setSettingsTab}
               onNavigate={goToPage}
               onAddProduct={addProduct}
               onRequestPayout={requestPayout}
@@ -1248,6 +1297,8 @@ function SellerDashboard({
   demoProfile,
   demoFundEntries = [],
   page,
+  settingsTab,
+  onSettingsTabChange,
   onNavigate,
   onAddProduct,
   onRequestPayout,
@@ -1265,6 +1316,8 @@ function SellerDashboard({
   demoProfile?: { name: string; phone: string };
   demoFundEntries?: DemoFundEntry[];
   page: SellerPage;
+  settingsTab: SellerSettingsTab;
+  onSettingsTabChange: (tab: SellerSettingsTab) => void;
   onNavigate: (page: SellerPage) => void;
   onAddProduct: (event: FormEvent<HTMLFormElement>) => void;
   onRequestPayout: (event: FormEvent<HTMLFormElement>) => void;
@@ -1272,7 +1325,6 @@ function SellerDashboard({
 }) {
   const [productFormOpen, setProductFormOpen] = useState(false);
   const [payoutFormOpen, setPayoutFormOpen] = useState(false);
-  const [settingsTab, setSettingsTab] = useState<SellerSettingsTab>("account");
   const [preferences, setPreferences] = useState<AccountPreferences>(defaultAccountPreferences);
   const [settingsNotice, setSettingsNotice] = useState("");
   const [settingsError, setSettingsError] = useState("");
@@ -1284,6 +1336,12 @@ function SellerDashboard({
   useEffect(() => {
     setPreferences(readAccountPreferences(preferencesKey));
   }, [preferencesKey]);
+
+  useEffect(() => {
+    setSettingsError("");
+    setSettingsNotice("");
+    setConfirmDelete(false);
+  }, [settingsTab]);
 
   function updatePreferences(next: AccountPreferences) {
     setPreferences(next);
@@ -1890,12 +1948,7 @@ function SellerDashboard({
                 type="button"
                 key={key}
                 className={settingsTab === key ? "active" : ""}
-                onClick={() => {
-                  setSettingsTab(key);
-                  setSettingsError("");
-                  setSettingsNotice("");
-                  setConfirmDelete(false);
-                }}
+                onClick={() => onSettingsTabChange(key)}
               >
                 <Icon size={15} /> {label}
               </button>
