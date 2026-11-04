@@ -21,7 +21,7 @@
   --color-accent-foreground: var(--foreground);
   --color-border: var(--border);
   --color-input: var(--border);
-  --color-ring: var(--gold);
+  --color-ring: #263b31;
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--primary-foreground);
   --radius-sm: 4px;
@@ -9649,5 +9649,213 @@ body {
     align-items: flex-start;
     flex-direction: column;
     gap: 7px;
+  }
+}
+
+/* ===== Readability, alignment, and accessibility pass ===== */
+:root {
+  --page-gutter: clamp(16px, 4vw, 48px);
+  --muted-foreground: #5f6a61;
+}
+
+.page-width,
+.market-header-main,
+.market-category-inner {
+  width: calc(100% - (var(--page-gutter) * 2));
+  max-width: 1320px;
+  margin-inline: auto;
+}
+
+:root :is(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid #263b31;
+  outline-offset: 2px;
+}
+
+.announcement {
+  font-size: 11px;
+}
+
+.product-card .product-name {
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.product-card .product-audience,
+.product-card .product-seller {
+  color: #4f5a50;
+  font-size: 11px;
+}
+
+.product-price-now {
+  font-size: 16px;
+}
+
+.product-price-was {
+  color: #6b7268;
+  font-size: 11px;
+}
+
+.product-price-off {
+  font-size: 11px;
+}
+
+.product-card .product-bottom,
+.product-card .product-bottom > span,
+.product-card .product-bottom small {
+  font-size: 11px;
+}
+
+.product-add-button {
+  min-height: 38px;
+  font-size: 12px;
+}
+
+.footer p {
+  font-size: 12px;
+}
+
+.footer h3 {
+  font-size: 11px;
+}
+
+.footer-column a,
+.footer-column button {
+  font-size: 12px;
+}
+
+.footer-bottom p,
+.footer-bottom p span,
+.footer-bottom button,
+.footer-bottom > div a {
+  font-size: 11px;
+}
+
+.checkout-steps,
+.checkout-steps > span {
+  font-size: 12px;
+}
+
+.optional-label,
+.account-address-card small {
+  color: #5f6a61;
+  font-size: 12px;
+}
+
+.detail-price span {
+  color: #6b4e00;
+}
+
+.market-icon-button,
+.market-mobile-tools .market-icon-button {
+  width: 44px;
+  height: 44px;
+}
+
+.favorite-control,
+.quantity button {
+  width: 44px;
+  height: 44px;
+}
+
+.admin-kicker,
+.admin-sidebar-label,
+.admin-panel-overline {
+  color: #5f6a61;
+  font-size: 11px;
+}
+
+.admin-chart-caption {
+  color: #5f6a61;
+  font-size: 12px;
+}
+
+.admin-activity-row > strong {
+  font-size: 12px;
+}
+
+.admin-activity-event,
+.admin-activity-time,
+.admin-seller-meta,
+.admin-seller-main > small,
+.admin-person-main > p {
+  color: #5f6a61;
+  font-size: 12px;
+}
+
+.admin-stat-foot {
+  color: #5f6a61;
+  font-size: 12px;
+}
+
+.admin-stat-change {
+  font-size: 11px;
+}
+
+.admin-role-chip {
+  font-size: 11px;
+}
+
+.admin-footer {
+  color: #5f6a61;
+  font-size: 10px;
+}
+
+.admin-seller-actions button,
+.admin-seller-actions input,
+.admin-person-warn,
+.admin-person-delete,
+.admin-person-actions input,
+.admin-person-actions .admin-seller-approve,
+.admin-person-actions .admin-seller-reject {
+  font-size: 12px;
+}
+
+.admin-seller-actions button,
+.admin-person-warn,
+.admin-person-delete,
+.admin-person-actions .admin-seller-approve,
+.admin-person-actions .admin-seller-reject {
+  min-height: 40px;
+}
+
+@media (max-width: 900px) {
+  .messages-layout {
+    grid-template-columns: 1fr;
+    min-height: 0;
+  }
+  .messages-inbox {
+    max-height: none;
+    overflow-y: auto;
+    border-right: 0;
+    border-bottom: 1px solid #e4e5dd;
+  }
+  .messages-inbox.is-hidden-mobile {
+    display: none;
+  }
+  .messages-placeholder {
+    display: none;
+  }
+  .messages-conversation {
+    min-height: 70vh;
+  }
+  .conversation-back-mobile {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    border: 0;
+    border-radius: 50%;
+    background: #f3f4ee;
+    color: #364036;
+  }
+}
+
+@media (max-width: 760px) {
+  .admin-login input,
+  .admin-shell input,
+  .admin-shell select,
+  .admin-shell textarea {
+    font-size: 16px;
   }
 }

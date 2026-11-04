@@ -2201,3 +2201,33 @@
     justify-content: flex-end;
   }
 }
+
+/* ===== Accessibility pass ===== */
+.seller-site :is(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid #167b67;
+  outline-offset: 2px;
+}
+
+.seller-mobile-dropdown button,
+.seller-mobile-dropdown a,
+.seller-settings-dropdown button,
+.seller-settings-tabs > button {
+  min-height: 44px;
+}
+
+.seller-settings-tabs > button {
+  font-size: 12px;
+}
+
+.seller-site input::placeholder,
+.seller-site textarea::placeholder {
+  color: #6b7a70;
+}
+
+@media (max-width: 760px) {
+  .seller-site input,
+  .seller-site select,
+  .seller-site textarea {
+    font-size: 16px;
+  }
+}

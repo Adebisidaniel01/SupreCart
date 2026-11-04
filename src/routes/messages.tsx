@@ -147,7 +147,10 @@ function Messages() {
         )}
       </div>
       <div className="messages-layout">
-        <aside className="messages-inbox" aria-label="Conversations">
+        <aside
+          className={`messages-inbox${activeThread ? " is-hidden-mobile" : ""}`}
+          aria-label="Conversations"
+        >
           <div className="messages-inbox-heading">
             <div>
               <p className="eyebrow">INBOX</p>
