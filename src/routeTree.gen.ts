@@ -19,6 +19,7 @@ import { Route as MessagesRouteImport } from './routes/messages'
 import { Route as SellersRouteImport } from './routes/sellers'
 import { Route as ShopRouteImport } from './routes/shop'
 import { Route as SignupRouteImport } from './routes/signup'
+import { Route as SupportRouteImport } from './routes/support'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as AdminCommunityRouteImport } from './routes/admin.community'
 import { Route as AdminPeopleRouteImport } from './routes/admin.people'
@@ -75,6 +76,11 @@ const SignupRoute = SignupRouteImport.update({
   path: '/signup',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SupportRoute = SupportRouteImport.update({
+  id: '/support',
+  path: '/support',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminIndexRoute = AdminIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -112,6 +118,7 @@ export interface FileRoutesByFullPath {
   '/sellers': typeof SellersRoute
   '/shop': typeof ShopRoute
   '/signup': typeof SignupRoute
+  '/support': typeof SupportRoute
   '/admin/community': typeof AdminCommunityRoute
   '/admin/people': typeof AdminPeopleRoute
   '/admin/sellers': typeof AdminSellersRoute
@@ -128,6 +135,7 @@ export interface FileRoutesByTo {
   '/sellers': typeof SellersRoute
   '/shop': typeof ShopRoute
   '/signup': typeof SignupRoute
+  '/support': typeof SupportRoute
   '/admin/community': typeof AdminCommunityRoute
   '/admin/people': typeof AdminPeopleRoute
   '/admin/sellers': typeof AdminSellersRoute
@@ -146,6 +154,7 @@ export interface FileRoutesById {
   '/sellers': typeof SellersRoute
   '/shop': typeof ShopRoute
   '/signup': typeof SignupRoute
+  '/support': typeof SupportRoute
   '/admin/community': typeof AdminCommunityRoute
   '/admin/people': typeof AdminPeopleRoute
   '/admin/sellers': typeof AdminSellersRoute
@@ -165,6 +174,7 @@ export interface FileRouteTypes {
     | '/sellers'
     | '/shop'
     | '/signup'
+    | '/support'
     | '/admin/community'
     | '/admin/people'
     | '/admin/sellers'
@@ -181,6 +191,7 @@ export interface FileRouteTypes {
     | '/sellers'
     | '/shop'
     | '/signup'
+    | '/support'
     | '/admin/community'
     | '/admin/people'
     | '/admin/sellers'
@@ -198,6 +209,7 @@ export interface FileRouteTypes {
     | '/sellers'
     | '/shop'
     | '/signup'
+    | '/support'
     | '/admin/community'
     | '/admin/people'
     | '/admin/sellers'
@@ -216,6 +228,7 @@ export interface RootRouteChildren {
   SellersRoute: typeof SellersRoute
   ShopRoute: typeof ShopRoute
   SignupRoute: typeof SignupRoute
+  SupportRoute: typeof SupportRoute
   InfoSlugRoute: typeof InfoSlugRoute
 }
 
@@ -291,6 +304,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SignupRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/support': {
+      id: '/support'
+      path: '/support'
+      fullPath: '/support'
+      preLoaderRoute: typeof SupportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/': {
       id: '/admin/'
       path: '/'
@@ -356,6 +376,7 @@ const rootRouteChildren: RootRouteChildren = {
   SellersRoute: SellersRoute,
   ShopRoute: ShopRoute,
   SignupRoute: SignupRoute,
+  SupportRoute: SupportRoute,
   InfoSlugRoute: InfoSlugRoute,
 }
 export const routeTree = rootRouteImport

@@ -38,7 +38,14 @@ import {
   type DemoAccount,
 } from "@/lib/demo-accounts";
 import { deleteDemoAccountData } from "@/lib/demo-account-cleanup";
-import { getDemoOrders, getDemoProfile, saveDemoProfile } from "@/lib/demo-orders";
+import {
+  canCancelDemoOrder,
+  cancelDemoOrder,
+  getDemoOrders,
+  getDemoProfile,
+  saveDemoProfile,
+  type DemoOrder,
+} from "@/lib/demo-orders";
 import {
   getSellerApplication,
   submitSellerApplication as saveSellerApplication,
@@ -61,14 +68,7 @@ import {
   type RegionPreferences,
 } from "@/lib/account-preferences";
 
-type BuyerOrder = {
-  id: string;
-  status: string;
-  created_at: string;
-  total?: number;
-  items?: string;
-  delivery?: string;
-};
+type BuyerOrder = DemoOrder;
 
 type BuyerAddress = {
   id: string;
@@ -115,6 +115,21 @@ type AccountSection = "overview" | "orders" | "addresses" | "seller" | "settings
 
 type SettingsTab = "profile" | "notifications" | "region" | "payments" | "security" | "danger";
 
+const cancellationReasons = [
+  "Changed my mind",
+  "Ordered by mistake",
+  "Found a better price",
+  "Delivery is taking too long",
+  "Need to change the delivery details",
+  "Other",
+] as const;
+
+function orderStatusClass(status: BuyerOrder["status"]) {
+  if (status === "Cancellation requested") return " is-requested";
+  if (status === "Cancelled") return " is-cancelled";
+  return "";
+}
+
 const settingsTabs = [
   ["profile", "Profile", UserRound],
   ["notifications", "Notifications", Bell],
@@ -151,6 +166,9 @@ function BuyerAccount() {
   const [notice, setNotice] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [cancellingOrderId, setCancellingOrderId] = useState("");
+  const [orderError, setOrderError] = useState("");
+  const [orderNotice, setOrderNotice] = useState("");
 
   useEffect(() => {
     const activeAccount = readActiveAccount();
@@ -389,6 +407,30 @@ function BuyerAccount() {
     await navigate({ to: "/sellers" });
   }
 
+  function beginCancelOrder(orderId: string) {
+    setCancellingOrderId(orderId);
+    setOrderError("");
+    setOrderNotice("");
+  }
+
+  function confirmCancelOrder(orderId: string, reason: string) {
+    if (!demoAccount) return;
+    try {
+      setOrders(cancelDemoOrder(demoAccount.email, orderId, reason));
+      setCancellingOrderId("");
+      setOrderError("");
+      setOrderNotice(
+        `Cancellation request for order ${orderId} was saved in this preview and is awaiting review. No payment or refund has been processed.`,
+      );
+    } catch (cause) {
+      setOrderError(
+        cause instanceof Error
+          ? cause.message
+          : "Could not request cancellation for this order in this browser.",
+      );
+    }
+  }
+
   const firstName = demoProfile.name || "there";
   const [addressFirstName = "", ...addressLastNameParts] = firstName.split(/\s+/);
   const addressLastName = addressLastNameParts.join(" ");
@@ -625,7 +667,11 @@ function BuyerAccount() {
                             <li key={order.id}>
                               <Package size={16} />
                               <span>Order {order.id}</span>
-                              <span className="account-order-status">{order.status}</span>
+                              <span
+                                className={`account-order-status${orderStatusClass(order.status)}`}
+                              >
+                                {order.status}
+                              </span>
                               <time dateTime={order.created_at}>
                                 {new Date(order.created_at).toLocaleDateString()}
                               </time>
@@ -662,13 +708,28 @@ function BuyerAccount() {
                       <h2>Order history</h2>
                       <span>{orders.length}</span>
                     </div>
+                    {orderNotice && (
+                      <p className="account-success-note" role="status">
+                        {orderNotice}
+                      </p>
+                    )}
+                    {orderError && (
+                      <p className="account-warning-note" role="alert">
+                        <AlertTriangle size={15} />
+                        {orderError}
+                      </p>
+                    )}
                     {orders.length ? (
                       <ul className="account-order-list">
                         {orders.map((order) => (
                           <li key={order.id}>
                             <Package size={16} />
                             <span>Order {order.id}</span>
-                            <span className="account-order-status">{order.status}</span>
+                            <span
+                              className={`account-order-status${orderStatusClass(order.status)}`}
+                            >
+                              {order.status}
+                            </span>
                             <time dateTime={order.created_at}>
                               {new Date(order.created_at).toLocaleDateString()}
                             </time>
@@ -683,6 +744,112 @@ function BuyerAccount() {
                                 }).format(order.total)}
                               </strong>
                             )}
+                            {order.status === "Cancellation requested" ? (
+                              <div className="account-order-refund">
+                                <p>
+                                  <strong>Refund status:</strong> Pending review
+                                </p>
+                                {order.cancellation_reason && (
+                                  <p>Reason: {order.cancellation_reason}</p>
+                                )}
+                                <ol className="account-refund-timeline">
+                                  <li className="is-complete">
+                                    <span>Request submitted</span>
+                                    {order.cancellation_requested_at && (
+                                      <time dateTime={order.cancellation_requested_at}>
+                                        {new Date(
+                                          order.cancellation_requested_at,
+                                        ).toLocaleDateString()}
+                                      </time>
+                                    )}
+                                  </li>
+                                  <li>
+                                    <span>Seller and logistics review</span>
+                                  </li>
+                                  <li>
+                                    <span>Refund processed</span>
+                                  </li>
+                                </ol>
+                                <p className="account-order-note">
+                                  Requested in this preview. No payment or refund has been processed
+                                  yet.
+                                </p>
+                              </div>
+                            ) : order.status === "Cancelled" ? (
+                              <p className="account-order-note">
+                                Cancelled in this preview
+                                {order.cancelled_at
+                                  ? ` on ${new Date(order.cancelled_at).toLocaleDateString()}`
+                                  : ""}
+                                . No payment or refund was processed.
+                              </p>
+                            ) : cancellingOrderId === order.id ? (
+                              <form
+                                className="account-order-cancel"
+                                onSubmit={(event) => {
+                                  event.preventDefault();
+                                  const form = new FormData(event.currentTarget);
+                                  confirmCancelOrder(order.id, String(form.get("reason") ?? ""));
+                                }}
+                              >
+                                <p>
+                                  Request cancellation for order {order.id}? It will be reviewed
+                                  before any refund is processed. This preview does not send the
+                                  request anywhere.
+                                </p>
+                                <label>
+                                  Cancellation reason
+                                  <select name="reason" required defaultValue="">
+                                    <option value="" disabled>
+                                      Select a reason
+                                    </option>
+                                    {cancellationReasons.map((reason) => (
+                                      <option key={reason} value={reason}>
+                                        {reason}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </label>
+                                <div className="account-confirm-actions">
+                                  <Button size="sm" variant="destructive" type="submit">
+                                    Submit request
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    type="button"
+                                    onClick={() => setCancellingOrderId("")}
+                                  >
+                                    Keep order
+                                  </Button>
+                                </div>
+                              </form>
+                            ) : (
+                              <div className="account-order-actions">
+                                {canCancelDemoOrder(order) ? (
+                                  <button
+                                    type="button"
+                                    className="account-danger-link"
+                                    onClick={() => beginCancelOrder(order.id)}
+                                  >
+                                    Cancel order
+                                  </button>
+                                ) : (
+                                  <span className="account-order-note">
+                                    {order.status === "Processing"
+                                      ? "The 24-hour cancellation window for this order has closed."
+                                      : "Cancellation is only available before dispatch."}
+                                  </span>
+                                )}
+                                <Link
+                                  to="/support"
+                                  search={{ orderId: order.id }}
+                                  className="account-inline-link"
+                                >
+                                  Get help
+                                </Link>
+                              </div>
+                            )}
                           </li>
                         ))}
                       </ul>
@@ -691,6 +858,9 @@ function BuyerAccount() {
                         No orders yet. This preview keeps order history in this browser only.
                       </p>
                     )}
+                    <p className="account-intro account-order-support">
+                      Need help with an order? <Link to="/support">Chat with customer care</Link>.
+                    </p>
                   </section>
                 )}
                 {section === "addresses" && (

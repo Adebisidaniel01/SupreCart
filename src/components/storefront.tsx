@@ -12,6 +12,7 @@ import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import {
   ArrowRight,
   BadgeCheck,
+  Headphones,
   Heart,
   Instagram,
   LayoutGrid,
@@ -393,6 +394,11 @@ export function Storefront({ children }: { children: ReactNode }) {
                       </DropdownMenuItem>
                     </>
                   )}
+                  <DropdownMenuItem asChild>
+                    <Link to="/support">
+                      <Headphones /> Customer care
+                    </Link>
+                  </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem className="account-menu-signout" onSelect={handleSignOut}>
                     <LogOut /> Sign out
@@ -588,6 +594,11 @@ export function Storefront({ children }: { children: ReactNode }) {
               <span>Messages</span>
               <ArrowRight />
             </Link>
+            <Link to="/support" onClick={() => setMobileNav(false)}>
+              <Headphones />
+              <span>Customer care</span>
+              <ArrowRight />
+            </Link>
             {account && (
               <button type="button" onClick={handleSignOut}>
                 <LogOut />
@@ -681,6 +692,7 @@ export function Storefront({ children }: { children: ReactNode }) {
           </div>
           <div className="footer-column">
             <h3>HELP & SUPPORT</h3>
+            <Link to="/support">Customer care</Link>
             {(
               [
                 ["Contact us", "contact"],

@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useStore } from "@/components/storefront";
+import { useActiveAccount } from "@/hooks/use-active-account";
 import { money, type Product } from "@/lib/catalog";
 import { trackAddShippingInfo, trackBeginCheckout, trackPreviewOrder } from "@/lib/analytics";
 
@@ -44,6 +45,7 @@ type ReceiptLine = {
 type PreviewOrder = {
   batchNumber: string;
   createdAt: string;
+  buyerEmail: string;
   lines: ReceiptLine[];
   subtotal: number;
   vat: number;
@@ -139,6 +141,7 @@ export const Route = createFileRoute("/checkout")({
 
 function Checkout() {
   const { cart, cartSubtotal, setCart } = useStore();
+  const { account } = useActiveAccount();
   const navigate = useNavigate();
   const [step, setStep] = useState<"delivery" | "receipt" | "complete">("delivery");
   const [details, setDetails] = useState<ShippingDetails | null>(null);
@@ -220,6 +223,7 @@ function Checkout() {
       const orderPreview: PreviewOrder = {
         batchNumber: createReference("CC-BATCH"),
         createdAt: new Date().toISOString(),
+        buyerEmail: account?.email ?? details.email,
         lines,
         subtotal: cartSubtotal,
         vat,
@@ -367,7 +371,13 @@ function Checkout() {
               <div className="field-pair">
                 <label>
                   Email address
-                  <input type="email" name="email" autoComplete="email" required />
+                  <input
+                    type="email"
+                    name="email"
+                    autoComplete="email"
+                    defaultValue={account?.email ?? ""}
+                    required
+                  />
                 </label>
                 <label>
                   Phone number
