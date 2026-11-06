@@ -66,7 +66,11 @@ function Index() {
   const isSeller = account?.role === "seller";
 
   return (
-    <main className={`home-main home-hybrid${account ? " home-signed-in" : ""}`}>
+    <main
+      id="main-content"
+      tabIndex={-1}
+      className={`home-main home-hybrid${account ? " home-signed-in" : ""}`}
+    >
       {!account && <HomeSplash />}
 
       <div className="home-hybrid-hero">

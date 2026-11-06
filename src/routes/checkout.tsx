@@ -261,7 +261,7 @@ function Checkout() {
 
   if (cart.length === 0 && step !== "complete")
     return (
-      <main className="page-width checkout-empty">
+      <main id="main-content" tabIndex={-1} className="page-width checkout-empty">
         <PackageCheck size={36} />
         <p className="eyebrow">YOUR BAG IS EMPTY</p>
         <h1>Good finds are waiting.</h1>
@@ -275,7 +275,7 @@ function Checkout() {
     );
 
   return (
-    <main className="page-width checkout-main">
+    <main id="main-content" tabIndex={-1} className="page-width checkout-main">
       <Link to="/shop" search={{ filter: "All", query: "" }} className="back-link">
         <ArrowLeft size={15} /> Back to shopping
       </Link>

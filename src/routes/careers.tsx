@@ -17,7 +17,7 @@ export const Route = createFileRoute("/careers")({
 
 function Careers() {
   return (
-    <main className="careers-page">
+    <main id="main-content" tabIndex={-1} className="careers-page">
       <Link to="/" className="back-link">
         <ArrowLeft size={15} /> Back to SupreCart
       </Link>

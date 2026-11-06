@@ -121,7 +121,7 @@ function Messages() {
 
   if (ready && !account) {
     return (
-      <main className="messages-page">
+      <main id="main-content" tabIndex={-1} className="messages-page">
         <div className="messages-empty">
           <MessageCircle size={26} />
           <strong>Sign in to see your messages.</strong>
@@ -132,7 +132,7 @@ function Messages() {
   }
 
   return (
-    <main className="messages-page">
+    <main id="main-content" tabIndex={-1} className="messages-page">
       <div className="messages-topbar">
         <span>
           <MessageCircle size={14} /> {account?.role === "seller" ? "BUYER CHATS" : "SELLER CHATS"}

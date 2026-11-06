@@ -58,7 +58,7 @@ function Shop() {
     else if (filter !== "All") trackFilterProducts(filter, visible.length);
   }, [filter, query, visible.length]);
   return (
-    <main className="page-width shop-main">
+    <main id="main-content" tabIndex={-1} className="page-width shop-main">
       <div className="shop-heading">
         <div>
           <p className="eyebrow">THE SUPRECART MARKETPLACE</p>

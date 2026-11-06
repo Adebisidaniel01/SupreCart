@@ -64,7 +64,7 @@ function Signup() {
   }
 
   return (
-    <main className="account-page">
+    <main id="main-content" tabIndex={-1} className="account-page">
       <div className="account-panel">
         <Link to="/" className="back-link">
           <ArrowLeft size={15} /> Back to SupreCart

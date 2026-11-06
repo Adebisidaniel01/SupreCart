@@ -394,7 +394,7 @@ function BuyerAccount() {
   const addressLastName = addressLastNameParts.join(" ");
 
   return (
-    <main className="account-page account-dashboard-layout">
+    <main id="main-content" tabIndex={-1} className="account-page account-dashboard-layout">
       <section className="account-panel account-dashboard">
         <Link to="/" className="back-link">
           <ArrowLeft size={15} /> Back to SupreCart

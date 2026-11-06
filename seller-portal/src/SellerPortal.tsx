@@ -628,7 +628,7 @@ export default function SellerPortal({ standalone = false }: { standalone?: bool
   const linkedBuyerAccount = demoAccount ? findDemoAccount(demoAccount.email, "buyer") : null;
 
   return (
-    <main className="seller-site">
+    <main id="main-content" tabIndex={-1} className="seller-site">
       <header className="seller-header">
         <a href={marketplaceUrl} aria-label="SupreCart home" className="seller-logo-link">
           <img src="/suprecart-logo.png" alt="SupreCart" />
@@ -1783,8 +1783,10 @@ function SellerDashboard({
                         Net {formatMoney(fee.sellerNet)} · fee {formatMoney(fee.commission)}
                       </small>
                     </div>
-                    <span>{formatMoney(Number(product.price))}</span>
-                    <span>{product.inventory} in stock</span>
+                    <span className="seller-product-price">
+                      {formatMoney(Number(product.price))}
+                    </span>
+                    <span className="seller-product-stock">{product.inventory} in stock</span>
                     <span className="seller-product-rating">
                       <Star size={13} fill="currentColor" />{" "}
                       {rating ? Number(rating.average_rating).toFixed(1) : "New"}

@@ -9851,11 +9851,80 @@ body {
   }
 }
 
+.skip-link {
+  position: fixed;
+  z-index: 1000;
+  top: 10px;
+  left: 10px;
+  padding: 10px 16px;
+  border-radius: 6px;
+  background: #1c1d1f;
+  color: #fffefa;
+  font-size: 13px;
+  font-weight: 650;
+  transform: translateY(-150%);
+  transition: transform 0.15s ease;
+}
+a.skip-link:focus,
+a.skip-link:focus-visible {
+  transform: translateY(0);
+  outline: 2px solid #fffefa;
+  outline-offset: 2px;
+}
+
+#main-content {
+  scroll-margin-top: 96px;
+}
+#main-content:focus {
+  outline: none;
+}
+
+/* Supporting copy stays readable instead of shrinking below 11px. */
+.account-form label small,
+.checkout-card label small,
+.chat-message footer,
+.messages-inbox-note,
+.messages-privacy-note,
+.cookie-consent p,
+.cookie-consent-actions button,
+.admin-footer {
+  font-size: 11px;
+}
+
 @media (max-width: 760px) {
+  .market-search input,
+  .search-field input,
+  .newsletter input,
+  .shop-toolbar select,
+  .account-form input,
+  .account-form select,
+  .account-form textarea,
+  .checkout-card input,
+  .checkout-card select,
+  .checkout-card textarea,
+  .bag-extras-grid input,
+  .bag-extras-grid textarea,
+  .message-composer input,
   .admin-login input,
   .admin-shell input,
   .admin-shell select,
   .admin-shell textarea {
     font-size: 16px;
+  }
+
+  .product-add-button,
+  .cookie-consent-actions button {
+    min-height: 44px;
+  }
+
+  .message-send-button,
+  .message-icon-button {
+    width: 44px;
+    height: 44px;
+    flex-basis: 44px;
+  }
+
+  .cookie-consent-actions button {
+    padding-inline: 14px;
   }
 }

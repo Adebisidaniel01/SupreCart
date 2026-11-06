@@ -93,7 +93,7 @@ function InfoPage() {
   if (!defaultPage) return null;
   const page = pages[slug] ?? defaultPage;
   return (
-    <main className="page-width info-page">
+    <main id="main-content" tabIndex={-1} className="page-width info-page">
       <Link to="/" className="back-link">
         <ArrowLeft size={15} /> Back to SupreCart
       </Link>

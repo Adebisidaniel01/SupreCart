@@ -232,7 +232,7 @@ function AdminLayout() {
 
   if (loading) {
     return (
-      <main className="admin-loading" role="status">
+      <main id="main-content" tabIndex={-1} className="admin-loading" role="status">
         <img className="admin-brand-mark" src="/suprecart-logo.png" alt="SupreCart" />
         <span>Opening your workspace…</span>
       </main>
@@ -241,7 +241,7 @@ function AdminLayout() {
 
   if (!dashboard) {
     return (
-      <main className="admin-login">
+      <main id="main-content" tabIndex={-1} className="admin-login">
         <section className="admin-login-card">
           <Link to="/" className="admin-back-link">
             <ArrowLeft size={15} /> Back to SupreCart
@@ -354,7 +354,7 @@ function AdminLayout() {
 
   return (
     <AdminWorkspaceContext.Provider value={workspace}>
-      <main className="admin-shell">
+      <main id="main-content" tabIndex={-1} className="admin-shell">
         <aside className="admin-sidebar">
           <Link to="/" className="admin-sidebar-brand" aria-label="SupreCart home">
             <img className="admin-brand-mark" src="/suprecart-logo.png" alt="SupreCart" />
