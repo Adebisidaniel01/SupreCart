@@ -64,7 +64,7 @@ function Signup() {
   }
 
   return (
-    <main id="main-content" tabIndex={-1} className="account-page">
+    <main id="main-content" tabIndex={-1} className="account-page auth-page">
       <div className="account-panel">
         <Link to="/" className="back-link">
           <ArrowLeft size={15} /> Back to SupreCart
@@ -146,6 +146,10 @@ function Signup() {
         )}
       </div>
       <aside className="account-aside">
+        <Link to="/" className="auth-aside-back">
+          <ArrowLeft size={15} /> Back to SupreCart
+        </Link>
+        <img className="auth-aside-logo" src="/suprecart-logo.png" alt="SupreCart" />
         <span>
           GOOD FINDS.
           <br />
