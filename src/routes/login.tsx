@@ -113,6 +113,9 @@ function Login() {
               without one.
             </small>
           </label>
+          <p className="account-forgot-link">
+            <Link to="/forgot-password">Forgot password?</Link>
+          </p>
           <div className="demo-disclaimer">
             <ShieldCheck size={15} />
             <span>

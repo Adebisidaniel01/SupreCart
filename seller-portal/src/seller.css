@@ -1173,38 +1173,42 @@
   color: #87918a;
   font-size: 10px;
 }
-.seller-toggle-row input {
+.seller-switch {
   position: relative;
   flex-shrink: 0;
-  width: 40px;
-  height: 22px;
+  width: 42px;
+  height: 24px;
+  padding: 0;
   border: 1px solid #cfd8cf;
   border-radius: 999px;
   background: #e9eee8;
-  appearance: none;
   cursor: pointer;
   transition:
     background 0.15s,
     border-color 0.15s;
 }
-.seller-toggle-row input::after {
-  content: "";
+.seller-switch:focus-visible {
+  outline: 2px solid #167b67;
+  outline-offset: 2px;
+}
+.seller-switch-knob {
   position: absolute;
-  top: 2px;
+  top: 50%;
   left: 2px;
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
   border-radius: 50%;
   background: #fff;
   box-shadow: 0 1px 2px rgb(25 69 55 / 25%);
+  transform: translateY(-50%);
   transition: transform 0.15s;
 }
-.seller-toggle-row input:checked {
+.seller-switch.is-on {
   background: #167b67;
   border-color: #167b67;
 }
-.seller-toggle-row input:checked::after {
-  transform: translateX(18px);
+.seller-switch.is-on .seller-switch-knob {
+  transform: translate(18px, -50%);
 }
 .seller-shipping-options {
   display: grid;

@@ -411,3 +411,26 @@ export async function verifyAccountPassword(
   if (!stored) return false;
   return (await hashPassword(password, stored.salt)) === stored.passwordHash;
 }
+
+/**
+ * Resets the password for any locally saved account using the email. Preview
+ * accounts ship without passwords, so this only works for accounts created in
+ * this browser.
+ */
+export async function resetLocalAccountPassword(email: string, password: string): Promise<void> {
+  const normalized = email.trim().toLowerCase();
+  const accounts = readStoredAccounts();
+  const matching = accounts.filter((account) => account.email === normalized);
+  if (matching.length === 0) {
+    throw new Error(
+      "No account saved in this browser uses that email. Preview accounts listed on the sign-in page do not need a password.",
+    );
+  }
+  const salt = randomSalt();
+  const passwordHash = await hashPassword(password, salt);
+  writeStoredAccounts(
+    accounts.map((account) =>
+      account.email === normalized ? { ...account, salt, passwordHash } : account,
+    ),
+  );
+}

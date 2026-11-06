@@ -940,7 +940,6 @@ export default function SellerPortal({ standalone = false }: { standalone?: bool
               demoFundEntries={demoWalletEntries}
               page={page}
               settingsTab={settingsTab}
-              onSettingsTabChange={setSettingsTab}
               onNavigate={goToPage}
               onAddProduct={addProduct}
               onRequestPayout={requestPayout}
@@ -1284,6 +1283,29 @@ function SellerRedirectPanel() {
   );
 }
 
+function SellerSwitch({
+  checked,
+  onChange,
+  label,
+}: {
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+  label: string;
+}) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      aria-label={label}
+      className={`seller-switch${checked ? " is-on" : ""}`}
+      onClick={() => onChange(!checked)}
+    >
+      <span className="seller-switch-knob" aria-hidden="true" />
+    </button>
+  );
+}
+
 function SellerDashboard({
   application,
   stats,
@@ -1298,7 +1320,6 @@ function SellerDashboard({
   demoFundEntries = [],
   page,
   settingsTab,
-  onSettingsTabChange,
   onNavigate,
   onAddProduct,
   onRequestPayout,
@@ -1317,7 +1338,6 @@ function SellerDashboard({
   demoFundEntries?: DemoFundEntry[];
   page: SellerPage;
   settingsTab: SellerSettingsTab;
-  onSettingsTabChange: (tab: SellerSettingsTab) => void;
   onNavigate: (page: SellerPage) => void;
   onAddProduct: (event: FormEvent<HTMLFormElement>) => void;
   onRequestPayout: (event: FormEvent<HTMLFormElement>) => void;
@@ -1944,18 +1964,6 @@ function SellerDashboard({
               <h2>Account settings</h2>
             </div>
           </div>
-          <nav className="seller-settings-tabs" aria-label="Account settings sections">
-            {sellerSettingsTabs.map(([key, label, Icon]) => (
-              <button
-                type="button"
-                key={key}
-                className={settingsTab === key ? "active" : ""}
-                onClick={() => onSettingsTabChange(key)}
-              >
-                <Icon size={15} /> {label}
-              </button>
-            ))}
-          </nav>
           {settingsNotice && (
             <p className="seller-form-notice" role="status">
               {settingsNotice}
@@ -2332,17 +2340,17 @@ function SellerDashboard({
                   <h3>{group}</h3>
                   <div className="seller-toggle-list">
                     {rows.map(([key, title, text]) => (
-                      <label key={key} className="seller-toggle-row">
+                      <div key={key} className="seller-toggle-row">
                         <span>
                           <strong>{title}</strong>
                           <small>{text}</small>
                         </span>
-                        <input
-                          type="checkbox"
+                        <SellerSwitch
                           checked={preferences.notifications[key]}
-                          onChange={(event) => setNotification(key, event.target.checked)}
+                          onChange={(checked) => setNotification(key, checked)}
+                          label={title}
                         />
-                      </label>
+                      </div>
                     ))}
                   </div>
                 </div>
@@ -2482,22 +2490,22 @@ function SellerDashboard({
                 <span>Keep your seller account and store safe.</span>
               </div>
               <div className="seller-toggle-list">
-                <label className="seller-toggle-row">
+                <div className="seller-toggle-row">
                   <span>
                     <strong>Two-factor authentication</strong>
                     <small>Extra protection for sign-in has not been connected yet.</small>
                   </span>
-                  <input
-                    type="checkbox"
+                  <SellerSwitch
                     checked={preferences.twoFactorEnabled}
-                    onChange={(event) =>
+                    onChange={(checked) =>
                       updatePreferences({
                         ...preferences,
-                        twoFactorEnabled: event.target.checked,
+                        twoFactorEnabled: checked,
                       })
                     }
+                    label="Two-factor authentication"
                   />
-                </label>
+                </div>
               </div>
               <div className="seller-settings-actions">
                 <div>

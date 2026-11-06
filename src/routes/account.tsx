@@ -60,6 +60,7 @@ import {
   currencyOptions,
   defaultAccountPreferences,
   languageOptions,
+  nigerianBanks,
   readAccountPreferences,
   saveAccountPreferences,
   timezoneOptions,
@@ -490,6 +491,16 @@ function BuyerAccount() {
                 className={`account-section-nav${navOpen ? " is-open" : ""}`}
                 aria-label="Account sections"
               >
+                <div className="account-sidebar-intro">
+                  <span className="account-sidebar-icon">
+                    <UserRound size={19} />
+                  </span>
+                  <div>
+                    <strong>Your account</strong>
+                    <span>GOOD FINDS, YOUR WAY.</span>
+                  </div>
+                </div>
+                <div className="account-sidebar-caption">YOUR SPACE</div>
                 {(
                   [
                     ["overview", "Overview", House],
@@ -558,6 +569,10 @@ function BuyerAccount() {
                 >
                   <MessageCircle size={16} /> Messages
                 </Link>
+                <div className="account-sidebar-foot">
+                  <ShieldCheck size={15} />
+                  <span>Your information is protected by SupreCart.</span>
+                </div>
               </nav>
               <div className="account-dashboard-main">
                 {moderation?.status === "warned" && (
@@ -1101,11 +1116,26 @@ function BuyerAccount() {
                         <div className="field-pair">
                           <label>
                             Bank name
-                            <input
+                            <select
                               name="bankName"
                               defaultValue={sellerApplication?.bankName ?? ""}
                               required
-                            />
+                            >
+                              <option value="" disabled>
+                                Select your bank…
+                              </option>
+                              {sellerApplication?.bankName &&
+                                !nigerianBanks.includes(sellerApplication.bankName) && (
+                                  <option value={sellerApplication.bankName}>
+                                    {sellerApplication.bankName} (saved)
+                                  </option>
+                                )}
+                              {nigerianBanks.map((bank) => (
+                                <option key={bank} value={bank}>
+                                  {bank}
+                                </option>
+                              ))}
+                            </select>
                           </label>
                           <label>
                             Account number
