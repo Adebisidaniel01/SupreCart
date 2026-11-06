@@ -7343,12 +7343,13 @@ body {
     padding-inline: 18px;
   }
   .footer-main {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 28px;
-    padding-block: 34px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 24px 20px;
+    padding-block: 30px;
   }
+  .footer-about,
   .footer-main > div:last-child {
-    grid-column: auto;
+    grid-column: 1 / -1;
   }
 }
 
@@ -7553,8 +7554,45 @@ body {
     gap: 12px;
   }
   .footer-main {
-    grid-template-columns: 1fr;
-    gap: 22px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 18px 12px;
+    padding-block: 22px;
+  }
+  .footer-about {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .footer-about > p {
+    display: none;
+  }
+  .footer-about .socials {
+    margin-left: auto;
+  }
+  .footer h3 {
+    margin-bottom: 9px;
+  }
+  .footer-column a,
+  .footer-column button {
+    margin-bottom: 7px;
+  }
+  .newsletter {
+    grid-column: 1 / -1;
+  }
+  .newsletter > p {
+    margin-bottom: 9px;
+  }
+  .footer-bottom {
+    gap: 5px;
+    padding-block: 12px;
+  }
+  .footer-bottom p span {
+    display: none;
+  }
+  .footer-bottom > div {
+    flex-wrap: wrap;
+    gap: 6px 14px;
   }
   .messages-topbar {
     align-items: flex-start;
