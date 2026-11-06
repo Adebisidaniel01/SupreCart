@@ -11,9 +11,11 @@ import {
 } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
 
+import { Analytics as VercelAnalytics } from "@vercel/analytics/react";
+
 import appCss from "../styles.css?url";
 import { trackException } from "../lib/analytics";
-import { Analytics } from "../components/Analytics";
+import { Analytics as SiteAnalytics } from "../components/Analytics";
 import { Storefront } from "../components/storefront";
 import { CookieConsent } from "../components/CookieConsent";
 
@@ -131,10 +133,17 @@ function RootShell({ children }: { children: ReactNode }) {
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   const pathname = useRouterState({ select: (state) => state.location.pathname });
+  const route = useRouterState({
+    select: (state) => {
+      const routeId = state.matches.at(-1)?.routeId ?? "";
+      return routeId.startsWith("/") ? routeId : state.location.pathname;
+    },
+  });
 
   return (
     <QueryClientProvider client={queryClient}>
-      <Analytics />
+      <SiteAnalytics />
+      <VercelAnalytics route={route} path={pathname} />
       <CookieConsent policyHref="/info/cookies" />
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
       {pathname === "/admin" ||
