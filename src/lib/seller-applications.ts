@@ -37,7 +37,7 @@ const seededApplications: SellerApplication[] = [
     status: "approved",
     submittedAt: "2026-08-28T09:30:00.000Z",
     reviewedAt: "2026-08-30T11:15:00.000Z",
-    reviewNote: "Preview seller approved for the local demo.",
+    reviewNote: "Seller approved for the marketplace preview.",
   },
 ];
 

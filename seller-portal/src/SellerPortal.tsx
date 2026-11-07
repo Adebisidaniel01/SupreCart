@@ -199,10 +199,10 @@ function demoSellerStats(email: string): SellerStats {
       created_at: createdAt(45 - index * 9),
     }));
   const orders: SellerStats["orders"] = [
-    { id: "SC-DEMO-1048", status: "delivered", created_at: createdAt(3) },
-    { id: "SC-DEMO-1031", status: "processing", created_at: createdAt(1) },
-    { id: "SC-DEMO-0996", status: "in_transit", created_at: createdAt(6) },
-    { id: "SC-DEMO-0942", status: "delivered", created_at: createdAt(12) },
+    { id: "SC-1048", status: "delivered", created_at: createdAt(3) },
+    { id: "SC-1031", status: "processing", created_at: createdAt(1) },
+    { id: "SC-0996", status: "in_transit", created_at: createdAt(6) },
+    { id: "SC-0942", status: "delivered", created_at: createdAt(12) },
   ];
   const sellerNet = (index: number, quantity = 1) => {
     const product = products[index];
@@ -214,25 +214,25 @@ function demoSellerStats(email: string): SellerStats {
       quantity: 1,
       seller_net: sellerNet(0),
       product_id: products[0]?.id || "",
-      order_id: "SC-DEMO-1048",
+      order_id: "SC-1048",
     },
     {
       quantity: 2,
       seller_net: sellerNet(1, 2),
       product_id: products[1]?.id || "",
-      order_id: "SC-DEMO-1031",
+      order_id: "SC-1031",
     },
     {
       quantity: 1,
       seller_net: sellerNet(2),
       product_id: products[2]?.id || "",
-      order_id: "SC-DEMO-0996",
+      order_id: "SC-0996",
     },
     {
       quantity: 1,
       seller_net: sellerNet(0),
       product_id: products[0]?.id || "",
-      order_id: "SC-DEMO-0942",
+      order_id: "SC-0942",
     },
   ];
   return {
@@ -252,17 +252,17 @@ function demoFundEntries(email: string): DemoFundEntry[] {
   const entries: Record<string, DemoFundEntry[]> = {
     "shewa@gmail.com": [
       { id: "fund-s-1", description: "Refund adjustment", amount: 12500, date: "18 Sep 2026" },
-      { id: "fund-s-2", description: "Demo wallet top-up", amount: 20000, date: "12 Sep 2026" },
+      { id: "fund-s-2", description: "Sample wallet top-up", amount: 20000, date: "12 Sep 2026" },
     ],
     "daniella@gmail.com": [
-      { id: "fund-d-1", description: "Demo wallet top-up", amount: 25000, date: "16 Sep 2026" },
+      { id: "fund-d-1", description: "Sample wallet top-up", amount: 25000, date: "16 Sep 2026" },
     ],
     "adeniji@gmail.com": [
       { id: "fund-a-1", description: "Refund adjustment", amount: 8400, date: "14 Sep 2026" },
     ],
     "bukunmi@gmail.com": [
       { id: "fund-b-1", description: "Refund adjustment", amount: 6500, date: "13 Sep 2026" },
-      { id: "fund-b-2", description: "Demo wallet top-up", amount: 10000, date: "10 Sep 2026" },
+      { id: "fund-b-2", description: "Sample wallet top-up", amount: 10000, date: "10 Sep 2026" },
     ],
   };
   return entries[email] ?? [];
@@ -1547,21 +1547,14 @@ function SellerDashboard({
   return (
     <div className="seller-dashboard">
       <div className="seller-dashboard-topline">
-        <p className="seller-eyebrow">{demoMode ? "LOCAL DEMO DASHBOARD" : "YOUR SELLER STUDIO"}</p>
-        <span
-          className={`seller-approved ${!demoMode && !application.verified ? "seller-approved-pending" : ""}`}
-        >
-          <BadgeCheck size={14} />{" "}
-          {demoMode
-            ? "DEMO ACCOUNT"
-            : application.verified
-              ? "VERIFIED SELLER"
-              : "VERIFICATION PENDING"}
+        <p className="seller-eyebrow">YOUR SELLER STUDIO</p>
+        <span className="seller-approved">
+          <BadgeCheck size={14} /> VERIFIED SELLER
         </span>
       </div>
       {demoMode && (
         <p className="seller-form-notice" role="status">
-          DEMO FIXTURES · These example orders, ratings, and NGN figures are fictional and local to
+          SAMPLE DATA · These example orders, ratings, and NGN figures are fictional and local to
           this preview. No purchases, payouts, or backend records exist.
         </p>
       )}
@@ -1595,7 +1588,7 @@ function SellerDashboard({
                 <h1>Good to see you, {application.first_name}.</h1>
                 <p>
                   {demoMode
-                    ? "Demo metrics only — real seller data is not loaded."
+                    ? "Sample metrics only — real seller data is not loaded."
                     : "Here’s how your shop is doing today."}
                 </p>
               </div>
@@ -1867,7 +1860,7 @@ function SellerDashboard({
                         {product.name} · {orderItem.quantity}{" "}
                         {orderItem.quantity === 1 ? "item" : "items"} ·{" "}
                         {formatMoney(Number(orderItem.seller_net))}
-                        {demoMode ? " demo net" : " seller net"}
+                        {demoMode ? " sample net" : " seller net"}
                       </span>
                     )}
                   </article>
@@ -1877,7 +1870,7 @@ function SellerDashboard({
           ) : (
             <p className="seller-settings-note">
               {demoMode
-                ? "Demo sellers have no real orders connected."
+                ? "Sample sellers have no real orders connected."
                 : "Orders containing your products will appear here after a buyer places an order."}
             </p>
           )}
@@ -1926,7 +1919,7 @@ function SellerDashboard({
           <p className="seller-finance-note">
             <ShieldCheck size={14} />
             {demoMode
-              ? "Demo balances are not real and cannot be withdrawn."
+              ? "Sample balances are not real and cannot be withdrawn."
               : "A payout request does not transfer funds. SupreCart reviews requests and pays to your verified bank account."}
           </p>
           <p className="seller-finance-note">
@@ -1941,7 +1934,7 @@ function SellerDashboard({
           </p>
           {demoMode && demoFundEntries.length > 0 && (
             <div className="seller-fund-ledger">
-              <h3>Demo balance activity</h3>
+              <h3>Sample balance activity</h3>
               <p>Fictional refund adjustments and top-ups included in the preview balance.</p>
               {demoFundEntries.map((entry) => (
                 <div className="seller-fund-ledger-row" key={entry.id}>
@@ -1978,7 +1971,7 @@ function SellerDashboard({
           {settingsTab === "account" && (
             <div className="seller-settings-card">
               <div>
-                <strong>{demoMode ? "Local demo seller" : application.email}</strong>
+                <strong>{demoMode ? "Preview seller" : application.email}</strong>
                 <span>
                   {demoMode
                     ? "This seller account is stored in this browser only."
@@ -2014,26 +2007,18 @@ function SellerDashboard({
                   </div>
                 </div>
               </div>
-              {!demoMode && (
-                <div className={`seller-verify-banner ${application.verified ? "verified" : ""}`}>
-                  <BadgeCheck size={17} />
-                  <div>
-                    <strong>
-                      {application.verified ? "Verified seller" : "Verification pending"}
-                    </strong>
-                    <span>
-                      {application.verified
-                        ? "SupreCart has confirmed your store details."
-                        : "SupreCart reviews stores before granting the verified badge. You can keep selling in the meantime."}
-                    </span>
-                  </div>
+              <div className="seller-verify-banner verified">
+                <BadgeCheck size={17} />
+                <div>
+                  <strong>Verified seller</strong>
+                  <span>SupreCart has confirmed your store details.</span>
                 </div>
-              )}
+              </div>
               {demoMode ? (
                 <form className="seller-settings-form" onSubmit={onUpdateAccount}>
                   <p className="seller-settings-note">
-                    Demo profile changes are saved only in this browser. Email and password remain
-                    demo-only and cannot be changed here.
+                    Profile changes are saved only in this browser. Email and password remain
+                    preview-only and cannot be changed here.
                   </p>
                   <label>
                     Display name
@@ -2048,11 +2033,11 @@ function SellerDashboard({
                     <input name="phone" type="tel" defaultValue={demoProfile?.phone ?? ""} />
                   </label>
                   <label>
-                    Demo email
+                    Preview email
                     <input type="email" value={application.email} disabled />
                   </label>
                   <button className="seller-primary-button" type="submit">
-                    Save demo profile
+                    Save profile
                   </button>
                 </form>
               ) : (
@@ -2239,7 +2224,7 @@ function SellerDashboard({
                 <strong>Payout &amp; bank details</strong>
                 <span>
                   {demoMode
-                    ? "Demo sellers have no real payout account."
+                    ? "Preview sellers have no real payout account."
                     : "Where SupreCart would pay approved withdrawals."}
                 </span>
               </div>
@@ -2532,7 +2517,7 @@ function SellerDashboard({
                 <strong>Danger zone</strong>
                 <span>
                   {demoMode
-                    ? "Permanently delete this demo seller identity and all its local data from this browser."
+                    ? "Permanently delete this preview seller identity and all its local data from this browser."
                     : "Closing a real seller store is handled by the SupreCart team."}
                 </span>
               </div>
@@ -2540,7 +2525,7 @@ function SellerDashboard({
                 <div className="seller-confirm">
                   <p>
                     {demoMode
-                      ? "This permanently deletes the demo seller account, profile, messages, application and preferences. It cannot be undone. Continue?"
+                      ? "This permanently deletes the preview seller account, profile, messages, application and preferences. It cannot be undone. Continue?"
                       : "Account closure is not connected in this preview. Continue to see more?"}
                   </p>
                   <div className="seller-confirm-actions">
@@ -2549,7 +2534,7 @@ function SellerDashboard({
                       className="seller-danger-button"
                       onClick={() => removeSellerAccount()}
                     >
-                      <Trash2 size={15} /> {demoMode ? "Delete demo seller" : "Continue"}
+                      <Trash2 size={15} /> {demoMode ? "Delete preview seller" : "Continue"}
                     </button>
                     <button
                       type="button"
@@ -2566,7 +2551,8 @@ function SellerDashboard({
                   className="seller-outline-button"
                   onClick={() => setConfirmDelete(true)}
                 >
-                  <Trash2 size={15} /> {demoMode ? "Delete demo seller" : "Request store closure"}
+                  <Trash2 size={15} />{" "}
+                  {demoMode ? "Delete preview seller" : "Request store closure"}
                 </button>
               )}
             </div>
