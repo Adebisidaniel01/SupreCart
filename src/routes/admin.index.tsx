@@ -45,7 +45,7 @@ function AdminOverview() {
           These are illustrative sample figures. Connect your analytics and finance services to see
           live data.
         </span>
-        <span className="admin-banner-tag">DEMO</span>
+        <span className="admin-banner-tag">SAMPLE</span>
       </div>
       <section className="admin-stat-grid" aria-label="Marketplace summary">
         {dashboard.stats.map((stat, index) => {

@@ -39,6 +39,12 @@ function Signup() {
       email: String(formData.get("email")).trim().toLowerCase(),
       phone: String(formData.get("phone")).trim(),
     };
+    const password = String(formData.get("password"));
+    const confirmPassword = String(formData.get("confirmPassword"));
+    if (password !== confirmPassword) {
+      setError("Passwords do not match. Please try again.");
+      return;
+    }
     setProfile(nextProfile);
     setError("");
     setSubmitting(true);
@@ -47,7 +53,7 @@ function Signup() {
         email: nextProfile.email,
         name: `${nextProfile.firstName} ${nextProfile.lastName}`.trim(),
         role: "buyer",
-        password: String(formData.get("password")),
+        password,
       });
       saveDemoAccount(account);
       trackSignUp("buyer_preview");
@@ -109,6 +115,16 @@ function Signup() {
                   required
                 />
                 <small>At least 8 characters. Use a unique password.</small>
+              </label>
+              <label>
+                Confirm password
+                <input
+                  type="password"
+                  name="confirmPassword"
+                  autoComplete="new-password"
+                  minLength={8}
+                  required
+                />
               </label>
               {error && (
                 <p role="alert" className="form-error">

@@ -189,6 +189,14 @@ export function Storefront({ children }: { children: ReactNode }) {
 
   const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
   const cartSubtotal = cart.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
+  const searchTerm = query.trim().toLowerCase();
+  const searchResults = searchTerm
+    ? products.filter((product) =>
+        `${product.name} ${product.brand} ${product.category} ${product.seller}`
+          .toLowerCase()
+          .includes(searchTerm),
+      )
+    : [];
   const sellerListings =
     selected && products.filter((product) => product.seller === selected.seller).length;
   const store = useMemo(
@@ -406,28 +414,14 @@ export function Storefront({ children }: { children: ReactNode }) {
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
-              <>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  title="Account"
-                  aria-label="Account"
-                  className="market-icon-button"
-                  asChild
-                >
-                  <Link to="/account">
-                    <UserRound />
-                  </Link>
-                </Button>
-                <div className="market-auth-links">
-                  <Link to="/login" className="market-button market-button-outline">
-                    Log in
-                  </Link>
-                  <Link to="/signup" className="market-button market-button-solid">
-                    Sign up
-                  </Link>
-                </div>
-              </>
+              <div className="market-auth-links">
+                <Link to="/login" className="market-button market-button-outline">
+                  Log in
+                </Link>
+                <Link to="/signup" className="market-button market-button-solid">
+                  Sign up
+                </Link>
+              </div>
             )}
           </nav>
           <div className="market-mobile-tools">
@@ -669,10 +663,10 @@ export function Storefront({ children }: { children: ReactNode }) {
                 rel="noreferrer"
                 aria-label="Instagram"
               >
-                <Instagram />
+                <Instagram size={14} />
               </a>
               <a href="https://tiktok.com" target="_blank" rel="noreferrer" aria-label="TikTok">
-                <Music2 />
+                <Music2 size={14} />
               </a>
             </div>
           </div>
@@ -1084,11 +1078,6 @@ export function Storefront({ children }: { children: ReactNode }) {
                   </p>
                 </>
               )}
-              {notice && (
-                <p role="status" className="sample-note">
-                  {notice}
-                </p>
-              )}
             </div>
           )}
           {panel === "search" && (
@@ -1104,13 +1093,17 @@ export function Storefront({ children }: { children: ReactNode }) {
                 />
               </div>
               <div className="search-results">
-                {products
-                  .filter((product) =>
-                    `${product.name} ${product.brand} ${product.category} ${product.seller}`
-                      .toLowerCase()
-                      .includes(query.toLowerCase()),
-                  )
-                  .map((product) => (
+                {searchResults.length === 0 ? (
+                  <div className="empty-state">
+                    <Search />
+                    <p>
+                      {searchTerm
+                        ? `No matches for “${query.trim()}”. Try another product, brand, or seller.`
+                        : "Search the catalogue by product, brand, category, or seller."}
+                    </p>
+                  </div>
+                ) : (
+                  searchResults.map((product) => (
                     <Button
                       variant="ghost"
                       className="search-result"
@@ -1131,7 +1124,8 @@ export function Storefront({ children }: { children: ReactNode }) {
                       </span>
                       <strong>{money(product.price)}</strong>
                     </Button>
-                  ))}
+                  ))
+                )}
               </div>
             </div>
           )}

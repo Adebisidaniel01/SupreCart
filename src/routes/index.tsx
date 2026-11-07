@@ -23,12 +23,14 @@ const averageRating = (
   products.reduce((total, product) => total + Number(product.rating), 0) / products.length
 ).toFixed(1);
 
+const sellerCount = new Set(products.map((product) => product.seller)).size;
+
 function HomeSplash() {
   const [visible, setVisible] = useState(true);
 
   useEffect(() => {
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const timeout = window.setTimeout(() => setVisible(false), reducedMotion ? 600 : 1100);
+    const timeout = window.setTimeout(() => setVisible(false), reducedMotion ? 600 : 1200);
     return () => window.clearTimeout(timeout);
   }, []);
 
@@ -142,7 +144,7 @@ function Index() {
               </div>
               <div>
                 <dt>{account ? "Account type" : "Independent sellers"}</dt>
-                <dd>{account ? (isSeller ? "Seller" : "Buyer") : "24"}</dd>
+                <dd>{account ? (isSeller ? "Seller" : "Buyer") : sellerCount}</dd>
               </div>
               <div>
                 <dt>{account ? "Curated finds" : "Average rating"}</dt>

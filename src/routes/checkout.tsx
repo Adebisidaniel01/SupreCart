@@ -259,7 +259,7 @@ function Checkout() {
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (error) {
       console.error("Could not save the SupreCart preview order.", error);
-      setOrderError("We couldn’t save your demo order in this browser. Please try again.");
+      setOrderError("We couldn’t save your preview order in this browser. Please try again.");
     }
   }
 
@@ -288,7 +288,7 @@ function Checkout() {
           <p className="eyebrow">THE SUPRECART MARKETPLACE</p>
           <h1>{step === "complete" ? "Preview order receipt" : "Checkout"}</h1>
           <p className="shop-intro">
-            Demo checkout only. No real order is placed or payment collected.
+            Preview checkout only. No real order is placed or payment collected.
           </p>
         </div>
         <span className="secure-label">
@@ -582,7 +582,7 @@ function Checkout() {
               <span className="success-mark">
                 <Check />
               </span>
-              <p className="eyebrow">DEMO ORDER CONFIRMATION</p>
+              <p className="eyebrow">PREVIEW ORDER CONFIRMATION</p>
               <h2>Your preview receipt is ready.</h2>
               <p>
                 These sample references are stored in this browser only. No order was sent to a
@@ -614,7 +614,7 @@ function Checkout() {
               <p className="order-created-at">
                 Preview created {new Date(order.createdAt).toLocaleString("en-NG")}
               </p>
-              <h3>Demo tracking references</h3>
+              <h3>Preview tracking references</h3>
               {order.shipments.map((shipment) => (
                 <div className="reference-card" key={shipment.trackingNumber}>
                   <span>
@@ -689,8 +689,8 @@ function Checkout() {
             }
           />
           <p className="demo-disclaimer">
-            <ShieldCheck size={15} /> Demo estimate only: tax and delivery rates must be confirmed
-            before live checkout.
+            <ShieldCheck size={15} /> Preview estimate only: tax and delivery rates must be
+            confirmed before live checkout.
           </p>
         </aside>
       </div>

@@ -50,7 +50,7 @@ function CustomerCare() {
   const [queue, setQueue] = useState<DemoSupportQueueState>(emptyQueue);
   const [draft, setDraft] = useState("");
   const [error, setError] = useState("");
-  const bottomRef = useRef<HTMLDivElement | null>(null);
+  const messageListRef = useRef<HTMLDivElement | null>(null);
 
   const requesterId = account?.email ?? guestId;
   const requesterName = account?.name ?? "Guest shopper";
@@ -82,7 +82,9 @@ function CustomerCare() {
   }, [requesterId, ticket?.lastMessageAt]);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ block: "end" });
+    const list = messageListRef.current;
+    if (!list) return;
+    list.scrollTop = list.scrollHeight;
   }, [ticket?.messages.length]);
 
   function sendMessage(event: FormEvent<HTMLFormElement>) {
@@ -159,7 +161,7 @@ function CustomerCare() {
             </span>
           </header>
 
-          <div className="support-message-list">
+          <div className="support-message-list" ref={messageListRef}>
             <article className="chat-message support-welcome">
               <p>
                 Hello! Tell us what you need help with. Earlier conversations are served first, so
@@ -195,7 +197,6 @@ function CustomerCare() {
                 </article>
               );
             })}
-            <div ref={bottomRef} />
           </div>
 
           {error && (

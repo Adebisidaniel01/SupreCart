@@ -1418,7 +1418,10 @@ function BuyerAccount() {
                         <div className="account-security-actions">
                           <div>
                             <strong>Password</strong>
-                            <small>Changes to your password are made in the Profile tab.</small>
+                            <small>
+                              Reset your password from the{" "}
+                              <Link to="/forgot-password">sign-in page</Link>.
+                            </small>
                           </div>
                           <div>
                             <strong>Other sessions</strong>
@@ -1444,7 +1447,7 @@ function BuyerAccount() {
                       <section className="account-dashboard-card account-danger-zone">
                         <p className="account-intro">
                           {demoAccount
-                            ? "Permanently delete this local demo account, its profile, orders, messages, seller application and saved preferences from this browser."
+                            ? "Permanently delete this local preview account, its profile, orders, messages, seller application and saved preferences from this browser."
                             : "Closing a real SupreCart account is handled by our team. Account deletion is not connected in this preview."}
                         </p>
                         {demoAccount ? (
@@ -1460,7 +1463,7 @@ function BuyerAccount() {
                                   variant="destructive"
                                   onClick={() => void removeAccount()}
                                 >
-                                  <Trash2 size={15} /> Delete demo account
+                                  <Trash2 size={15} /> Delete preview account
                                 </Button>
                                 <Button
                                   type="button"
@@ -1477,7 +1480,7 @@ function BuyerAccount() {
                               variant="outline"
                               onClick={() => setConfirmDelete(true)}
                             >
-                              <Trash2 size={15} /> Delete demo account
+                              <Trash2 size={15} /> Delete preview account
                             </Button>
                           )
                         ) : (

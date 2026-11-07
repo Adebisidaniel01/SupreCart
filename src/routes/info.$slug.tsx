@@ -49,7 +49,7 @@ const pages: Record<string, { title: string; eyebrow: string; body: string[] }> 
     title: "Your trust matters.",
     eyebrow: "PRIVACY",
     body: [
-      "This preview stores demo cart, wishlist and account details only in your browser. Do not enter sensitive personal or payment information.",
+      "This preview stores cart, wishlist and account details only in your browser. Do not enter sensitive personal or payment information.",
       "If you allow analytics cookies, we use Google Analytics to understand how the storefront and seller portal are used. Analytics can see product and cart events, but never your name, email address, delivery address, password or payment details.",
       "No actual email verification, newsletter signup, account authentication or payment service is connected yet. A complete privacy notice will be published before launch.",
     ],
@@ -58,7 +58,7 @@ const pages: Record<string, { title: string; eyebrow: string; body: string[] }> 
     title: "A marketplace in preview.",
     eyebrow: "TERMS",
     body: [
-      "SupreCart is currently a demonstration storefront. Product descriptions, prices, seller information and ratings are illustrative and may not represent items available for purchase.",
+      "SupreCart is currently a preview storefront. Product descriptions, prices, seller information and ratings are illustrative and may not represent items available for purchase.",
       "No order, payment, delivery, subscription or seller transaction is created through this preview.",
     ],
   },
@@ -77,7 +77,7 @@ const pages: Record<string, { title: string; eyebrow: string; body: string[] }> 
       "SupreCart uses one essential first-party cookie to remember your cookie choice. It does not track you across other sites.",
       "If you allow analytics, we load Google Analytics (GA4) to measure page views, searches, cart activity, wishlist use, checkout steps and errors. Google Analytics cookies stay off until you accept analytics, and you can reject or manage them from the banner. Marketing cookies are not installed.",
       "To change your mind, clear this site's cookies and choose again from the banner.",
-      "This preview stores demo cart, wishlist and account details only in your browser. Do not enter sensitive personal or payment information.",
+      "This preview stores cart, wishlist and account details only in your browser. Do not enter sensitive personal or payment information.",
     ],
   },
 };
@@ -89,9 +89,27 @@ export const Route = createFileRoute("/info/$slug")({
 
 function InfoPage() {
   const { slug } = Route.useParams();
-  const defaultPage = pages["about"];
-  if (!defaultPage) return null;
-  const page = pages[slug] ?? defaultPage;
+  const page = pages[slug];
+  if (!page) {
+    return (
+      <main id="main-content" tabIndex={-1} className="page-width info-page">
+        <Link to="/" className="back-link">
+          <ArrowLeft size={15} /> Back to SupreCart
+        </Link>
+        <section className="info-card">
+          <p className="eyebrow">INFORMATION · NOT FOUND</p>
+          <h1>That page isn’t here.</h1>
+          <p>
+            The information page you’re looking for may have moved. Head back to the marketplace or
+            get in touch with customer care.
+          </p>
+          <Button asChild>
+            <Link to="/">Back to SupreCart</Link>
+          </Button>
+        </section>
+      </main>
+    );
+  }
   return (
     <main id="main-content" tabIndex={-1} className="page-width info-page">
       <Link to="/" className="back-link">

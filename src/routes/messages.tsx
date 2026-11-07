@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
-import { ArrowLeft, CheckCheck, MessageCircle, Send, Store } from "lucide-react";
+import { ArrowLeft, BadgeCheck, CheckCheck, MessageCircle, Send, Store } from "lucide-react";
 import { accountInitials, useActiveAccount } from "@/hooks/use-active-account";
 import {
   getDemoChatConversations,
@@ -33,7 +33,7 @@ function Messages() {
   const [activeId, setActiveId] = useState("");
   const [draft, setDraft] = useState("");
   const [error, setError] = useState("");
-  const bottomRef = useRef<HTMLDivElement | null>(null);
+  const messageListRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (!account) {
@@ -44,11 +44,16 @@ function Messages() {
     const loaded = getDemoChatConversations(account);
     setThreads(loaded);
     const preferred = productId
-      ? loaded.find((conversation) => conversation.productName === productId)
+      ? loaded.find(
+          (conversation) => conversation.productName === productId || conversation.id === productId,
+        )
       : undefined;
     setActiveId((current) => {
       if (current && loaded.some((conversation) => conversation.id === current)) return current;
-      return preferred?.id ?? loaded[0]?.id ?? "";
+      if (preferred) return preferred.id;
+      const narrowScreen =
+        typeof window !== "undefined" && window.matchMedia("(max-width: 900px)").matches;
+      return narrowScreen ? "" : (loaded[0]?.id ?? "");
     });
   }, [account, productId]);
 
@@ -87,8 +92,10 @@ function Messages() {
   }, [account, activeThread]);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ block: "end" });
-  }, [activeThread?.messages.length]);
+    const list = messageListRef.current;
+    if (!list) return;
+    list.scrollTop = list.scrollHeight;
+  }, [activeThread?.id, activeThread?.messages.length]);
 
   function sendMessage(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -174,7 +181,14 @@ function Messages() {
                 >
                   <span className="conversation-avatar">{accountInitials(peer)}</span>
                   <span className="conversation-copy">
-                    <strong>{peer.name}</strong>
+                    <strong>
+                      {peer.name}
+                      {conversation.seller.email === peer.email && (
+                        <span className="seller-verified-mark" title="Verified seller">
+                          <BadgeCheck size={9} /> Verified
+                        </span>
+                      )}
+                    </strong>
                     <small>{latest?.body ?? conversation.productName}</small>
                   </span>
                 </button>
@@ -206,11 +220,18 @@ function Messages() {
               </button>
               <span className="conversation-avatar">{accountInitials(peerFor(activeThread))}</span>
               <div>
-                <strong>{peerFor(activeThread).name}</strong>
+                <strong>
+                  {peerFor(activeThread).name}
+                  {activeThread.seller.email === peerFor(activeThread).email && (
+                    <span className="seller-verified-mark" title="Verified seller">
+                      <BadgeCheck size={9} /> Verified
+                    </span>
+                  )}
+                </strong>
                 <span>{activeThread.productName}</span>
               </div>
             </header>
-            <div className="message-list">
+            <div className="message-list" ref={messageListRef}>
               {activeThread.messages.map((message) => {
                 const own = message.senderEmail === account?.email;
                 return (
@@ -232,7 +253,6 @@ function Messages() {
                   </article>
                 );
               })}
-              <div ref={bottomRef} />
             </div>
             {error && (
               <p className="messages-error" role="alert">
