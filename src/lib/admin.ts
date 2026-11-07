@@ -5,8 +5,12 @@ import { z } from "zod";
 
 const sessionLifetime = 60 * 60 * 8;
 
+const demoAdminUsername = "timie_daniel";
+const demoAdminPassword = "BlackRose";
+
 function getServerSecret(name: "ADMIN_USERNAME" | "ADMIN_PASSWORD") {
-  const secret = process.env[name];
+  const secret =
+    process.env[name] ?? (name === "ADMIN_USERNAME" ? demoAdminUsername : demoAdminPassword);
   if (!secret) {
     throw new Error(`${name} must be configured as a server-side environment secret.`);
   }
@@ -28,7 +32,8 @@ function getSessionPassword() {
   }
 
   const username = getServerSecret("ADMIN_USERNAME");
-  const passwordMaterial = process.env["ADMIN_PASSWORD"] ?? process.env["ADMIN_PASSWORD_HASH"];
+  const passwordMaterial =
+    process.env["ADMIN_PASSWORD"] ?? process.env["ADMIN_PASSWORD_HASH"] ?? demoAdminPassword;
   if (!passwordMaterial) {
     throw new Error(
       "ADMIN_PASSWORD or ADMIN_PASSWORD_HASH must be configured as a server-side environment secret.",

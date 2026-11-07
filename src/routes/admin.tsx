@@ -294,8 +294,9 @@ function AdminLayout() {
           </p>
           <p className="admin-setup-note">
             Configure <code>ADMIN_USERNAME</code> and either <code>ADMIN_PASSWORD</code> or{" "}
-            <code>ADMIN_PASSWORD_HASH</code> in your server environment. No session secret is
-            required until the admin site moves to a domain.
+            <code>ADMIN_PASSWORD_HASH</code> in your server environment. Until then, the demo
+            login <code>timie_daniel</code> / <code>BlackRose</code> works on previews. No session
+            secret is required until the admin site moves to a domain.
           </p>
         </section>
         <aside className="admin-login-art" aria-hidden="true">
