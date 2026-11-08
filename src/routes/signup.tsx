@@ -42,6 +42,22 @@ function Signup() {
     };
     const password = cleanSecret(formData.get("password"));
     const confirmPassword = cleanSecret(formData.get("confirmPassword"));
+    if (!nextProfile.firstName || !nextProfile.lastName) {
+      setError("Enter your first and last name.");
+      return;
+    }
+    if (!nextProfile.email) {
+      setError("Enter a valid email address.");
+      return;
+    }
+    if (nextProfile.phone.replace(/\D/g, "").length < 7) {
+      setError("Enter a valid phone number.");
+      return;
+    }
+    if (password.trim().length < 8) {
+      setError("Choose a password with at least 8 characters.");
+      return;
+    }
     if (password !== confirmPassword) {
       setError("Passwords do not match. Please try again.");
       return;

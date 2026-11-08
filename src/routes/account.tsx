@@ -364,6 +364,18 @@ function BuyerAccount() {
       landmark: cleanText(form.get("landmark"), 160),
       is_default: addresses.length === 0 || form.get("is_default") === "on",
     };
+    if (
+      !nextAddress.first_name ||
+      !nextAddress.last_name ||
+      !nextAddress.email ||
+      nextAddress.phone.replace(/\D/g, "").length < 7 ||
+      !nextAddress.lga ||
+      !nextAddress.community ||
+      !nextAddress.street_address
+    ) {
+      setError("Complete the required address fields with valid details.");
+      return;
+    }
     const updated = [
       ...(nextAddress.is_default
         ? addresses.map((address) => ({ ...address, is_default: false }))
@@ -373,6 +385,7 @@ function BuyerAccount() {
     setAddresses(updated);
     writeLocalAddresses(sessionAccount.email, updated);
     formElement.reset();
+    setError("");
     setNotice("Delivery address saved in this browser.");
   }
 
@@ -426,8 +439,9 @@ function BuyerAccount() {
     }
   }
 
-  const firstName = sessionProfile.name || "there";
-  const [addressFirstName = "", ...addressLastNameParts] = firstName.split(/\s+/);
+  const fullName = sessionProfile.name || sessionAccount?.name || "";
+  const firstName = fullName.split(/\s+/)[0] || "there";
+  const [addressFirstName = "", ...addressLastNameParts] = fullName.split(/\s+/);
   const addressLastName = addressLastNameParts.join(" ");
 
   return (
@@ -457,11 +471,17 @@ function BuyerAccount() {
             </span>
             <div>
               <p className="eyebrow">YOUR ACCOUNT</p>
-              <h1>Good to see you, {firstName}.</h1>
+              <h1>{loading ? "Loading your account..." : `Good to see you, ${firstName}.`}</h1>
               <p className="buyer-account-meta">
-                <span>{sessionAccount?.email}</span>
-                <span className="buyer-account-meta-dot" aria-hidden="true" />
-                <span>{sessionProfile.phone || "No phone added yet"}</span>
+                {loading ? (
+                  <span>Loading account details...</span>
+                ) : (
+                  <>
+                    <span>{sessionAccount?.email}</span>
+                    <span className="buyer-account-meta-dot" aria-hidden="true" />
+                    <span>{sessionProfile.phone || "No phone added yet"}</span>
+                  </>
+                )}
               </p>
             </div>
           </div>
@@ -473,12 +493,6 @@ function BuyerAccount() {
           )}
         </header>
 
-        {loading && <p className="account-intro">Loading your account...</p>}
-        {error && (
-          <p className="form-error" role="alert">
-            {error}
-          </p>
-        )}
         {!loading && (
           <>
             <nav className="buyer-account-nav" aria-label="Account sections">
@@ -494,6 +508,7 @@ function BuyerAccount() {
                   type="button"
                   key={key}
                   className={section === key ? "active" : ""}
+                  aria-current={section === key ? "page" : undefined}
                   onClick={() => {
                     setSection(key);
                     setError("");
@@ -509,6 +524,7 @@ function BuyerAccount() {
               <button
                 type="button"
                 className={section === "settings" ? "active" : ""}
+                aria-current={section === "settings" ? "page" : undefined}
                 onClick={() => {
                   setSection("settings");
                   setSettingsTab("profile");
@@ -597,7 +613,7 @@ function BuyerAccount() {
                       <dl>
                         <div>
                           <dt>Name</dt>
-                          <dd>{sessionProfile.name || firstName}</dd>
+                          <dd>{fullName || "Not set"}</dd>
                         </div>
                         <div>
                           <dt>Email</dt>

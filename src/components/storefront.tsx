@@ -128,6 +128,29 @@ export function Storefront({ children }: { children: ReactNode }) {
     window.addEventListener("keydown", closeNavigation);
     return () => window.removeEventListener("keydown", closeNavigation);
   }, []);
+  useEffect(() => {
+    if (!categoriesOpen) return;
+    function closeOnOutside(event: PointerEvent) {
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+      if (target.closest("#market-category-menu, .market-cat-button")) return;
+      setCategoriesOpen(false);
+    }
+    window.addEventListener("pointerdown", closeOnOutside);
+    return () => window.removeEventListener("pointerdown", closeOnOutside);
+  }, [categoriesOpen]);
+  useEffect(() => {
+    setCategoriesOpen(false);
+    setMobileNav(false);
+  }, [pathname]);
+  useEffect(() => {
+    if (!mobileNav) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [mobileNav]);
   const hasSizes = selected?.category === "Footwear";
   const openProduct = useCallback((product: Product) => {
     trackViewItem(product);

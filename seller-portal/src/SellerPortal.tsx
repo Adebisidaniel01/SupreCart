@@ -37,7 +37,6 @@ import {
   createLocalAccount,
   findAccount,
   getAccountModeration,
-  getAccounts,
   isPresetAccount,
   readActiveAccount,
   saveAccount,
@@ -1236,13 +1235,8 @@ function SignInPanel({
           </button>
         </form>
         <p className="seller-form-notice">
-          Seller accounts (no password or email verification):
-          {getAccounts("seller").map((account) => (
-            <span key={account.email}>
-              <br />
-              {account.name} - {account.email}
-            </span>
-          ))}
+          Sign in with the email and password attached to your approved seller account. Approved
+          buyers can also sign in from the storefront.
         </p>
         <form className="seller-reset-form" onSubmit={onReset}>
           <label>

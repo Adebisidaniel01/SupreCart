@@ -269,7 +269,7 @@ function CustomerCare() {
               Shipping & delivery
             </Link>
             <Link to="/info/$slug" params={{ slug: "returns" }}>
-              Returns & refunds
+              Returns & exchanges
             </Link>
             <Link to="/info/$slug" params={{ slug: "faq" }}>
               FAQs

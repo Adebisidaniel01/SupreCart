@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
-import { ArrowLeft, BadgeCheck, CheckCheck, MessageCircle, Send, Store } from "lucide-react";
+import { ArrowLeft, BadgeCheck, CheckCheck, MessageCircle, Send } from "lucide-react";
 import { accountInitials, useActiveAccount } from "@/hooks/use-active-account";
 import { cleanMultiline } from "@/lib/input";
 import {
@@ -197,9 +197,9 @@ function Messages() {
             })}
             {!threads.length && (
               <div className="messages-empty">
-                <Store size={22} />
+                <MessageCircle size={22} />
                 <strong>No conversations yet.</strong>
-                <span>Start a chat from a product page when messaging opens.</span>
+                <span>Open a product and choose Message seller to start a conversation.</span>
               </div>
             )}
           </div>

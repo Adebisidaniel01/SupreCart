@@ -183,7 +183,7 @@ function Index() {
               <span>
                 {account
                   ? `Signed in — you'll stay signed in until you choose to log out`
-                  : "Independent sellers, checked by real people"}
+                  : "Independent sellers, gathered with care"}
               </span>
             </div>
           </div>

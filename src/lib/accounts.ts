@@ -223,16 +223,17 @@ export function isPresetAccount(email: string, role: Account["role"]) {
   return presetAccounts.some((account) => account.email === normalized && account.role === role);
 }
 
+export function getPresetAccounts(role: Account["role"]) {
+  return presetAccounts.filter(
+    (account) => account.role === role && !isAccountDeleted(account.email),
+  );
+}
+
 export function getAccounts(role: Account["role"]) {
   const local = readStoredAccounts()
     .filter((account) => account.role === role)
     .map(toAccount);
-  return [
-    ...presetAccounts.filter(
-      (account) => account.role === role && !isAccountDeleted(account.email),
-    ),
-    ...local,
-  ];
+  return [...getPresetAccounts(role), ...local];
 }
 
 /** Every buyer and seller account known to this browser, without duplicates. */

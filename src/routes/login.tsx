@@ -7,7 +7,7 @@ import {
   ensureSellerAccount,
   findAccount,
   getAccountModeration,
-  getAccounts,
+  getPresetAccounts,
   isPresetAccount,
   saveAccount,
   verifyAccountPassword,
@@ -110,7 +110,7 @@ function Login() {
             Password
             <input type="password" name="password" autoComplete="current-password" />
             <small>
-              Use the password you chose when you created your account. Listed accounts can sign in
+              Use the password you chose when you created your account. Demo accounts can sign in
               without one.
             </small>
           </label>
@@ -120,8 +120,8 @@ function Login() {
           <div className="local-data-note">
             <ShieldCheck size={15} />
             <span>
-              Buyer accounts and approved seller accounts (no password or email verification):
-              {getAccounts("buyer").map((account) => (
+              <strong>Demo accounts</strong> (no password needed):
+              {getPresetAccounts("buyer").map((account) => (
                 <span key={account.email}>
                   <br />
                   {account.name} — {account.email}

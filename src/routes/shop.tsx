@@ -97,10 +97,10 @@ function Shop() {
       )}
       <div className="sponsored-inline">
         <span>
-          <Sparkles size={14} /> SPONSORED
+          <Sparkles size={14} /> FEATURED
         </span>
         <strong>Made with care by independent sellers.</strong>
-        <span>Paid placement</span>
+        <span>Curated placement</span>
       </div>
       <div className="product-grid shop-products">
         {visible.map((p) => (
@@ -109,8 +109,17 @@ function Shop() {
       </div>
       {visible.length === 0 && (
         <div className="collection-empty">
-          <h2>New finds are on their way.</h2>
-          <p>This collection is coming soon.</p>
+          <h2>No finds match this view.</h2>
+          <p>
+            {query
+              ? `Nothing matched “${query.trim()}”. Try another product, brand, or seller.`
+              : "Try a different category or brand."}
+          </p>
+          <Button asChild>
+            <Link to="/shop" search={{ filter: "All", query: "" }}>
+              Clear filters
+            </Link>
+          </Button>
         </div>
       )}
     </main>

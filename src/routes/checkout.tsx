@@ -196,6 +196,25 @@ function Checkout() {
       pickupStationAddress: station?.address ?? "",
       note: cleanMultiline(data.get("note"), 500),
     };
+    if (!nextDetails.firstName || !nextDetails.lastName) {
+      setOrderError("Enter your first and last name.");
+      return;
+    }
+    if (!nextDetails.email) {
+      setOrderError("Enter a valid email address.");
+      return;
+    }
+    if (nextDetails.phone.replace(/\D/g, "").length < 7) {
+      setOrderError("Enter a valid phone number.");
+      return;
+    }
+    if (
+      method === "doorstep" &&
+      (!nextDetails.lga || !nextDetails.community || !nextDetails.streetAddress)
+    ) {
+      setOrderError("Complete your delivery address before continuing.");
+      return;
+    }
     setOrderError("");
     setDetails(nextDetails);
     setStep("receipt");
@@ -304,7 +323,7 @@ function Checkout() {
                 <b>2</b> Receipt
               </span>
               <span>
-                <b>3</b> Confirm
+                <b>3</b> Save
               </span>
             </div>
           )}
@@ -560,7 +579,7 @@ function Checkout() {
                   <ArrowLeft size={16} /> Edit delivery
                 </Button>
                 <Button size="lg" onClick={confirmOrder}>
-                  Confirm order <ArrowRight size={16} />
+                  Save receipt <ArrowRight size={16} />
                 </Button>
               </div>
               {orderError && (
@@ -569,7 +588,7 @@ function Checkout() {
                 </p>
               )}
               <p className="payment-note">
-                Payment selection is a stored in this browser. No payment will be initiated or
+                Payment selection is stored in this browser. No payment will be initiated or
                 collected. Live Paystack checkout requires a secured server integration and verified
                 payment callbacks.
               </p>
@@ -580,8 +599,8 @@ function Checkout() {
               <span className="success-mark">
                 <Check />
               </span>
-              <p className="eyebrow">ORDER CONFIRMATION</p>
-              <h2>Your receipt is ready.</h2>
+              <p className="eyebrow">RECEIPT SAVED</p>
+              <h2>Your receipt is saved.</h2>
               <p>
                 These references are stored in this browser only. No order was sent to a seller and
                 no parcel is being shipped.

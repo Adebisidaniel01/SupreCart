@@ -9,15 +9,15 @@ const pages: Record<string, { title: string; eyebrow: string; body: string[] }> 
     body: [
       "SupreCart is a buyer-first marketplace bringing independent sellers and thoughtful finds together in one easy place.",
       "From everyday style and footwear to home, tech, accessories and beauty, we’re here to make discovering something great feel simple.",
-      "Our seller and product details are being prepared for launch.",
+      "This preview uses illustrative seller and product details; live inventory will be confirmed before launch.",
     ],
   },
   contact: {
     title: "We’re here to help.",
     eyebrow: "CONTACT",
     body: [
-      "For more inquiries, contact us on 09015505210.",
-      "Our customer-care hours and dedicated support channels will be shared when the marketplace launches.",
+      "For other enquiries, call us on 09015505210.",
+      "Full customer-care hours and dedicated support channels will be shared when live checkout launches.",
     ],
   },
   shipping: {
