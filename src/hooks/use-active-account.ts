@@ -2,14 +2,14 @@ import { useCallback, useEffect, useState } from "react";
 
 import { accountAvatar, subscribeAccountPreferences } from "@/lib/account-preferences";
 import {
-  clearDemoAccount,
+  clearAccount,
   readActiveAccount,
-  subscribeDemoAccount,
-  type DemoAccount,
-} from "@/lib/demo-accounts";
+  subscribeAccount,
+  type Account,
+} from "@/lib/accounts";
 
 export function useActiveAccount() {
-  const [account, setAccount] = useState<DemoAccount | null>(null);
+  const [account, setAccount] = useState<Account | null>(null);
   const [avatar, setAvatar] = useState("");
   const [ready, setReady] = useState(false);
 
@@ -22,7 +22,7 @@ export function useActiveAccount() {
 
   useEffect(() => {
     sync();
-    const unsubscribeSession = subscribeDemoAccount(sync);
+    const unsubscribeSession = subscribeAccount(sync);
     const unsubscribePreferences = subscribeAccountPreferences(sync);
     return () => {
       unsubscribeSession();
@@ -31,7 +31,7 @@ export function useActiveAccount() {
   }, [sync]);
 
   const signOut = useCallback(() => {
-    clearDemoAccount();
+    clearAccount();
     setAccount(null);
     setAvatar("");
   }, []);
@@ -39,12 +39,12 @@ export function useActiveAccount() {
   return { account, avatar, ready, signOut };
 }
 
-export function accountFirstName(account: DemoAccount | null) {
+export function accountFirstName(account: Account | null) {
   if (!account) return "";
   return account.name.trim().split(/\s+/)[0] || account.email.split("@")[0] || "there";
 }
 
-export function accountInitials(account: DemoAccount | null) {
+export function accountInitials(account: Account | null) {
   if (!account) return "";
   const parts = account.name.trim().split(/\s+/).filter(Boolean);
   if (!parts.length) return account.email.slice(0, 2).toUpperCase();

@@ -1,6 +1,6 @@
-import { findDemoAccount, isDemoAccountDeleted, type DemoAccount } from "./demo-accounts";
+import { findAccount, isAccountDeleted, type Account } from "./accounts";
 
-export type DemoChatMessage = {
+export type ChatMessage = {
   id: string;
   senderEmail: string;
   body: string;
@@ -8,17 +8,17 @@ export type DemoChatMessage = {
   readBy: string[];
 };
 
-export type DemoChatConversation = {
+export type ChatConversation = {
   id: string;
-  buyer: DemoAccount;
-  seller: DemoAccount;
+  buyer: Account;
+  seller: Account;
   productName: string;
-  messages: DemoChatMessage[];
+  messages: ChatMessage[];
 };
 
-const storageKey = "suprecart-demo-messages";
+const storageKey = "suprecart-messages";
 
-const seedConversations: DemoChatConversation[] = [
+const seedConversations: ChatConversation[] = [
   {
     id: "chat-daniel-shewa",
     buyer: { email: "blackrose@gmail.com", name: "Daniel Adebisi", role: "buyer" },
@@ -96,7 +96,7 @@ const seedConversations: DemoChatConversation[] = [
     id: "chat-victoria-adeniji",
     buyer: { email: "vickybabs@gmail.com", name: "Victoria Babatunde", role: "buyer" },
     seller: { email: "adeniji@gmail.com", name: "Emmanuel Adeniji", role: "seller" },
-    productName: "Relaxed-fit linen shirt",
+    productName: "Campus Oversized Hoodie",
     messages: [
       {
         id: "va-1",
@@ -118,19 +118,19 @@ const seedConversations: DemoChatConversation[] = [
     id: "chat-isaac-adeniji",
     buyer: { email: "izzy@gmail.com", name: "Isaac Oyebanji", role: "buyer" },
     seller: { email: "adeniji@gmail.com", name: "Emmanuel Adeniji", role: "seller" },
-    productName: "Classic cotton polo",
+    productName: "Oversized Study Tee",
     messages: [
       {
         id: "ia-1",
         senderEmail: "izzy@gmail.com",
-        body: "Is the navy colour available in medium?",
+        body: "Is this available in medium?",
         createdAt: "2026-09-14T16:25:00.000Z",
         readBy: ["adeniji@gmail.com"],
       },
       {
         id: "ia-2",
         senderEmail: "adeniji@gmail.com",
-        body: "Yes, medium is available in navy in this demo catalogue.",
+        body: "Yes, medium is available in white and sage in this catalogue.",
         createdAt: "2026-09-14T16:31:00.000Z",
         readBy: ["izzy@gmail.com"],
       },
@@ -140,19 +140,19 @@ const seedConversations: DemoChatConversation[] = [
     id: "chat-isaac-bukunmi",
     buyer: { email: "izzy@gmail.com", name: "Isaac Oyebanji", role: "buyer" },
     seller: { email: "bukunmi@gmail.com", name: "Bukunmi Oluwaseyin", role: "seller" },
-    productName: "Handwoven storage basket",
+    productName: "North Campus Backpack",
     messages: [
       {
         id: "ib-1",
         senderEmail: "izzy@gmail.com",
-        body: "Would this fit on a small bookshelf?",
+        body: "Would this fit a 15-inch laptop?",
         createdAt: "2026-09-13T10:10:00.000Z",
         readBy: ["bukunmi@gmail.com"],
       },
       {
         id: "ib-2",
         senderEmail: "bukunmi@gmail.com",
-        body: "It is about 28 cm wide, so please compare that with your shelf space.",
+        body: "Yes, the padded sleeve fits most 15-inch laptops and still leaves room for notebooks.",
         createdAt: "2026-09-13T10:24:00.000Z",
         readBy: ["izzy@gmail.com"],
       },
@@ -162,19 +162,19 @@ const seedConversations: DemoChatConversation[] = [
     id: "chat-olowe-bukunmi",
     buyer: { email: "olowe@gmail.com", name: "Olowe Goodness", role: "buyer" },
     seller: { email: "bukunmi@gmail.com", name: "Bukunmi Oluwaseyin", role: "seller" },
-    productName: "Hand-poured ceramic mug",
+    productName: "LED Study Desk Lamp",
     messages: [
       {
         id: "ob-1",
         senderEmail: "olowe@gmail.com",
-        body: "Is each mug slightly different?",
+        body: "Does the lamp have a USB charging port?",
         createdAt: "2026-09-12T12:40:00.000Z",
         readBy: ["bukunmi@gmail.com"],
       },
       {
         id: "ob-2",
         senderEmail: "bukunmi@gmail.com",
-        body: "Yes, each is handmade, so small variations in glaze and shape are part of the finish.",
+        body: "It has a USB-C port and three brightness levels, which is handy for late study sessions.",
         createdAt: "2026-09-12T12:52:00.000Z",
         readBy: ["olowe@gmail.com"],
       },
@@ -184,19 +184,19 @@ const seedConversations: DemoChatConversation[] = [
     id: "chat-olowe-shewa",
     buyer: { email: "olowe@gmail.com", name: "Olowe Goodness", role: "buyer" },
     seller: { email: "shewa@gmail.com", name: "Bello-lawal Dorcas", role: "seller" },
-    productName: "Everyday leather sandals",
+    productName: "Adidas Superstar",
     messages: [
       {
         id: "os-1",
         senderEmail: "olowe@gmail.com",
-        body: "Do you have these in a dark brown finish?",
+        body: "Do you have these in a UK 9?",
         createdAt: "2026-09-11T13:15:00.000Z",
         readBy: ["shewa@gmail.com"],
       },
       {
         id: "os-2",
         senderEmail: "shewa@gmail.com",
-        body: "I do. The available colours are listed on the product page; this chat is just a local demo.",
+        body: "Yes, the available sizes are listed on the product page; this chat is stored locally.",
         createdAt: "2026-09-11T13:27:00.000Z",
         readBy: ["olowe@gmail.com"],
       },
@@ -204,51 +204,51 @@ const seedConversations: DemoChatConversation[] = [
   },
 ];
 
-export function getDemoChatConversations(account: DemoAccount) {
+export function getChatConversations(account: Account) {
   return seedConversations
     .filter((conversation) => {
-      if (isDemoAccountDeleted(conversation.buyer.email)) return false;
-      if (isDemoAccountDeleted(conversation.seller.email)) return false;
+      if (isAccountDeleted(conversation.buyer.email)) return false;
+      if (isAccountDeleted(conversation.seller.email)) return false;
       return account.role === "buyer"
         ? conversation.buyer.email === account.email
         : conversation.seller.email === account.email;
     })
-    .map((conversation) => ({ ...conversation, messages: readDemoChatMessages(conversation) }));
+    .map((conversation) => ({ ...conversation, messages: readChatMessages(conversation) }));
 }
 
-export function readDemoChatMessages(conversation: DemoChatConversation) {
+export function readChatMessages(conversation: ChatConversation) {
   const stored = window.localStorage.getItem(storageKey);
   if (!stored) return conversation.messages;
-  let savedMessages: Record<string, DemoChatMessage[]>;
+  let savedMessages: Record<string, ChatMessage[]>;
   try {
-    savedMessages = JSON.parse(stored) as Record<string, DemoChatMessage[]>;
+    savedMessages = JSON.parse(stored) as Record<string, ChatMessage[]>;
   } catch (cause) {
-    console.error("Could not read the local SupreCart demo messages.", cause);
-    throw new Error("Demo conversations could not be loaded from this browser.");
+    console.error("Could not read the local SupreCart messages.", cause);
+    throw new Error("Conversations could not be loaded from this browser.");
   }
   return savedMessages[conversation.id] ?? conversation.messages;
 }
 
-export function saveDemoChatMessages(conversationId: string, messages: DemoChatMessage[]) {
+export function saveChatMessages(conversationId: string, messages: ChatMessage[]) {
   const stored = window.localStorage.getItem(storageKey);
-  let savedMessages: Record<string, DemoChatMessage[]> = {};
+  let savedMessages: Record<string, ChatMessage[]> = {};
   if (stored) {
     try {
-      savedMessages = JSON.parse(stored) as Record<string, DemoChatMessage[]>;
+      savedMessages = JSON.parse(stored) as Record<string, ChatMessage[]>;
     } catch (cause) {
-      console.error("Could not update the local SupreCart demo messages.", cause);
-      throw new Error("Demo conversations could not be saved because local data is invalid.");
+      console.error("Could not update the local SupreCart messages.", cause);
+      throw new Error("Conversations could not be saved because local data is invalid.");
     }
   }
   savedMessages[conversationId] = messages;
   window.localStorage.setItem(storageKey, JSON.stringify(savedMessages));
 }
 
-export function getDemoChatAccount(email: string, role: DemoAccount["role"]) {
-  return findDemoAccount(email, role);
+export function getChatAccount(email: string, role: Account["role"]) {
+  return findAccount(email, role);
 }
 
-export function deleteDemoMessagesFor(email: string) {
+export function deleteMessagesFor(email: string) {
   const normalized = email.trim().toLowerCase();
   const conversationIds = seedConversations
     .filter(
@@ -260,11 +260,11 @@ export function deleteDemoMessagesFor(email: string) {
   const stored = window.localStorage.getItem(storageKey);
   if (!stored) return;
   try {
-    const savedMessages = JSON.parse(stored) as Record<string, DemoChatMessage[]>;
+    const savedMessages = JSON.parse(stored) as Record<string, ChatMessage[]>;
     for (const id of conversationIds) delete savedMessages[id];
     window.localStorage.setItem(storageKey, JSON.stringify(savedMessages));
   } catch (cause) {
-    console.error("Could not clear the local SupreCart demo messages.", cause);
+    console.error("Could not clear the local SupreCart messages.", cause);
     window.localStorage.removeItem(storageKey);
   }
 }

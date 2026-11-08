@@ -13,7 +13,7 @@ const draft = {
   storeName: "New Seller Studio",
   phone: "+234 800 000 0000",
   productDescription: "Handmade goods.",
-  bankName: "Preview Bank",
+  bankName: "Zenith Bank",
   bankAccountNumber: "0123456789",
 };
 

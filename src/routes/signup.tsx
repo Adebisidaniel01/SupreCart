@@ -3,7 +3,8 @@ import { useState, type FormEvent } from "react";
 import { ArrowLeft, ArrowRight, Check, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { trackSignUp } from "@/lib/analytics";
-import { createLocalAccount, saveDemoAccount } from "@/lib/demo-accounts";
+import { createLocalAccount, saveAccount } from "@/lib/accounts";
+import { cleanEmail, cleanPhone, cleanSecret, cleanText } from "@/lib/input";
 
 type BuyerProfile = {
   firstName: string;
@@ -34,13 +35,13 @@ function Signup() {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
     const nextProfile = {
-      firstName: String(formData.get("firstName")).trim(),
-      lastName: String(formData.get("lastName")).trim(),
-      email: String(formData.get("email")).trim().toLowerCase(),
-      phone: String(formData.get("phone")).trim(),
+      firstName: cleanText(formData.get("firstName"), 80),
+      lastName: cleanText(formData.get("lastName"), 80),
+      email: cleanEmail(formData.get("email")),
+      phone: cleanPhone(formData.get("phone")),
     };
-    const password = String(formData.get("password"));
-    const confirmPassword = String(formData.get("confirmPassword"));
+    const password = cleanSecret(formData.get("password"));
+    const confirmPassword = cleanSecret(formData.get("confirmPassword"));
     if (password !== confirmPassword) {
       setError("Passwords do not match. Please try again.");
       return;
@@ -55,8 +56,8 @@ function Signup() {
         role: "buyer",
         password,
       });
-      saveDemoAccount(account);
-      trackSignUp("buyer_preview");
+      saveAccount(account);
+      trackSignUp("buyer");
       setBackendMessage(
         "Your buyer account is saved in this browser. No email verification is needed.",
       );
@@ -138,7 +139,7 @@ function Signup() {
             <p className="account-switch">
               Already have an account? <Link to="/login">Sign in</Link>
             </p>
-            <p className="demo-disclaimer">
+            <p className="local-data-note">
               <ShieldCheck size={15} /> Account details are stored in this browser only. No email
               confirmation is required.
             </p>
@@ -157,7 +158,7 @@ function Signup() {
             <Button size="lg" onClick={() => navigate({ to: "/" })}>
               Go to your homepage <ArrowRight size={16} />
             </Button>
-            <p className="demo-disclaimer">Your buyer account is stored in this browser only.</p>
+            <p className="local-data-note">Your buyer account is stored in this browser only.</p>
           </div>
         )}
       </div>

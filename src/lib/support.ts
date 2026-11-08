@@ -1,4 +1,4 @@
-export type DemoSupportMessage = {
+export type SupportMessage = {
   id: string;
   sender: "customer" | "care";
   body: string;
@@ -6,17 +6,17 @@ export type DemoSupportMessage = {
   automated?: boolean;
 };
 
-export type DemoSupportTicket = {
+export type SupportTicket = {
   requesterId: string;
   requesterName: string;
   topic?: string | undefined;
   joinedAt: string;
   lastMessageAt: string;
-  messages: DemoSupportMessage[];
+  messages: SupportMessage[];
   seeded?: boolean;
 };
 
-export type DemoSupportQueueState = {
+export type SupportQueueState = {
   inQueue: boolean;
   position: number;
   waitingAhead: number;
@@ -24,9 +24,9 @@ export type DemoSupportQueueState = {
   isNext: boolean;
 };
 
-const storageKey = "suprecart-demo-support";
-const guestIdKey = "suprecart-demo-support-guest";
-const seededKey = "suprecart-demo-support-seeded";
+const storageKey = "suprecart-support";
+const guestIdKey = "suprecart-support-guest";
+const seededKey = "suprecart-support-seeded";
 const serviceWindowMs = 4 * 60 * 1000;
 const minutesPerTicket = 3;
 
@@ -41,27 +41,27 @@ function createId() {
   );
 }
 
-function readTickets(): Record<string, DemoSupportTicket> {
+function readTickets(): Record<string, SupportTicket> {
   if (!canUseStorage()) return {};
   try {
     const raw = window.localStorage.getItem(storageKey);
     if (!raw) return {};
     const parsed: unknown = JSON.parse(raw);
     if (typeof parsed !== "object" || parsed === null) return {};
-    const tickets: Record<string, DemoSupportTicket> = {};
+    const tickets: Record<string, SupportTicket> = {};
     for (const [id, value] of Object.entries(parsed as Record<string, unknown>)) {
       if (typeof value !== "object" || value === null) continue;
-      const entry = value as Partial<DemoSupportTicket>;
+      const entry = value as Partial<SupportTicket>;
       if (typeof entry.joinedAt !== "string" || !Array.isArray(entry.messages)) continue;
       const messages = entry.messages.filter(
-        (message): message is DemoSupportMessage =>
+        (message): message is SupportMessage =>
           typeof message === "object" &&
           message !== null &&
-          typeof (message as DemoSupportMessage).id === "string" &&
-          ((message as DemoSupportMessage).sender === "customer" ||
-            (message as DemoSupportMessage).sender === "care") &&
-          typeof (message as DemoSupportMessage).body === "string" &&
-          typeof (message as DemoSupportMessage).createdAt === "string",
+          typeof (message as SupportMessage).id === "string" &&
+          ((message as SupportMessage).sender === "customer" ||
+            (message as SupportMessage).sender === "care") &&
+          typeof (message as SupportMessage).body === "string" &&
+          typeof (message as SupportMessage).createdAt === "string",
       );
       tickets[id] = {
         requesterId: typeof entry.requesterId === "string" ? entry.requesterId : id,
@@ -82,20 +82,20 @@ function readTickets(): Record<string, DemoSupportTicket> {
   }
 }
 
-function writeTickets(tickets: Record<string, DemoSupportTicket>) {
+function writeTickets(tickets: Record<string, SupportTicket>) {
   if (!canUseStorage()) return;
   window.localStorage.setItem(storageKey, JSON.stringify(tickets));
 }
 
-function seedQueue(tickets: Record<string, DemoSupportTicket>) {
+function seedQueue(tickets: Record<string, SupportTicket>) {
   if (!canUseStorage()) return tickets;
   try {
     if (window.localStorage.getItem(seededKey)) return tickets;
     const now = Date.now();
     const seeds = [
-      { id: "demo-care-ada", name: "Ada", minutesAgo: 3 },
-      { id: "demo-care-musa", name: "Musa", minutesAgo: 2 },
-      { id: "demo-care-zainab", name: "Zainab", minutesAgo: 1 },
+      { id: "care-ada", name: "Ada", minutesAgo: 3 },
+      { id: "care-musa", name: "Musa", minutesAgo: 2 },
+      { id: "care-zainab", name: "Zainab", minutesAgo: 1 },
     ];
     for (const seed of seeds) {
       if (tickets[seed.id]) continue;
@@ -124,7 +124,7 @@ function seedQueue(tickets: Record<string, DemoSupportTicket>) {
   return tickets;
 }
 
-export function getDemoSupportGuestId() {
+export function getSupportGuestId() {
   if (!canUseStorage()) return "";
   try {
     const existing = window.localStorage.getItem(guestIdKey);
@@ -138,12 +138,12 @@ export function getDemoSupportGuestId() {
   }
 }
 
-export function getDemoSupportTicket(requesterId: string) {
+export function getSupportTicket(requesterId: string) {
   if (!requesterId) return null;
   return readTickets()[requesterId] ?? null;
 }
 
-export function createDemoSupportTicket(
+export function createSupportTicket(
   requesterId: string,
   requesterName: string,
   body: string,
@@ -152,7 +152,7 @@ export function createDemoSupportTicket(
   if (!requesterId) throw new Error("A customer care identity is required.");
   const tickets = seedQueue(readTickets());
   const now = new Date().toISOString();
-  const ticket: DemoSupportTicket = {
+  const ticket: SupportTicket = {
     requesterId,
     requesterName,
     topic,
@@ -163,7 +163,7 @@ export function createDemoSupportTicket(
       {
         id: createId(),
         sender: "care",
-        body: "Thanks for reaching out. Your first message has joined the customer care queue. This is a local preview, so no live agent is connected yet.",
+        body: "Thanks for reaching out. Your first message has joined the customer care queue.",
         createdAt: new Date(Date.now() + 1000).toISOString(),
         automated: true,
       },
@@ -174,7 +174,7 @@ export function createDemoSupportTicket(
   return ticket;
 }
 
-export function appendDemoSupportMessage(requesterId: string, body: string) {
+export function appendSupportMessage(requesterId: string, body: string) {
   if (!requesterId) return null;
   const tickets = readTickets();
   const ticket = tickets[requesterId];
@@ -190,8 +190,8 @@ export function appendDemoSupportMessage(requesterId: string, body: string) {
   return ticket;
 }
 
-export function getDemoSupportQueue(requesterId: string, now = Date.now()): DemoSupportQueueState {
-  const empty: DemoSupportQueueState = {
+export function getSupportQueue(requesterId: string, now = Date.now()): SupportQueueState {
+  const empty: SupportQueueState = {
     inQueue: false,
     position: 0,
     waitingAhead: 0,
@@ -223,7 +223,7 @@ export function getDemoSupportQueue(requesterId: string, now = Date.now()): Demo
   };
 }
 
-export function deleteDemoSupportFor(requesterId: string) {
+export function deleteSupportFor(requesterId: string) {
   if (!requesterId) return;
   const tickets = readTickets();
   if (!tickets[requesterId]) return;

@@ -1,5 +1,5 @@
 export type CommissionTier = {
-  id: "starter" | "standard" | "premium";
+  id: "standard" | "premium";
   range: string;
   summary: string;
   /** Flat fee added on top of the percentage, in NGN. */
@@ -12,21 +12,12 @@ export type CommissionTier = {
 
 export const commissionTiers: CommissionTier[] = [
   {
-    id: "starter",
-    range: "Below ₦1,500",
-    summary: "7.5% of the selling price",
-    flatFee: 0,
-    rate: 0.075,
-    min: 0,
-    max: 1500,
-  },
-  {
     id: "standard",
-    range: "₦1,500 – ₦5,000",
+    range: "₦5,000 and below",
     summary: "₦150 + 7.5% of the selling price",
     flatFee: 150,
     rate: 0.075,
-    min: 1500,
+    min: 0,
     max: 5000,
   },
   {
@@ -51,9 +42,8 @@ export type CommissionBreakdown = {
 const roundToKobo = (value: number) => Math.round(value * 100) / 100;
 
 export function commissionTierFor(price: number): CommissionTier {
-  if (price < 1500) return commissionTiers[0]!;
-  if (price <= 5000) return commissionTiers[1]!;
-  return commissionTiers[2]!;
+  if (price <= 5000) return commissionTiers[0]!;
+  return commissionTiers[1]!;
 }
 
 export function calculateCommission(price: number): CommissionBreakdown {

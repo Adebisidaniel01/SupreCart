@@ -21,7 +21,7 @@ function AdminCommunity() {
           <p>A quick read on the people finding their way around the marketplace.</p>
         </div>
         <span className="admin-live-label">
-          <span /> SAMPLE ACTIVITY
+          <span /> RECENT ACTIVITY
         </span>
       </header>
       <section className="admin-panel admin-insight-panel admin-community-insight">
@@ -51,7 +51,7 @@ function AdminCommunity() {
             <h2>The latest from the community.</h2>
           </div>
           <span className="admin-live-label">
-            <span /> SAMPLE ACTIVITY
+            <span /> RECENT ACTIVITY
           </span>
         </div>
         <div className="admin-activity-list">

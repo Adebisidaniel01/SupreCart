@@ -1,4 +1,4 @@
-import { isDemoAccountDeleted } from "./demo-accounts";
+import { isAccountDeleted } from "./accounts";
 
 export type SellerApplicationStatus = "pending" | "approved" | "rejected";
 
@@ -32,12 +32,12 @@ const seededApplications: SellerApplication[] = [
     phone: "+234 803 000 0000",
     productDescription:
       "Considered footwear and everyday accessories, sourced and styled in small batches.",
-    bankName: "Preview Bank",
+    bankName: "Zenith Bank",
     bankAccountNumber: "0000000000",
     status: "approved",
     submittedAt: "2026-08-28T09:30:00.000Z",
     reviewedAt: "2026-08-30T11:15:00.000Z",
-    reviewNote: "Seller approved for the marketplace preview.",
+    reviewNote: "Seller approved for the marketplace.",
   },
 ];
 
@@ -75,7 +75,7 @@ function ensureSeeded(applications: SellerApplication[]) {
   let changed = false;
   const next = [...applications];
   for (const application of seededApplications) {
-    if (isDemoAccountDeleted(application.email)) continue;
+    if (isAccountDeleted(application.email)) continue;
     if (!next.some((entry) => normalizeEmail(entry.email) === application.email)) {
       next.push(application);
       changed = true;

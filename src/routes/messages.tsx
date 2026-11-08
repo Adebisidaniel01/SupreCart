@@ -2,12 +2,13 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { ArrowLeft, BadgeCheck, CheckCheck, MessageCircle, Send, Store } from "lucide-react";
 import { accountInitials, useActiveAccount } from "@/hooks/use-active-account";
+import { cleanMultiline } from "@/lib/input";
 import {
-  getDemoChatConversations,
-  saveDemoChatMessages,
-  type DemoChatConversation,
-  type DemoChatMessage,
-} from "@/lib/demo-messages";
+  getChatConversations,
+  saveChatMessages,
+  type ChatConversation,
+  type ChatMessage,
+} from "@/lib/messages";
 
 type MessagesSearch = {
   productId?: string | undefined;
@@ -29,7 +30,7 @@ export const Route = createFileRoute("/messages")({
 function Messages() {
   const { productId } = Route.useSearch();
   const { account, ready } = useActiveAccount();
-  const [threads, setThreads] = useState<DemoChatConversation[]>([]);
+  const [threads, setThreads] = useState<ChatConversation[]>([]);
   const [activeId, setActiveId] = useState("");
   const [draft, setDraft] = useState("");
   const [error, setError] = useState("");
@@ -41,7 +42,7 @@ function Messages() {
       setActiveId("");
       return;
     }
-    const loaded = getDemoChatConversations(account);
+    const loaded = getChatConversations(account);
     setThreads(loaded);
     const preferred = productId
       ? loaded.find(
@@ -62,7 +63,7 @@ function Messages() {
     [activeId, threads],
   );
 
-  const peerFor = (conversation: DemoChatConversation) =>
+  const peerFor = (conversation: ChatConversation) =>
     conversation.buyer.email === account?.email ? conversation.seller : conversation.buyer;
 
   useEffect(() => {
@@ -78,7 +79,7 @@ function Messages() {
         : message,
     );
     try {
-      saveDemoChatMessages(activeThread.id, updated);
+      saveChatMessages(activeThread.id, updated);
       setThreads((current) =>
         current.map((conversation) =>
           conversation.id === activeThread.id
@@ -87,7 +88,7 @@ function Messages() {
         ),
       );
     } catch (cause) {
-      console.error("Could not save the local preview read receipt.", cause);
+      console.error("Could not save the local read receipt.", cause);
     }
   }, [account, activeThread]);
 
@@ -100,9 +101,9 @@ function Messages() {
   function sendMessage(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!account || !activeThread) return;
-    const body = draft.trim();
+    const body = cleanMultiline(draft, 1200);
     if (!body) return;
-    const message: DemoChatMessage = {
+    const message: ChatMessage = {
       id: crypto.randomUUID(),
       senderEmail: account.email,
       body,
@@ -111,7 +112,7 @@ function Messages() {
     };
     const updated = [...activeThread.messages, message];
     try {
-      saveDemoChatMessages(activeThread.id, updated);
+      saveChatMessages(activeThread.id, updated);
       setThreads((current) =>
         current.map((conversation) =>
           conversation.id === activeThread.id
@@ -166,7 +167,7 @@ function Messages() {
             <span>{threads.length}</span>
           </div>
           <p className="messages-inbox-note">
-            Local preview chats. Nothing is sent to a real buyer or seller.
+            Chats are stored in this browser. Nothing is sent to a real buyer or seller.
           </p>
           <div className="conversation-list">
             {threads.map((conversation) => {
@@ -280,9 +281,7 @@ function Messages() {
           </div>
         )}
       </div>
-      <p className="messages-privacy-note">
-        Messages are stored in this browser only while the marketplace is a preview.
-      </p>
+      <p className="messages-privacy-note">Messages are stored in this browser only.</p>
     </main>
   );
 }

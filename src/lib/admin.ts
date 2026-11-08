@@ -2,17 +2,42 @@ import { createServerFn } from "@tanstack/react-start";
 import { setResponseHeader, useSession } from "@tanstack/react-start/server";
 import { createHash, scryptSync, timingSafeEqual } from "node:crypto";
 import { z } from "zod";
+import { cleanSecret, cleanText } from "./input";
 
 const sessionLifetime = 60 * 60 * 8;
+const failedSignIns = new Map<string, { count: number; resetAt: number }>();
+const signInWindowMs = 5 * 60 * 1000;
+const maxFailedSignIns = 8;
 
-const demoAdminUsername = "timie_daniel";
-const demoAdminPassword = "BlackRose";
+function isRateLimited(key: string) {
+  const entry = failedSignIns.get(key);
+  if (!entry) return false;
+  if (Date.now() > entry.resetAt) {
+    failedSignIns.delete(key);
+    return false;
+  }
+  return entry.count >= maxFailedSignIns;
+}
+
+function recordFailedSignIn(key: string) {
+  const entry = failedSignIns.get(key);
+  if (!entry || Date.now() > entry.resetAt) {
+    failedSignIns.set(key, { count: 1, resetAt: Date.now() + signInWindowMs });
+    return;
+  }
+  entry.count += 1;
+}
+
+function clearFailedSignIns(key: string) {
+  failedSignIns.delete(key);
+}
 
 function getServerSecret(name: "ADMIN_USERNAME" | "ADMIN_PASSWORD") {
-  const secret =
-    process.env[name] ?? (name === "ADMIN_USERNAME" ? demoAdminUsername : demoAdminPassword);
+  const secret = process.env[name];
   if (!secret) {
-    throw new Error(`${name} must be configured as a server-side environment secret.`);
+    throw new Error(
+      `${name} must be configured as a server-side environment secret before admin access can work.`,
+    );
   }
   return secret;
 }
@@ -32,8 +57,7 @@ function getSessionPassword() {
   }
 
   const username = getServerSecret("ADMIN_USERNAME");
-  const passwordMaterial =
-    process.env["ADMIN_PASSWORD"] ?? process.env["ADMIN_PASSWORD_HASH"] ?? demoAdminPassword;
+  const passwordMaterial = process.env["ADMIN_PASSWORD"] ?? process.env["ADMIN_PASSWORD_HASH"];
   if (!passwordMaterial) {
     throw new Error(
       "ADMIN_PASSWORD or ADMIN_PASSWORD_HASH must be configured as a server-side environment secret.",
@@ -101,17 +125,33 @@ export const checkAdminSession = createServerFn().handler(async () => {
 export const signInToAdmin = createServerFn({ method: "POST" })
   .validator(
     z.object({
-      username: z.string().min(1).max(256),
-      password: z.string().min(1).max(256),
+      username: z
+        .string()
+        .max(256)
+        .transform((value) => cleanText(value, 256))
+        .refine((value) => value.length >= 1 && value.length <= 256),
+      password: z
+        .string()
+        .max(256)
+        .transform((value) => cleanSecret(value, 256))
+        .refine((value) => value.length >= 1 && value.length <= 256),
     }),
   )
   .handler(async ({ data }) => {
     setResponseHeader("Cache-Control", "no-store");
+    const attemptKey = `admin:${data.username.toLowerCase()}`;
+    if (isRateLimited(attemptKey)) {
+      throw new Error("Too many sign-in attempts. Wait a few minutes and try again.");
+    }
     const username = getServerSecret("ADMIN_USERNAME");
     const validUsername = constantTimeEqual(data.username, username);
     const validPassword = verifyAdminPassword(data.password, username);
-    if (!validUsername || !validPassword) return false;
+    if (!validUsername || !validPassword) {
+      recordFailedSignIn(attemptKey);
+      return false;
+    }
 
+    clearFailedSignIns(attemptKey);
     const session = await useAdminSession();
     await session.update({ authenticated: true });
     return true;
@@ -123,7 +163,7 @@ export const signOutOfAdmin = createServerFn({ method: "POST" }).handler(async (
   await session.clear();
 });
 
-const dashboardPreview = {
+const dashboardData = {
   stats: [
     { label: "Gross sales", value: "₦18,420", change: "+12.8%", detail: "vs. last month" },
     { label: "Total users", value: "1,284", change: "+8.2%", detail: "vs. last month" },
@@ -153,5 +193,5 @@ export const getAdminDashboard = createServerFn().handler(async () => {
   if (session.data.authenticated !== true) {
     throw new Error("Your admin session has expired. Sign in again to view this dashboard.");
   }
-  return dashboardPreview;
+  return dashboardData;
 });

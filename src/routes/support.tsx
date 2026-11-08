@@ -2,22 +2,23 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { CheckCheck, Clock3, Headphones, Send, ShieldCheck, Users } from "lucide-react";
 import { accountInitials, useActiveAccount } from "@/hooks/use-active-account";
+import { cleanMultiline, cleanText } from "@/lib/input";
 import {
-  appendDemoSupportMessage,
-  createDemoSupportTicket,
-  getDemoSupportGuestId,
-  getDemoSupportQueue,
-  getDemoSupportTicket,
-  type DemoSupportQueueState,
-  type DemoSupportTicket,
-} from "@/lib/demo-support";
+  appendSupportMessage,
+  createSupportTicket,
+  getSupportGuestId,
+  getSupportQueue,
+  getSupportTicket,
+  type SupportQueueState,
+  type SupportTicket,
+} from "@/lib/support";
 
 type SupportSearch = {
   orderId?: string | undefined;
   topic?: string | undefined;
 };
 
-const emptyQueue: DemoSupportQueueState = {
+const emptyQueue: SupportQueueState = {
   inQueue: false,
   position: 0,
   waitingAhead: 0,
@@ -35,7 +36,7 @@ export const Route = createFileRoute("/support")({
       { title: "Customer care — SupreCart" },
       {
         name: "description",
-        content: "Join the SupreCart customer care preview queue and chat with support.",
+        content: "Join the SupreCart customer care queue and chat with support.",
       },
     ],
   }),
@@ -46,8 +47,8 @@ function CustomerCare() {
   const { orderId, topic } = Route.useSearch();
   const { account, ready } = useActiveAccount();
   const [guestId, setGuestId] = useState("");
-  const [ticket, setTicket] = useState<DemoSupportTicket | null>(null);
-  const [queue, setQueue] = useState<DemoSupportQueueState>(emptyQueue);
+  const [ticket, setTicket] = useState<SupportTicket | null>(null);
+  const [queue, setQueue] = useState<SupportQueueState>(emptyQueue);
   const [draft, setDraft] = useState("");
   const [error, setError] = useState("");
   const messageListRef = useRef<HTMLDivElement | null>(null);
@@ -56,7 +57,7 @@ function CustomerCare() {
   const requesterName = account?.name ?? "Guest shopper";
 
   useEffect(() => {
-    setGuestId(getDemoSupportGuestId());
+    setGuestId(getSupportGuestId());
   }, []);
 
   useEffect(() => {
@@ -65,8 +66,8 @@ function CustomerCare() {
       setQueue(emptyQueue);
       return;
     }
-    setTicket(getDemoSupportTicket(requesterId));
-    setQueue(getDemoSupportQueue(requesterId));
+    setTicket(getSupportTicket(requesterId));
+    setQueue(getSupportQueue(requesterId));
   }, [requesterId]);
 
   useEffect(() => {
@@ -76,7 +77,7 @@ function CustomerCare() {
 
   useEffect(() => {
     if (!requesterId) return;
-    const updateQueue = () => setQueue(getDemoSupportQueue(requesterId));
+    const updateQueue = () => setQueue(getSupportQueue(requesterId));
     const timer = window.setInterval(updateQueue, 30_000);
     return () => window.clearInterval(timer);
   }, [requesterId, ticket?.lastMessageAt]);
@@ -89,24 +90,24 @@ function CustomerCare() {
 
   function sendMessage(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const body = draft.trim();
+    const body = cleanMultiline(draft, 2000);
     if (!requesterId || !body) return;
     try {
       const updated = ticket
-        ? appendDemoSupportMessage(requesterId, body)
-        : createDemoSupportTicket(
+        ? appendSupportMessage(requesterId, body)
+        : createSupportTicket(
             requesterId,
-            requesterName,
+            cleanText(requesterName, 120),
             body,
-            orderId ? `Order ${orderId}` : topic,
+            orderId ? `Order ${cleanText(orderId, 40)}` : cleanText(topic, 120),
           );
-      if (!updated) throw new Error("This preview chat could not be saved.");
+      if (!updated) throw new Error("This chat could not be saved.");
       setTicket(updated);
       setDraft("");
       setError("");
-      setQueue(getDemoSupportQueue(requesterId));
+      setQueue(getSupportQueue(requesterId));
     } catch (cause) {
-      console.error("Could not save the SupreCart customer care preview.", cause);
+      console.error("Could not save the SupreCart customer care chat.", cause);
       setError(
         cause instanceof Error
           ? cause.message
@@ -127,7 +128,7 @@ function CustomerCare() {
               {accountInitials(account)} · {account.name}
             </Link>
           ) : (
-            <span className="support-guest-label">Guest preview</span>
+            <span className="support-guest-label">Guest</span>
           ))}
       </div>
 
@@ -136,7 +137,10 @@ function CustomerCare() {
         <h1>Chat with customer care</h1>
         <p>
           Ask about an order, delivery, returns or your account. Your first message reserves your
-          place in the queue, and this preview keeps the conversation in your browser.
+          place in the queue, and this conversation is kept in your browser.
+        </p>
+        <p>
+          Prefer to talk? Call <a href="tel:09015505210">09015505210</a>.
         </p>
       </div>
 
@@ -151,13 +155,13 @@ function CustomerCare() {
               <span>
                 {ticket
                   ? queue.isNext
-                    ? "You're next in the preview queue"
-                    : `About ${queue.estimatedMinutes} min wait in the preview queue`
+                    ? "You're next in the queue"
+                    : `About ${queue.estimatedMinutes} min wait in the queue`
                   : "Send a message to join the queue"}
               </span>
             </div>
             <span className="support-status-pill">
-              {ticket ? (queue.position ? `#${queue.position}` : "Queued") : "Preview"}
+              {ticket ? (queue.position ? `#${queue.position}` : "Queued") : "Guest"}
             </span>
           </header>
 
@@ -168,7 +172,7 @@ function CustomerCare() {
                 sending your first message quickly reserves your place.
               </p>
               <footer>
-                <span>Automated preview</span>
+                <span>Automated</span>
               </footer>
             </article>
             {ticket?.messages.map((message) => {
@@ -177,7 +181,7 @@ function CustomerCare() {
                 <article key={message.id} className={`chat-message${own ? " own-message" : ""}`}>
                   {!own && (
                     <span className="support-message-label">
-                      {message.automated ? "Automated preview" : "Customer care"}
+                      {message.automated ? "Automated" : "Customer care"}
                     </span>
                   )}
                   <p>{message.body}</p>
@@ -253,9 +257,9 @@ function CustomerCare() {
                 <p>Send your first message to join the queue. Earlier messages are served first.</p>
               </>
             )}
-            <p className="demo-disclaimer support-disclaimer">
-              <ShieldCheck size={14} /> Preview only. Messages stay in this browser and no real
-              agent is connected.
+            <p className="local-data-note support-disclaimer">
+              <ShieldCheck size={14} /> Messages stay in this browser and no real agent is
+              connected.
             </p>
           </section>
 

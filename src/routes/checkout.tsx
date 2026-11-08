@@ -15,7 +15,8 @@ import { Button } from "@/components/ui/button";
 import { useStore } from "@/components/storefront";
 import { useActiveAccount } from "@/hooks/use-active-account";
 import { money, type Product } from "@/lib/catalog";
-import { trackAddShippingInfo, trackBeginCheckout, trackPreviewOrder } from "@/lib/analytics";
+import { trackAddShippingInfo, trackBeginCheckout, trackCheckoutOrder } from "@/lib/analytics";
+import { cleanEmail, cleanMultiline, cleanPhone, cleanText } from "@/lib/input";
 
 type DeliveryMethod = "doorstep" | "pickup";
 type PaymentMethod = "paystack" | "bank-transfer" | "pay-on-delivery";
@@ -42,7 +43,7 @@ type ReceiptLine = {
   subtotal: number;
   vat: number;
 };
-type PreviewOrder = {
+type CheckoutOrder = {
   batchNumber: string;
   createdAt: string;
   buyerEmail: string;
@@ -59,8 +60,8 @@ type PreviewOrder = {
 };
 
 const VAT_RATE = 0.075;
-const PREVIEW_DOORSTEP_FEE = 2500;
-const PREVIEW_PICKUP_STATIONS: PickupStation[] = [
+const DOORSTEP_FEE = 2500;
+const PICKUP_STATIONS: PickupStation[] = [
   {
     id: "ilorin-west-gra",
     name: "GRA Pickup Point",
@@ -121,18 +122,17 @@ function readBagDetails(): BagDetails | null {
 
 function createReference(prefix: string) {
   const token = globalThis.crypto?.randomUUID?.().replaceAll("-", "").slice(0, 12).toUpperCase();
-  if (!token) throw new Error("Secure preview order references are not available in this browser.");
+  if (!token) throw new Error("Secure order references are not available in this browser.");
   return `${prefix}-${token}`;
 }
 
 export const Route = createFileRoute("/checkout")({
   head: () => ({
     meta: [
-      { title: "Checkout preview — SupreCart" },
+      { title: "Checkout — SupreCart" },
       {
         name: "description",
-        content:
-          "Review your itemized receipt, tax and delivery fees in the SupreCart checkout preview.",
+        content: "Review your itemized receipt, tax and delivery fees in SupreCart checkout.",
       },
     ],
   }),
@@ -145,7 +145,7 @@ function Checkout() {
   const navigate = useNavigate();
   const [step, setStep] = useState<"delivery" | "receipt" | "complete">("delivery");
   const [details, setDetails] = useState<ShippingDetails | null>(null);
-  const [order, setOrder] = useState<PreviewOrder | null>(null);
+  const [order, setOrder] = useState<CheckoutOrder | null>(null);
   const [orderError, setOrderError] = useState("");
   const [deliveryMethod, setDeliveryMethod] = useState<DeliveryMethod>("doorstep");
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("paystack");
@@ -153,8 +153,8 @@ function Checkout() {
   const bagNameParts = (bagDetails?.recipient ?? "").trim().split(/\s+/).filter(Boolean);
   const bagFirstName = bagNameParts[0] ?? "";
   const bagLastName = bagNameParts.slice(1).join(" ");
-  const doorstepFee = PREVIEW_DOORSTEP_FEE;
-  const pickupStations = PREVIEW_PICKUP_STATIONS;
+  const doorstepFee = DOORSTEP_FEE;
+  const pickupStations = PICKUP_STATIONS;
 
   const sellers = [...new Set(cart.map((item) => item.product.seller))];
   const deliveryFee =
@@ -182,19 +182,19 @@ function Checkout() {
       return;
     }
     const nextDetails: ShippingDetails = {
-      firstName: String(data.get("firstName")).trim(),
-      lastName: String(data.get("lastName")).trim(),
-      email: String(data.get("email")).trim().toLowerCase(),
-      phone: String(data.get("phone")).trim(),
+      firstName: cleanText(data.get("firstName"), 80),
+      lastName: cleanText(data.get("lastName"), 80),
+      email: cleanEmail(data.get("email")),
+      phone: cleanPhone(data.get("phone")),
       method,
-      lga: String(data.get("lga") ?? "").trim(),
-      community: String(data.get("community") ?? "").trim(),
-      streetAddress: String(data.get("streetAddress") ?? "").trim(),
-      landmark: String(data.get("landmark") ?? "").trim(),
+      lga: cleanText(data.get("lga"), 80),
+      community: cleanText(data.get("community"), 120),
+      streetAddress: cleanText(data.get("streetAddress"), 200),
+      landmark: cleanText(data.get("landmark"), 160),
       pickupStationId: station?.id ?? "",
       pickupStationName: station?.name ?? "",
       pickupStationAddress: station?.address ?? "",
-      note: String(data.get("note")).trim(),
+      note: cleanMultiline(data.get("note"), 500),
     };
     setOrderError("");
     setDetails(nextDetails);
@@ -206,7 +206,7 @@ function Checkout() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
-  function confirmPreviewOrder() {
+  function confirmOrder() {
     if (!details || cart.length === 0) return;
     setOrderError("");
     try {
@@ -220,7 +220,7 @@ function Checkout() {
           vat: Math.round(subtotal * VAT_RATE),
         };
       });
-      const orderPreview: PreviewOrder = {
+      const newOrder: CheckoutOrder = {
         batchNumber: createReference("CC-BATCH"),
         createdAt: new Date().toISOString(),
         buyerEmail: account?.email ?? details.email,
@@ -241,11 +241,11 @@ function Checkout() {
           trackingNumber: createReference("CC-TRACK"),
         })),
       };
-      const savedOrders = localStorage.getItem("suprecart-preview-orders");
-      const orders = savedOrders ? (JSON.parse(savedOrders) as PreviewOrder[]) : [];
-      localStorage.setItem("suprecart-preview-orders", JSON.stringify([orderPreview, ...orders]));
-      trackPreviewOrder({
-        transactionId: orderPreview.batchNumber,
+      const savedOrders = localStorage.getItem("suprecart-checkout-orders");
+      const orders = savedOrders ? (JSON.parse(savedOrders) as CheckoutOrder[]) : [];
+      localStorage.setItem("suprecart-checkout-orders", JSON.stringify([newOrder, ...orders]));
+      trackCheckoutOrder({
+        transactionId: newOrder.batchNumber,
         cart,
         value: total,
         tax: vat,
@@ -253,13 +253,13 @@ function Checkout() {
         paymentType: paymentMethod,
         deliveryMethod: details.method,
       });
-      setOrder(orderPreview);
+      setOrder(newOrder);
       setCart([]);
       setStep("complete");
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (error) {
-      console.error("Could not save the SupreCart preview order.", error);
-      setOrderError("We couldn’t save your preview order in this browser. Please try again.");
+      console.error("Could not save the SupreCart order.", error);
+      setOrderError("We couldn’t save your order in this browser. Please try again.");
     }
   }
 
@@ -286,13 +286,11 @@ function Checkout() {
       <div className="checkout-heading">
         <div>
           <p className="eyebrow">THE SUPRECART MARKETPLACE</p>
-          <h1>{step === "complete" ? "Preview order receipt" : "Checkout"}</h1>
-          <p className="shop-intro">
-            Preview checkout only. No real order is placed or payment collected.
-          </p>
+          <h1>{step === "complete" ? "Order receipt" : "Checkout"}</h1>
+          <p className="shop-intro">No order is placed and no payment is collected.</p>
         </div>
         <span className="secure-label">
-          <ReceiptText size={14} /> Itemized receipt preview
+          <ReceiptText size={14} /> Itemized receipt
         </span>
       </div>
       <div className="checkout-layout">
@@ -306,7 +304,7 @@ function Checkout() {
                 <b>2</b> Receipt
               </span>
               <span>
-                <b>3</b> Confirm preview
+                <b>3</b> Confirm
               </span>
             </div>
           )}
@@ -561,8 +559,8 @@ function Checkout() {
                 <Button variant="outline" onClick={() => setStep("delivery")}>
                   <ArrowLeft size={16} /> Edit delivery
                 </Button>
-                <Button size="lg" onClick={confirmPreviewOrder}>
-                  Confirm preview order <ArrowRight size={16} />
+                <Button size="lg" onClick={confirmOrder}>
+                  Confirm order <ArrowRight size={16} />
                 </Button>
               </div>
               {orderError && (
@@ -570,10 +568,10 @@ function Checkout() {
                   {orderError}
                 </p>
               )}
-              <p className="payment-preview">
-                Payment selection is a preview only. No payment will be initiated or collected. Live
-                Paystack checkout requires a secured server integration and verified payment
-                callbacks.
+              <p className="payment-note">
+                Payment selection is a stored in this browser. No payment will be initiated or
+                collected. Live Paystack checkout requires a secured server integration and verified
+                payment callbacks.
               </p>
             </div>
           )}
@@ -582,11 +580,11 @@ function Checkout() {
               <span className="success-mark">
                 <Check />
               </span>
-              <p className="eyebrow">PREVIEW ORDER CONFIRMATION</p>
-              <h2>Your preview receipt is ready.</h2>
+              <p className="eyebrow">ORDER CONFIRMATION</p>
+              <h2>Your receipt is ready.</h2>
               <p>
-                These sample references are stored in this browser only. No order was sent to a
-                seller and no parcel is being shipped.
+                These references are stored in this browser only. No order was sent to a seller and
+                no parcel is being shipped.
               </p>
               <div className="reference-card">
                 <span>
@@ -605,16 +603,16 @@ function Checkout() {
                 <span>Selected payment option</span>
                 <strong>
                   {order.paymentMethod === "paystack"
-                    ? "Paystack (preview)"
+                    ? "Paystack"
                     : order.paymentMethod === "bank-transfer"
-                      ? "Bank transfer (preview)"
-                      : "Pay on delivery / collection (preview)"}
+                      ? "Bank transfer"
+                      : "Pay on delivery / collection"}
                 </strong>
               </div>
               <p className="order-created-at">
-                Preview created {new Date(order.createdAt).toLocaleString("en-NG")}
+                Created {new Date(order.createdAt).toLocaleString("en-NG")}
               </p>
-              <h3>Preview tracking references</h3>
+              <h3>Tracking references</h3>
               {order.shipments.map((shipment) => (
                 <div className="reference-card" key={shipment.trackingNumber}>
                   <span>
@@ -645,7 +643,7 @@ function Checkout() {
               <h2>{step === "complete" ? "Receipt summary" : "Your basket"}</h2>
               <p>
                 {step === "complete"
-                  ? "Saved as a local preview only"
+                  ? "Saved on this device"
                   : `${cart.reduce((sum, item) => sum + item.quantity, 0)} items from independent sellers`}
               </p>
             </div>
@@ -688,9 +686,9 @@ function Checkout() {
               step === "complete" && order ? order.deliveryState : details ? "Kwara" : undefined
             }
           />
-          <p className="demo-disclaimer">
-            <ShieldCheck size={15} /> Preview estimate only: tax and delivery rates must be
-            confirmed before live checkout.
+          <p className="local-data-note">
+            <ShieldCheck size={15} /> Estimate only: tax and delivery rates must be confirmed before
+            live checkout.
           </p>
         </aside>
       </div>

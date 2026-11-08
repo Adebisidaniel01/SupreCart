@@ -2,7 +2,8 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState, type FormEvent } from "react";
 import { ArrowLeft, ArrowRight, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { resetLocalAccountPassword } from "@/lib/demo-accounts";
+import { resetLocalAccountPassword } from "@/lib/accounts";
+import { cleanEmail, cleanSecret } from "@/lib/input";
 
 export const Route = createFileRoute("/forgot-password")({
   head: () => ({
@@ -25,9 +26,9 @@ function ForgotPassword() {
   async function resetPassword(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
-    const email = String(formData.get("email")).trim().toLowerCase();
-    const password = String(formData.get("password"));
-    const confirmPassword = String(formData.get("confirmPassword"));
+    const email = cleanEmail(formData.get("email"));
+    const password = cleanSecret(formData.get("password"));
+    const confirmPassword = cleanSecret(formData.get("confirmPassword"));
 
     if (password.length < 8) {
       setError("Choose a password with at least 8 characters.");
@@ -75,7 +76,7 @@ function ForgotPassword() {
                 Go to sign in <ArrowRight size={16} />
               </Link>
             </Button>
-            <p className="demo-disclaimer">
+            <p className="local-data-note">
               <ShieldCheck size={15} /> This reset only changes an account stored in this browser.
             </p>
           </>
@@ -124,9 +125,9 @@ function ForgotPassword() {
             <p className="account-switch">
               Remembered it? <Link to="/login">Back to sign in</Link>
             </p>
-            <p className="demo-disclaimer">
-              <ShieldCheck size={15} /> No email is sent in this preview. Preview accounts listed on
-              the sign-in page do not use a password.
+            <p className="local-data-note">
+              <ShieldCheck size={15} /> No email is sent. Accounts listed on the sign-in page do not
+              use a password.
             </p>
           </>
         )}

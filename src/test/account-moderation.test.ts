@@ -2,12 +2,12 @@ import { beforeEach, describe, expect, it } from "vitest";
 
 import {
   createLocalAccount,
-  getAllDemoAccounts,
+  getAllAccounts,
   getAccountModeration,
   readActiveAccount,
-  saveDemoAccount,
+  saveAccount,
   setAccountModeration,
-} from "@/lib/demo-accounts";
+} from "@/lib/accounts";
 
 beforeEach(() => {
   window.localStorage.clear();
@@ -27,16 +27,16 @@ describe("account moderation", () => {
       email: "new@example.com",
       name: "New Buyer",
       role: "buyer",
-      password: "demo-password",
+      password: "test-password",
     });
 
-    const accounts = getAllDemoAccounts();
+    const accounts = getAllAccounts();
     expect(accounts.map((account) => account.email)).toContain("blackrose@gmail.com");
     expect(accounts.filter((account) => account.email === "new@example.com")).toHaveLength(1);
   });
 
   it("signs out a banned account and keeps the note", () => {
-    saveDemoAccount({ email: "blackrose@gmail.com", name: "Daniel Adebisi", role: "buyer" });
+    saveAccount({ email: "blackrose@gmail.com", name: "Daniel Adebisi", role: "buyer" });
     expect(readActiveAccount()).not.toBeNull();
 
     setAccountModeration("BLACKROSE@gmail.com", "banned", "Repeated spam");

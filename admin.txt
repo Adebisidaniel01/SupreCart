@@ -6,9 +6,9 @@ not commit that file or copy its values into source.
 
 For deployment, configure ADMIN_USERNAME and either ADMIN_PASSWORD or
 ADMIN_PASSWORD_HASH in your hosting provider's server-side secret manager.
-Never use client-side VITE_ variables for admin secrets. If no admin secrets
-are configured, the server falls back to the built-in demo login
-timie_daniel / BlackRose so preview deployments can still open /admin.
+Never use client-side VITE_ variables for admin secrets. No admin username or
+password is bundled with the source code, so /admin stays locked until those
+server-side secrets are set.
 
 ADMIN_SESSION_SECRET is optional. When it is omitted, the admin session key is
 derived from ADMIN_USERNAME and the configured password material. If you do set

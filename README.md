@@ -1,15 +1,15 @@
 # SupreCart
 
-SupreCart is a browser-local marketplace preview with a **buyer storefront** and a **seller studio**. Buyers can browse a demo catalog, manage a cart, preview checkout, chat with sellers, and edit account preferences. Sellers can submit an application, manage local listings, review sample orders, and preview payouts.
+SupreCart is a browser-local marketplace with a **buyer storefront** and a **seller studio**. Buyers can browse a seeded catalog, manage a cart, use checkout, chat with sellers, and edit account preferences. Sellers can submit an application, manage local listings, review seeded orders, and view payouts.
 
 The app is built with **TanStack Start (React)**, **TanStack Router**, and **Tailwind CSS v4**. All marketplace state is stored in this browser. There is no production database, authentication service, file storage, payment processor, or order backend connected yet.
 
 ## Key areas
 
-- **Storefront** (`/`, `/shop`) — browse the demo catalog, product pages, cart, and checkout preview.
+- **Storefront** (`/`, `/shop`) — browse the seeded catalog, product pages, cart, and checkout.
 - **Buyer account** (`/account`) — profile, addresses, orders, messages, and preferences.
 - **Messages** (`/messages`) — local buyer/seller conversations with read receipts.
-- **Seller studio** (`/sellers`) — applications, products, sample orders, payouts, and store settings.
+- **Seller studio** (`/sellers`) — applications, products, seeded orders, payouts, and store settings.
 - **Sign in / sign up** (`/login`, `/signup`) — local buyer and seller accounts.
 - **Admin** (`/admin`) — marketplace overview, seller application review, and account moderation.
 
@@ -41,40 +41,40 @@ npm run build:sellers # standalone seller build
 - Do not force `minimatch@11` through `overrides`; that can break ESLint.
 - Recheck after ESLint/minimatch publish a patched dependency chain.
 
-## Demo accounts
+## Built-in accounts
 
-Local credentials live in `src/lib/demo-accounts.ts`:
+Local credentials live in `src/lib/accounts.ts`:
 
 - `blackrose@gmail.com` — buyer, `Daniel Adebisi`.
 - `shewa@gmail.com` — buyer with a seeded approved seller application, `Bello-lawal Dorcas`.
 
-Preset demo accounts can sign in with any password. New accounts are saved in this browser only. Approved buyers get a local seller session when they sign in; new seller applications remain pending until reviewed locally.
+Preset accounts can sign in with any password. New accounts are saved in this browser only. Approved buyers get a local seller session when they sign in; new seller applications remain pending until reviewed locally.
 
 ## Admin access
 
-Set `ADMIN_USERNAME` and either `ADMIN_PASSWORD` or `ADMIN_PASSWORD_HASH` in the server environment (`.env` locally), then sign in at `/admin` with the admin username and password. When those secrets are not configured, the app falls back to the built-in demo login `timie_daniel` / `BlackRose` so `/admin` still works on preview deployments. `ADMIN_SESSION_SECRET` is optional: when it is omitted, the admin session key is derived from the configured credentials. Warnings, bans, and account deletions are applied to local browser accounts only.
+Set `ADMIN_USERNAME` and either `ADMIN_PASSWORD` or `ADMIN_PASSWORD_HASH` in the server environment (`.env` locally), then sign in at `/admin` with the admin username and password. No admin credentials are committed to the repository, so `/admin` stays locked until those server-side secrets are configured. `ADMIN_SESSION_SECRET` is optional: when it is omitted, the admin session key is derived from the configured credentials. Warnings, bans, and account deletions are applied to local browser accounts only.
 
 ## Local data and safety
 
-- Accounts, profiles, applications, addresses, preferences, products, messages, and demo orders are stored in browser storage.
-- Product images and avatars are stored as browser data URLs.
-- Checkout is a preview: it does not create an order, collect payment, dispatch delivery, or settle a payout.
+- Accounts, profiles, applications, addresses, preferences, products, messages, and orders are stored in browser storage.
+- Form input is normalized and control characters are stripped before it is stored. No SQL database is connected, so there is no SQL query surface; when one is added, use parameterized queries only.
+- Uploaded product images and avatars are stored as browser data URLs; seeded catalog images use remote URLs.
+- Checkout saves a local reference only: it does not collect payment, dispatch delivery, or settle a payout.
 - Seller withdrawals are requests only. No money moves.
-- Clearing browser storage resets the local demo.
+- Clearing browser storage resets the local marketplace data.
 
 ## Seller commission
 
 Commission is calculated in the browser for guidance and is not enforced by a backend:
 
-- **Below ₦1,500** — 7.5% of the selling price.
-- **₦1,500 – ₦5,000** — ₦150 + 7.5% of the selling price.
+- **₦5,000 and below** — ₦150 + 7.5% of the selling price.
 - **Above ₦5,000** — 11% of the selling price.
 
 The seller receives the selling price minus commission. There is no listing or subscription fee. See `src/lib/commission.ts`.
 
 ## Checkout and delivery
 
-Checkout supports a doorstep preview fee of ₦2,500 and fictional pickup stations. Addresses are saved in this browser. No delivery booking or payment is made. Copy and controls are intentionally presented as preview-only.
+Checkout supports a doorstep fee estimate of ₦2,500 and illustrative pickup stations. Addresses are saved in this browser. No delivery booking or payment is made.
 
 ## Cookies and analytics
 

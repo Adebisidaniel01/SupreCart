@@ -1,22 +1,22 @@
-export type DemoAccount = {
+export type Account = {
   email: string;
   name: string;
   role: "buyer" | "seller";
 };
 
 /**
- * The two preview identities that ship with SupreCart. Both are buyers first;
+ * The two built-in identities that ship with SupreCart. Both are buyers first;
  * the Shewa account also has a pre-approved seller application seeded locally.
  * They need no password, so sign-in is just the listed email address.
  */
-const presetAccounts: DemoAccount[] = [
+const presetAccounts: Account[] = [
   { email: "blackrose@gmail.com", name: "Daniel Adebisi", role: "buyer" },
   { email: "shewa@gmail.com", name: "Bello-lawal Dorcas", role: "buyer" },
 ];
 
-const demoSessionKey = "suprecart-demo-account";
+const sessionKey = "suprecart-account-session";
 const localAccountsKey = "suprecart-local-accounts";
-const deletedAccountsKey = "suprecart-deleted-demo-accounts";
+const deletedAccountsKey = "suprecart-deleted-accounts";
 const moderationKey = "suprecart-account-moderation";
 const sessionChangeEvent = "suprecart-session-change";
 const moderationChangeEvent = "suprecart-account-moderation-change";
@@ -37,7 +37,7 @@ const defaultModeration: AccountModeration = {
   updatedAt: "",
 };
 
-type StoredAccount = DemoAccount & {
+type StoredAccount = Account & {
   salt: string;
   passwordHash: string;
   createdAt: string;
@@ -61,12 +61,12 @@ function readDeletedAccounts(): string[] {
       ? parsed.filter((email): email is string => typeof email === "string")
       : [];
   } catch (cause) {
-    console.error("Could not read the list of deleted SupreCart demo accounts.", cause);
+    console.error("Could not read the list of deleted SupreCart accounts.", cause);
     return [];
   }
 }
 
-export function isDemoAccountDeleted(email: string) {
+export function isAccountDeleted(email: string) {
   return readDeletedAccounts().includes(normalizeEmail(email));
 }
 
@@ -145,7 +145,7 @@ export function subscribeAccountModeration(listener: () => void) {
   };
 }
 
-function markDemoAccountDeleted(email: string) {
+function markAccountDeleted(email: string) {
   if (!canUseStorage()) return;
   const normalized = normalizeEmail(email);
   const deleted = readDeletedAccounts();
@@ -165,8 +165,8 @@ function readStoredAccounts(): StoredAccount[] {
       (entry): entry is StoredAccount =>
         typeof entry === "object" &&
         entry !== null &&
-        typeof (entry as DemoAccount).email === "string" &&
-        typeof (entry as DemoAccount).name === "string" &&
+        typeof (entry as Account).email === "string" &&
+        typeof (entry as Account).name === "string" &&
         typeof (entry as StoredAccount).passwordHash === "string",
     );
   } catch (cause) {
@@ -180,7 +180,7 @@ function writeStoredAccounts(accounts: StoredAccount[]) {
   window.localStorage.setItem(localAccountsKey, JSON.stringify(accounts));
 }
 
-function toDemoAccount(account: StoredAccount): DemoAccount {
+function toAccount(account: StoredAccount): Account {
   return { email: account.email, name: account.name, role: account.role };
 }
 
@@ -195,7 +195,7 @@ function randomSalt(): string {
 async function hashPassword(password: string, salt: string): Promise<string> {
   if (!globalThis.crypto?.subtle) {
     throw new Error(
-      "This browser cannot store a password safely. Use the listed preview account instead.",
+      "This browser cannot store a password safely. Use one of the listed accounts instead.",
     );
   }
   const digest = await crypto.subtle.digest(
@@ -207,40 +207,40 @@ async function hashPassword(password: string, salt: string): Promise<string> {
     .join("");
 }
 
-export function findDemoAccount(email: string, role: DemoAccount["role"]) {
+export function findAccount(email: string, role: Account["role"]) {
   const normalized = normalizeEmail(email);
   const local = readStoredAccounts().find(
     (account) => account.email === normalized && account.role === role,
   );
-  if (local) return toDemoAccount(local);
-  if (isDemoAccountDeleted(normalized)) return undefined;
+  if (local) return toAccount(local);
+  if (isAccountDeleted(normalized)) return undefined;
   return presetAccounts.find((account) => account.email === normalized && account.role === role);
 }
 
-export function isPresetAccount(email: string, role: DemoAccount["role"]) {
+export function isPresetAccount(email: string, role: Account["role"]) {
   const normalized = normalizeEmail(email);
-  if (isDemoAccountDeleted(normalized)) return false;
+  if (isAccountDeleted(normalized)) return false;
   return presetAccounts.some((account) => account.email === normalized && account.role === role);
 }
 
-export function getDemoAccounts(role: DemoAccount["role"]) {
+export function getAccounts(role: Account["role"]) {
   const local = readStoredAccounts()
     .filter((account) => account.role === role)
-    .map(toDemoAccount);
+    .map(toAccount);
   return [
     ...presetAccounts.filter(
-      (account) => account.role === role && !isDemoAccountDeleted(account.email),
+      (account) => account.role === role && !isAccountDeleted(account.email),
     ),
     ...local,
   ];
 }
 
 /** Every buyer and seller account known to this browser, without duplicates. */
-export function getAllDemoAccounts(): DemoAccount[] {
+export function getAllAccounts(): Account[] {
   const seen = new Set<string>();
   return [
-    ...presetAccounts.filter((account) => !isDemoAccountDeleted(account.email)),
-    ...readStoredAccounts().map(toDemoAccount),
+    ...presetAccounts.filter((account) => !isAccountDeleted(account.email)),
+    ...readStoredAccounts().map(toAccount),
   ].filter((account) => {
     const key = `${account.role}:${normalizeEmail(account.email)}`;
     if (seen.has(key)) return false;
@@ -249,9 +249,9 @@ export function getAllDemoAccounts(): DemoAccount[] {
   });
 }
 
-export function saveDemoAccount(account: DemoAccount) {
+export function saveAccount(account: Account) {
   if (!canUseStorage()) return;
-  window.localStorage.setItem(demoSessionKey, JSON.stringify(account));
+  window.localStorage.setItem(sessionKey, JSON.stringify(account));
   window.dispatchEvent(new Event(sessionChangeEvent));
 }
 
@@ -261,36 +261,36 @@ function notifySessionChange() {
 }
 
 /** Returns the signed-in buyer or seller without assuming a role. */
-export function readActiveAccount(): DemoAccount | null {
+export function readActiveAccount(): Account | null {
   if (!canUseStorage()) return null;
-  const savedAccount = window.localStorage.getItem(demoSessionKey);
+  const savedAccount = window.localStorage.getItem(sessionKey);
   if (!savedAccount) return null;
   try {
-    const account = JSON.parse(savedAccount) as Partial<DemoAccount>;
+    const account = JSON.parse(savedAccount) as Partial<Account>;
     if (typeof account.email !== "string") {
-      window.localStorage.removeItem(demoSessionKey);
+      window.localStorage.removeItem(sessionKey);
       return null;
     }
     const role = account.role === "seller" ? "seller" : "buyer";
-    const match = findDemoAccount(account.email, role) ?? null;
+    const match = findAccount(account.email, role) ?? null;
     if (!match || getAccountModeration(match.email).status === "banned") {
-      window.localStorage.removeItem(demoSessionKey);
+      window.localStorage.removeItem(sessionKey);
       return null;
     }
     const sessionName =
       typeof account.name === "string" && account.name.trim() ? account.name.trim() : match.name;
     return { email: match.email, name: sessionName, role: match.role };
   } catch (cause) {
-    console.error("Could not read the local SupreCart preview account.", cause);
-    window.localStorage.removeItem(demoSessionKey);
+    console.error("Could not read the local SupreCart account.", cause);
+    window.localStorage.removeItem(sessionKey);
     return null;
   }
 }
 
-export function subscribeDemoAccount(listener: () => void) {
+export function subscribeAccount(listener: () => void) {
   if (!canUseStorage()) return () => undefined;
   const handleStorage = (event: StorageEvent) => {
-    if (event.key === demoSessionKey) listener();
+    if (event.key === sessionKey) listener();
   };
   window.addEventListener(sessionChangeEvent, listener);
   window.addEventListener("storage", handleStorage);
@@ -300,42 +300,42 @@ export function subscribeDemoAccount(listener: () => void) {
   };
 }
 
-export function readDemoAccount(role: DemoAccount["role"]) {
+export function readAccount(role: Account["role"]) {
   const account = readActiveAccount();
   return account?.role === role ? account : null;
 }
 
-export function clearDemoAccount() {
+export function clearAccount() {
   if (!canUseStorage()) return;
-  window.localStorage.removeItem(demoSessionKey);
+  window.localStorage.removeItem(sessionKey);
   notifySessionChange();
 }
 
-export function deleteDemoAccount(email: string) {
+export function deleteAccount(email: string) {
   if (!canUseStorage()) return;
   const normalized = normalizeEmail(email);
   writeStoredAccounts(readStoredAccounts().filter((account) => account.email !== normalized));
-  markDemoAccountDeleted(normalized);
+  markAccountDeleted(normalized);
   const moderation = readModerationMap();
   if (moderation[normalized]) {
     delete moderation[normalized];
     writeModerationMap(moderation);
   }
   try {
-    const saved = window.localStorage.getItem(demoSessionKey);
-    if (saved && normalizeEmail((JSON.parse(saved) as DemoAccount).email) === normalized) {
-      window.localStorage.removeItem(demoSessionKey);
+    const saved = window.localStorage.getItem(sessionKey);
+    if (saved && normalizeEmail((JSON.parse(saved) as Account).email) === normalized) {
+      window.localStorage.removeItem(sessionKey);
       notifySessionChange();
     }
   } catch {
-    window.localStorage.removeItem(demoSessionKey);
+    window.localStorage.removeItem(sessionKey);
     notifySessionChange();
   }
 }
 
-/** Gives an approved buyer a seller-side preview identity in this browser. */
-export function ensureSellerAccount(buyer: DemoAccount): DemoAccount {
-  const existing = findDemoAccount(buyer.email, "seller");
+/** Gives an approved buyer a seller-side identity in this browser. */
+export function ensureSellerAccount(buyer: Account): Account {
+  const existing = findAccount(buyer.email, "seller");
   if (existing) return existing;
   const accounts = readStoredAccounts();
   const account: StoredAccount = {
@@ -350,11 +350,11 @@ export function ensureSellerAccount(buyer: DemoAccount): DemoAccount {
     ...accounts.filter((entry) => !(entry.email === account.email && entry.role === account.role)),
     account,
   ]);
-  return toDemoAccount(account);
+  return toAccount(account);
 }
 
 /** Keeps the active session, navbar and stored account in sync after a profile edit. */
-export function updateDemoAccountName(email: string, name: string) {
+export function updateAccountName(email: string, name: string) {
   if (!canUseStorage()) return;
   const normalized = normalizeEmail(email);
   const trimmed = name.trim();
@@ -366,7 +366,7 @@ export function updateDemoAccountName(email: string, name: string) {
   );
   const active = readActiveAccount();
   if (active && active.email === normalized) {
-    window.localStorage.setItem(demoSessionKey, JSON.stringify({ ...active, name: trimmed }));
+    window.localStorage.setItem(sessionKey, JSON.stringify({ ...active, name: trimmed }));
     notifySessionChange();
   }
 }
@@ -378,11 +378,11 @@ export function updateDemoAccountName(email: string, name: string) {
 export async function createLocalAccount(details: {
   email: string;
   name: string;
-  role: DemoAccount["role"];
+  role: Account["role"];
   password: string;
-}): Promise<DemoAccount> {
+}): Promise<Account> {
   const email = details.email.trim().toLowerCase();
-  if (findDemoAccount(email, details.role)) {
+  if (findAccount(email, details.role)) {
     throw new Error("An account with that email already exists. Try signing in instead.");
   }
   const salt = randomSalt();
@@ -401,7 +401,7 @@ export async function createLocalAccount(details: {
 
 export async function verifyAccountPassword(
   email: string,
-  role: DemoAccount["role"],
+  role: Account["role"],
   password: string,
 ): Promise<boolean> {
   const normalized = email.trim().toLowerCase();
@@ -413,7 +413,7 @@ export async function verifyAccountPassword(
 }
 
 /**
- * Resets the password for any locally saved account using the email. Preview
+ * Resets the password for any locally saved account using the email. The
  * accounts ship without passwords, so this only works for accounts created in
  * this browser.
  */
@@ -423,7 +423,7 @@ export async function resetLocalAccountPassword(email: string, password: string)
   const matching = accounts.filter((account) => account.email === normalized);
   if (matching.length === 0) {
     throw new Error(
-      "No account saved in this browser uses that email. Preview accounts listed on the sign-in page do not need a password.",
+      "No account saved in this browser uses that email. The accounts listed on the sign-in page do not need a password.",
     );
   }
   const salt = randomSalt();

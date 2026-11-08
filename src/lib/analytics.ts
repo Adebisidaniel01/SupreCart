@@ -235,7 +235,7 @@ export function trackAddShippingInfo(
   });
 }
 
-export function trackPreviewOrder({
+export function trackCheckoutOrder({
   transactionId,
   cart,
   value,
@@ -252,7 +252,7 @@ export function trackPreviewOrder({
   paymentType: string;
   deliveryMethod: string;
 }) {
-  trackEvent("preview_order_created", {
+  trackEvent("checkout_order_created", {
     transaction_id: transactionId,
     currency: CURRENCY,
     value,

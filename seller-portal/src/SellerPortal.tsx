@@ -31,21 +31,21 @@ import {
   UserRound,
   X,
 } from "lucide-react";
-import { categories as catalogCategories, products as demoCatalog } from "../../src/lib/catalog";
+import { categories as catalogCategories, products as seededCatalog } from "../../src/lib/catalog";
 import {
-  clearDemoAccount,
+  clearAccount,
   createLocalAccount,
-  findDemoAccount,
+  findAccount,
   getAccountModeration,
-  getDemoAccounts,
+  getAccounts,
   isPresetAccount,
   readActiveAccount,
-  saveDemoAccount,
+  saveAccount,
   verifyAccountPassword,
-  type DemoAccount,
-} from "../../src/lib/demo-accounts";
-import { getDemoProfile, saveDemoProfile } from "../../src/lib/demo-orders";
-import { deleteDemoAccountData } from "../../src/lib/demo-account-cleanup";
+  type Account,
+} from "../../src/lib/accounts";
+import { getProfile, saveProfile } from "../../src/lib/orders";
+import { deleteAccountData } from "../../src/lib/account-cleanup";
 import {
   getSellerApplication,
   submitSellerApplication as saveSellerApplication,
@@ -56,6 +56,13 @@ import { Analytics } from "../../src/components/Analytics";
 import { CookieConsent } from "../../src/components/CookieConsent";
 import { trackEvent, trackLogin, trackSignUp } from "../../src/lib/analytics";
 import { calculateCommission, commissionTiers } from "../../src/lib/commission";
+import {
+  cleanEmail,
+  cleanMultiline,
+  cleanPhone,
+  cleanSecret,
+  cleanText,
+} from "../../src/lib/input";
 import {
   accountAvatar,
   accountPreferenceScope,
@@ -103,6 +110,7 @@ type SellerProduct = {
   price: number;
   inventory: number;
   published: boolean;
+  in_stock?: boolean;
   image_path: string;
   image_url?: string;
   created_at: string;
@@ -118,7 +126,7 @@ type SellerStats = {
   committedPayouts: number;
 };
 
-type DemoFundEntry = { id: string; description: string; amount: number; date: string };
+type FundEntry = { id: string; description: string; amount: number; date: string };
 
 type SellerSettingsTab =
   | "account"
@@ -171,15 +179,15 @@ const formatMoney = (amount: number) =>
     maximumFractionDigits: 0,
   }).format(amount);
 
-function demoSellerStats(email: string): SellerStats {
+function buildSeededSellerStats(email: string): SellerStats {
   const sellerProducts =
     email === "shewa@gmail.com"
-      ? demoCatalog.filter((product) => product.category === "Footwear").slice(0, 3)
+      ? seededCatalog.filter((product) => product.category === "Footwear").slice(0, 3)
       : email === "daniella@gmail.com"
-        ? demoCatalog.filter((product) => product.category === "Beauty").slice(0, 3)
+        ? seededCatalog.filter((product) => product.category === "Beauty").slice(0, 3)
         : email === "adeniji@gmail.com"
-          ? demoCatalog.filter((product) => product.category === "Clothing").slice(0, 3)
-          : demoCatalog.filter((product) => product.category === "Home").slice(0, 3);
+          ? seededCatalog.filter((product) => product.category === "Clothing").slice(0, 3)
+          : seededCatalog.filter((product) => product.category === "Home").slice(0, 3);
   const createdAt = (daysAgo: number) => {
     const date = new Date();
     date.setDate(date.getDate() - daysAgo);
@@ -188,12 +196,13 @@ function demoSellerStats(email: string): SellerStats {
   const products: SellerProduct[] = sellerProducts
     .filter((product) => product !== undefined)
     .map((product, index) => ({
-      id: `sample-product-${index + 1}`,
+      id: `seeded-product-${index + 1}`,
       name: product.name,
       category: product.category,
       price: product.price,
       inventory: [8, 14, 5][index] ?? 4,
       published: true,
+      in_stock: true,
       image_path: "",
       image_url: product.image,
       created_at: createdAt(45 - index * 9),
@@ -248,21 +257,21 @@ function demoSellerStats(email: string): SellerStats {
   };
 }
 
-function demoFundEntries(email: string): DemoFundEntry[] {
-  const entries: Record<string, DemoFundEntry[]> = {
+function fundEntries(email: string): FundEntry[] {
+  const entries: Record<string, FundEntry[]> = {
     "shewa@gmail.com": [
       { id: "fund-s-1", description: "Refund adjustment", amount: 12500, date: "18 Sep 2026" },
-      { id: "fund-s-2", description: "Sample wallet top-up", amount: 20000, date: "12 Sep 2026" },
+      { id: "fund-s-2", description: "Wallet top-up", amount: 20000, date: "12 Sep 2026" },
     ],
     "daniella@gmail.com": [
-      { id: "fund-d-1", description: "Sample wallet top-up", amount: 25000, date: "16 Sep 2026" },
+      { id: "fund-d-1", description: "Wallet top-up", amount: 25000, date: "16 Sep 2026" },
     ],
     "adeniji@gmail.com": [
       { id: "fund-a-1", description: "Refund adjustment", amount: 8400, date: "14 Sep 2026" },
     ],
     "bukunmi@gmail.com": [
       { id: "fund-b-1", description: "Refund adjustment", amount: 6500, date: "13 Sep 2026" },
-      { id: "fund-b-2", description: "Sample wallet top-up", amount: 10000, date: "10 Sep 2026" },
+      { id: "fund-b-2", description: "Wallet top-up", amount: 10000, date: "10 Sep 2026" },
     ],
   };
   return entries[email] ?? [];
@@ -297,11 +306,15 @@ function writeLocalSellerProducts(email: string, products: SellerProduct[]) {
   }
 }
 
+function isProductInStock(product: SellerProduct) {
+  return product.in_stock !== false && product.inventory > 0;
+}
+
 export default function SellerPortal({ standalone = false }: { standalone?: boolean } = {}) {
   const [sellerApplication, setSellerApplication] = useState<LocalSellerApplication | null>(null);
   const [screen, setScreen] = useState<"login" | "apply">("apply");
-  const [demoAccount, setDemoAccount] = useState<DemoAccount | null>(null);
-  const [demoProfile, setDemoProfile] = useState({ name: "", phone: "" });
+  const [sessionAccount, setSessionAccount] = useState<Account | null>(null);
+  const [sessionProfile, setSessionProfile] = useState({ name: "", phone: "" });
   const [localProducts, setLocalProducts] = useState<SellerProduct[]>([]);
   const [sellerAvatar, setSellerAvatar] = useState("");
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
@@ -356,9 +369,9 @@ export default function SellerPortal({ standalone = false }: { standalone?: bool
     const timer = window.setTimeout(() => setLoadingScreen(false), 1050);
     const activeAccount = readActiveAccount();
     if (activeAccount?.role === "seller") {
-      setDemoAccount(activeAccount);
+      setSessionAccount(activeAccount);
       setSellerApplication(getSellerApplication(activeAccount.email));
-      setDemoProfile(getDemoProfile(activeAccount.email, activeAccount.name));
+      setSessionProfile(getProfile(activeAccount.email, activeAccount.name));
       setLocalProducts(readLocalSellerProducts(activeAccount.email));
     }
     setBusy(false);
@@ -366,29 +379,29 @@ export default function SellerPortal({ standalone = false }: { standalone?: bool
   }, []);
 
   useEffect(() => {
-    if (!demoAccount) {
+    if (!sessionAccount) {
       setSellerApplication(null);
       return;
     }
-    const syncApplication = () => setSellerApplication(getSellerApplication(demoAccount.email));
+    const syncApplication = () => setSellerApplication(getSellerApplication(sessionAccount.email));
     syncApplication();
     return subscribeSellerApplications(syncApplication);
-  }, [demoAccount]);
+  }, [sessionAccount]);
 
   useEffect(() => {
-    if (!demoAccount) {
+    if (!sessionAccount) {
       setSellerAvatar("");
       return;
     }
-    const syncAvatar = () => setSellerAvatar(accountAvatar(demoAccount));
+    const syncAvatar = () => setSellerAvatar(accountAvatar(sessionAccount));
     syncAvatar();
     return subscribeAccountPreferences(syncAvatar);
-  }, [demoAccount]);
+  }, [sessionAccount]);
 
   useEffect(() => {
-    if (loadingScreen || busy || demoAccount) return;
+    if (loadingScreen || busy || sessionAccount) return;
     window.location.replace(loginHref);
-  }, [busy, demoAccount, loadingScreen]);
+  }, [busy, sessionAccount, loadingScreen]);
 
   async function register(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -397,7 +410,7 @@ export default function SellerPortal({ standalone = false }: { standalone?: bool
     setNotice("");
     try {
       const form = new FormData(event.currentTarget);
-      const email = String(form.get("email")).trim().toLowerCase();
+      const email = cleanEmail(form.get("email"));
       const files = form
         .getAll("documents")
         .filter((entry): entry is File => entry instanceof File && entry.size > 0);
@@ -405,21 +418,21 @@ export default function SellerPortal({ standalone = false }: { standalone?: bool
         throw new Error("Attachments must be JPG, PNG, or PDF files under 10 MB each.");
       }
       const draft = {
-        firstName: String(form.get("firstName")).trim(),
-        middleName: String(form.get("middleName")).trim(),
-        lastName: String(form.get("lastName")).trim(),
+        firstName: cleanText(form.get("firstName"), 80),
+        middleName: cleanText(form.get("middleName"), 80),
+        lastName: cleanText(form.get("lastName"), 80),
         email,
-        description: String(form.get("description")).trim(),
-        bankName: String(form.get("bankName")).trim(),
-        accountNumber: String(form.get("accountNumber")).trim(),
+        description: cleanMultiline(form.get("description"), 1000),
+        bankName: cleanText(form.get("bankName"), 120),
+        accountNumber: cleanText(form.get("accountNumber"), 20).replace(/\D/g, ""),
       };
       const account = await createLocalAccount({
         email,
         name: `${draft.firstName} ${draft.lastName}`.trim(),
         role: "seller",
-        password: String(form.get("password")),
+        password: cleanSecret(form.get("password")),
       });
-      saveDemoAccount(account);
+      saveAccount(account);
       const application = saveSellerApplication({
         email,
         name: `${draft.firstName} ${draft.lastName}`.trim(),
@@ -429,11 +442,11 @@ export default function SellerPortal({ standalone = false }: { standalone?: bool
         bankName: draft.bankName,
         bankAccountNumber: draft.accountNumber,
       });
-      trackSignUp("seller_preview");
-      setDemoAccount(account);
+      trackSignUp("seller");
+      setSessionAccount(account);
       setSellerApplication(application);
       setSubmitted(true);
-      setDemoProfile(getDemoProfile(account.email, account.name));
+      setSessionProfile(getProfile(account.email, account.name));
       setLocalProducts(readLocalSellerProducts(account.email));
       setNotice("Your seller application is saved in this browser and pending review.");
     } catch (cause) {
@@ -450,12 +463,12 @@ export default function SellerPortal({ standalone = false }: { standalone?: bool
     setError("");
     try {
       const form = new FormData(event.currentTarget);
-      const email = String(form.get("email")).trim().toLowerCase();
-      const localDemoAccount = findDemoAccount(email, "seller");
-      if (!localDemoAccount) {
+      const email = cleanEmail(form.get("email"));
+      const localAccount = findAccount(email, "seller");
+      if (!localAccount) {
         throw new Error("No seller account matches that email yet. Submit an application first.");
       }
-      const moderation = getAccountModeration(localDemoAccount.email);
+      const moderation = getAccountModeration(localAccount.email);
       if (moderation.status === "banned") {
         throw new Error(
           moderation.reason
@@ -467,18 +480,18 @@ export default function SellerPortal({ standalone = false }: { standalone?: bool
         const passwordMatches = await verifyAccountPassword(
           email,
           "seller",
-          String(form.get("password")),
+          cleanSecret(form.get("password")),
         );
         if (!passwordMatches) {
           throw new Error("That password does not match this account. Please try again.");
         }
       }
-      saveDemoAccount(localDemoAccount);
-      trackLogin("seller_preview");
-      setDemoAccount(localDemoAccount);
-      setSellerApplication(getSellerApplication(localDemoAccount.email));
-      setDemoProfile(getDemoProfile(localDemoAccount.email, localDemoAccount.name));
-      setLocalProducts(readLocalSellerProducts(localDemoAccount.email));
+      saveAccount(localAccount);
+      trackLogin("seller");
+      setSessionAccount(localAccount);
+      setSellerApplication(getSellerApplication(localAccount.email));
+      setSessionProfile(getProfile(localAccount.email, localAccount.name));
+      setLocalProducts(readLocalSellerProducts(localAccount.email));
       setNotice("");
       setBusy(false);
     } catch (cause) {
@@ -491,7 +504,7 @@ export default function SellerPortal({ standalone = false }: { standalone?: bool
 
   async function requestPasswordReset(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const email = String(new FormData(event.currentTarget).get("email")).trim().toLowerCase();
+    const email = cleanEmail(new FormData(event.currentTarget).get("email"));
     setError("");
     setNotice(
       `Seller accounts live in this browser, so there is no password reset email for ${email}.`,
@@ -499,8 +512,8 @@ export default function SellerPortal({ standalone = false }: { standalone?: bool
   }
 
   async function signOut() {
-    clearDemoAccount();
-    setDemoAccount(null);
+    clearAccount();
+    setSessionAccount(null);
     setSubmitted(false);
     setSellerApplication(null);
     setLocalProducts([]);
@@ -509,10 +522,10 @@ export default function SellerPortal({ standalone = false }: { standalone?: bool
   }
 
   function switchToBuyerAccount() {
-    if (!demoAccount) return;
-    const buyerAccount = findDemoAccount(demoAccount.email, "buyer");
+    if (!sessionAccount) return;
+    const buyerAccount = findAccount(sessionAccount.email, "buyer");
     if (!buyerAccount) return;
-    saveDemoAccount(buyerAccount);
+    saveAccount(buyerAccount);
     setAccountMenuOpen(false);
     setMobileNavOpen(false);
     window.location.assign(`${marketplaceBase}/account`);
@@ -520,7 +533,7 @@ export default function SellerPortal({ standalone = false }: { standalone?: bool
 
   async function addProduct(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!demoAccount) return;
+    if (!sessionAccount) return;
     if (sellerApplication?.status !== "approved") {
       setError("Only approved SupreCart sellers can list products.");
       return;
@@ -541,9 +554,9 @@ export default function SellerPortal({ standalone = false }: { standalone?: bool
         reader.onerror = () => reject(new Error("Could not read that product image."));
         reader.readAsDataURL(image);
       });
-      const name = String(form.get("name")).trim();
-      const category = String(form.get("category")).trim();
-      const description = String(form.get("description")).trim();
+      const name = cleanText(form.get("name"), 120);
+      const category = cleanText(form.get("category"), 60);
+      const description = cleanMultiline(form.get("description"), 2000);
       const price = Number(form.get("price"));
       const inventory = Number(form.get("inventory"));
       if (!name) throw new Error("Enter a product name.");
@@ -562,20 +575,21 @@ export default function SellerPortal({ standalone = false }: { standalone?: bool
         name,
         category,
         description,
-        brand: String(form.get("brand")).trim() || "Independent",
-        condition: String(form.get("condition")).trim() || "New",
+        brand: cleanText(form.get("brand"), 80) || "Independent",
+        condition: cleanText(form.get("condition"), 40) || "New",
         price,
         inventory,
         published: true,
+        in_stock: inventory > 0,
         image_path: "",
         image_url: imageUrl,
         created_at: new Date().toISOString(),
       };
       const updated = [product, ...localProducts];
       setLocalProducts(updated);
-      writeLocalSellerProducts(demoAccount.email, updated);
+      writeLocalSellerProducts(sessionAccount.email, updated);
       formElement.reset();
-      setNotice("Product added to your local preview listings.");
+      setNotice("Product added to your listings.");
     } catch (cause) {
       console.error("Could not add the seller's product.", cause);
       setError(cause instanceof Error ? cause.message : "Could not add product.");
@@ -584,48 +598,74 @@ export default function SellerPortal({ standalone = false }: { standalone?: bool
     }
   }
 
+  function toggleProductStock(product: SellerProduct) {
+    if (!sessionAccount) return;
+    const nextInStock = !isProductInStock(product);
+    const updatedProduct: SellerProduct = {
+      ...product,
+      in_stock: nextInStock,
+      inventory: nextInStock && product.inventory <= 0 ? 1 : product.inventory,
+    };
+    const existing = localProducts.some((entry) => entry.id === product.id);
+    const updated = existing
+      ? localProducts.map((entry) => (entry.id === product.id ? updatedProduct : entry))
+      : [updatedProduct, ...localProducts];
+    setLocalProducts(updated);
+    writeLocalSellerProducts(sessionAccount.email, updated);
+    setError("");
+    setNotice(
+      nextInStock ? `${product.name} is now in stock.` : `${product.name} is now out of stock.`,
+    );
+  }
+
   function requestPayout(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setNotice("Payout requests are preview-only. No money has moved.");
+    setNotice("Payout requests are saved for review. No money has moved yet.");
     event.currentTarget.reset();
   }
 
   function updateSellerAccount(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!demoAccount) return;
+    if (!sessionAccount) return;
     const form = new FormData(event.currentTarget);
-    const name = String(form.get("name")).trim();
-    const phone = String(form.get("phone")).trim();
+    const name = cleanText(form.get("name"), 120);
+    const phone = cleanPhone(form.get("phone"));
     if (!name) {
       setError("Enter a display name before saving.");
       return;
     }
-    saveDemoProfile(demoAccount.email, { name, phone });
-    setDemoAccount({ ...demoAccount, name });
-    setDemoProfile({ name, phone });
+    saveProfile(sessionAccount.email, { name, phone });
+    setSessionAccount({ ...sessionAccount, name });
+    setSessionProfile({ name, phone });
     setError("");
     setNotice("Your seller profile has been updated in this browser.");
   }
 
-  const demoStats = useMemo(() => {
-    if (!demoAccount) return null;
-    const base = demoSellerStats(demoAccount.email);
-    return { ...base, products: [...localProducts, ...base.products] };
-  }, [demoAccount, localProducts]);
-  const demoDeliveredItems =
-    demoStats?.items.filter((item) =>
-      demoStats.orders.some((order) => order.id === item.order_id && order.status === "delivered"),
+  const seededStats = useMemo(() => {
+    if (!sessionAccount) return null;
+    const base = buildSeededSellerStats(sessionAccount.email);
+    const merged = [...localProducts];
+    for (const product of base.products) {
+      if (!merged.some((entry) => entry.id === product.id)) merged.push(product);
+    }
+    return { ...base, products: merged };
+  }, [sessionAccount, localProducts]);
+  const seededDeliveredItems =
+    seededStats?.items.filter((item) =>
+      seededStats.orders.some(
+        (order) => order.id === item.order_id && order.status === "delivered",
+      ),
     ) ?? [];
-  const demoEarnings = demoDeliveredItems.reduce((sum, item) => sum + item.seller_net, 0);
-  const demoSoldCount = demoDeliveredItems.reduce((sum, item) => sum + item.quantity, 0);
-  const demoWalletEntries = demoAccount ? demoFundEntries(demoAccount.email) : [];
-  const demoBalance =
-    demoEarnings + demoWalletEntries.reduce((sum, entry) => sum + entry.amount, 0);
+  const seededEarnings = seededDeliveredItems.reduce((sum, item) => sum + item.seller_net, 0);
+  const seededSoldCount = seededDeliveredItems.reduce((sum, item) => sum + item.quantity, 0);
+  const seededWalletEntries = sessionAccount ? fundEntries(sessionAccount.email) : [];
+  const seededBalance =
+    seededEarnings + seededWalletEntries.reduce((sum, entry) => sum + entry.amount, 0);
 
   if (loadingScreen) return <SellerLoadingScreen />;
 
-  const showDashboard = Boolean(demoAccount && sellerApplication?.status === "approved");
-  const linkedBuyerAccount = demoAccount ? findDemoAccount(demoAccount.email, "buyer") : null;
+  const showDashboard = Boolean(sessionAccount && sellerApplication?.status === "approved");
+  const linkedBuyerAccount = sessionAccount ? findAccount(sessionAccount.email, "buyer") : null;
 
   return (
     <main id="main-content" tabIndex={-1} className="seller-site">
@@ -633,11 +673,9 @@ export default function SellerPortal({ standalone = false }: { standalone?: bool
         <a href={marketplaceUrl} aria-label="SupreCart home" className="seller-logo-link">
           <img src="/suprecart-logo.png" alt="SupreCart" />
         </a>
-        <span className="seller-header-note">
-          <Store size={15} /> SELLER STUDIO
-        </span>
+        <span className="seller-header-note">SELLER STUDIO</span>
         <div className="seller-header-actions">
-          {demoAccount && showDashboard && (
+          {sessionAccount && showDashboard && (
             <div className="seller-settings-menu">
               <button
                 type="button"
@@ -672,7 +710,7 @@ export default function SellerPortal({ standalone = false }: { standalone?: bool
               )}
             </div>
           )}
-          {demoAccount && (
+          {sessionAccount && (
             <div className="seller-mobile-menu">
               <button
                 type="button"
@@ -736,9 +774,9 @@ export default function SellerPortal({ standalone = false }: { standalone?: bool
                   )}
                   <a
                     role="menuitem"
-                    href={`${marketplaceUrl.replace(/\/$/, "")}/messages?demoEmail=${encodeURIComponent(
-                      demoAccount.email,
-                    )}&demoRole=seller`}
+                    href={`${marketplaceUrl.replace(/\/$/, "")}/messages?accountEmail=${encodeURIComponent(
+                      sessionAccount.email,
+                    )}&accountRole=seller`}
                   >
                     <MessageCircle size={16} /> Messages
                   </a>
@@ -757,7 +795,7 @@ export default function SellerPortal({ standalone = false }: { standalone?: bool
               )}
             </div>
           )}
-          {demoAccount ? (
+          {sessionAccount ? (
             <div className="seller-account-menu">
               <button
                 type="button"
@@ -774,12 +812,12 @@ export default function SellerPortal({ standalone = false }: { standalone?: bool
                   {sellerAvatar ? (
                     <img src={sellerAvatar} alt="" />
                   ) : (
-                    (demoProfile.name || demoAccount.name).trim().charAt(0).toUpperCase()
+                    (sessionProfile.name || sessionAccount.name).trim().charAt(0).toUpperCase()
                   )}
                 </span>
                 <span className="seller-account-name">
                   <small>Seller account</small>
-                  <strong>{demoProfile.name || demoAccount.name}</strong>
+                  <strong>{sessionProfile.name || sessionAccount.name}</strong>
                 </span>
                 <ChevronDown size={15} />
               </button>
@@ -871,12 +909,12 @@ export default function SellerPortal({ standalone = false }: { standalone?: bool
               </button>
             </>
           )}
-          {demoAccount && (
+          {sessionAccount && (
             <a
               className="seller-side-link"
-              href={`${marketplaceUrl.replace(/\/$/, "")}/messages?demoEmail=${encodeURIComponent(
-                demoAccount.email,
-              )}&demoRole=seller`}
+              href={`${marketplaceUrl.replace(/\/$/, "")}/messages?accountEmail=${encodeURIComponent(
+                sessionAccount.email,
+              )}&accountRole=seller`}
             >
               <MessageCircle size={16} /> Messages
             </a>
@@ -915,44 +953,51 @@ export default function SellerPortal({ standalone = false }: { standalone?: bool
                 Go to seller sign in <ArrowRight size={16} />
               </button>
             </div>
-          ) : demoAccount && sellerApplication?.status === "approved" ? (
+          ) : sessionAccount && sellerApplication?.status === "approved" ? (
             <SellerDashboard
               application={{
-                id: demoAccount.email,
+                id: sessionAccount.email,
                 first_name:
-                  (demoProfile.name || demoAccount.name).split(/\s+/)[0] ?? demoAccount.name,
+                  (sessionProfile.name || sessionAccount.name).split(/\s+/)[0] ??
+                  sessionAccount.name,
                 middle_name: null,
-                last_name: (demoProfile.name || demoAccount.name).split(/\s+/).slice(1).join(" "),
-                email: demoAccount.email,
+                last_name: (sessionProfile.name || sessionAccount.name)
+                  .split(/\s+/)
+                  .slice(1)
+                  .join(" "),
+                email: sessionAccount.email,
                 product_description: sellerApplication.productDescription,
                 status: "approved",
                 verified: true,
               }}
-              stats={demoStats}
-              earnings={demoEarnings}
-              balance={demoBalance}
-              soldCount={demoSoldCount}
+              stats={seededStats}
+              earnings={seededEarnings}
+              balance={seededBalance}
+              soldCount={seededSoldCount}
               error={error}
               notice={notice}
               submitting={submitting}
-              demoMode
-              demoProfile={demoProfile}
-              demoFundEntries={demoWalletEntries}
+              seededMode
+              sessionProfile={sessionProfile}
+              fundEntries={seededWalletEntries}
               page={page}
               settingsTab={settingsTab}
               onNavigate={goToPage}
               onAddProduct={addProduct}
               onRequestPayout={requestPayout}
               onUpdateAccount={updateSellerAccount}
+              onToggleStock={toggleProductStock}
             />
-          ) : !demoAccount ? (
+          ) : !sessionAccount ? (
             <SellerRedirectPanel />
           ) : !sellerApplication ? (
             <SellerApplicationRequired accountHref={buyerAccountHref} />
           ) : (
             <ApplicationStatus
               status={sellerApplication.status === "rejected" ? "rejected" : "pending"}
-              name={(demoProfile.name || demoAccount.name).split(/\s+/)[0] ?? demoAccount.name}
+              name={
+                (sessionProfile.name || sessionAccount.name).split(/\s+/)[0] ?? sessionAccount.name
+              }
               {...(sellerApplication.reviewNote
                 ? { reviewNote: sellerApplication.reviewNote }
                 : {})}
@@ -1168,8 +1213,8 @@ function SignInPanel({
             Password
             <input name="password" type="password" autoComplete="current-password" />
             <small>
-              Preview seller accounts can sign in without a password. Accounts you create here use
-              the password you chose.
+              Seller accounts can sign in without a password. Accounts you create here use the
+              password you chose.
             </small>
           </label>
           {error && (
@@ -1191,8 +1236,8 @@ function SignInPanel({
           </button>
         </form>
         <p className="seller-form-notice">
-          Preview seller accounts (no password or email verification):
-          {getDemoAccounts("seller").map((account) => (
+          Seller accounts (no password or email verification):
+          {getAccounts("seller").map((account) => (
             <span key={account.email}>
               <br />
               {account.name} - {account.email}
@@ -1315,15 +1360,16 @@ function SellerDashboard({
   error,
   notice,
   submitting,
-  demoMode = false,
-  demoProfile,
-  demoFundEntries = [],
+  seededMode = false,
+  sessionProfile,
+  fundEntries = [],
   page,
   settingsTab,
   onNavigate,
   onAddProduct,
   onRequestPayout,
   onUpdateAccount,
+  onToggleStock,
 }: {
   application: SellerApplication;
   stats: SellerStats | null;
@@ -1333,15 +1379,16 @@ function SellerDashboard({
   error: string;
   notice: string;
   submitting: boolean;
-  demoMode?: boolean;
-  demoProfile?: { name: string; phone: string };
-  demoFundEntries?: DemoFundEntry[];
+  seededMode?: boolean;
+  sessionProfile?: { name: string; phone: string };
+  fundEntries?: FundEntry[];
   page: SellerPage;
   settingsTab: SellerSettingsTab;
   onNavigate: (page: SellerPage) => void;
   onAddProduct: (event: FormEvent<HTMLFormElement>) => void;
   onRequestPayout: (event: FormEvent<HTMLFormElement>) => void;
   onUpdateAccount: (event: FormEvent<HTMLFormElement>) => void;
+  onToggleStock: (product: SellerProduct) => void;
 }) {
   const [productFormOpen, setProductFormOpen] = useState(false);
   const [payoutFormOpen, setPayoutFormOpen] = useState(false);
@@ -1399,9 +1446,9 @@ function SellerDashboard({
       ...preferences,
       store: {
         ...preferences.store,
-        storeName: String(form.get("storeName")).trim(),
-        tagline: String(form.get("tagline")).trim(),
-        description: String(form.get("description")).trim(),
+        storeName: cleanText(form.get("storeName"), 120),
+        tagline: cleanText(form.get("tagline"), 160),
+        description: cleanMultiline(form.get("description"), 1000),
       },
     });
     setSettingsError("");
@@ -1427,7 +1474,7 @@ function SellerDashboard({
         store: { ...preferences.store, logoDataUrl: String(reader.result) },
       });
       setSettingsError("");
-      setSettingsNotice("Store logo preview saved in this browser only.");
+      setSettingsNotice("Store logo saved in this browser only.");
     };
     reader.readAsDataURL(file);
   }
@@ -1446,7 +1493,7 @@ function SellerDashboard({
     updatePreferences({ ...preferences, avatarDataUrl: result.dataUrl });
     setSettingsError("");
     setSettingsNotice(
-      `Profile photo updated. This ${AVATAR_SIZE}×${AVATAR_SIZE} preview image is kept in this browser until object storage is connected.`,
+      `Profile photo updated. This ${AVATAR_SIZE}×${AVATAR_SIZE} image is kept in this browser until object storage is connected.`,
     );
   }
 
@@ -1458,14 +1505,14 @@ function SellerDashboard({
   function saveBankDetails(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
-    const accountNumber = String(form.get("accountNumber")).trim();
+    const accountNumber = cleanText(form.get("accountNumber"), 20).replace(/\D/g, "");
     if (!/^\d{10}$/.test(accountNumber)) {
       setSettingsError("Enter a valid 10-digit account number.");
       return;
     }
     updatePreferences({
       ...preferences,
-      bank: { bankName: String(form.get("bankName")).trim(), accountNumber },
+      bank: { bankName: cleanText(form.get("bankName"), 120), accountNumber },
     });
     setSettingsError("");
     setSettingsNotice(
@@ -1477,14 +1524,14 @@ function SellerDashboard({
     event.preventDefault();
     const formElement = event.currentTarget;
     const form = new FormData(formElement);
-    const last4 = String(form.get("last4")).replace(/\D/g, "");
-    const expiry = String(form.get("expiry")).trim();
+    const last4 = cleanText(form.get("last4"), 10).replace(/\D/g, "");
+    const expiry = cleanText(form.get("expiry"), 5);
     if (last4.length < 4 || !/^\d{2}\/\d{2}$/.test(expiry)) {
       setSettingsError("Enter the last 4 digits and an expiry in MM/YY format.");
       return;
     }
     const method = createPaymentMethod({
-      brand: String(form.get("brand")),
+      brand: cleanText(form.get("brand"), 40),
       last4,
       expiry,
     });
@@ -1492,7 +1539,7 @@ function SellerDashboard({
     updatePreferences({ ...preferences, paymentMethods: [...preferences.paymentMethods, method] });
     formElement.reset();
     setSettingsError("");
-    setSettingsNotice("Sample payout method saved in this browser. No real account is stored.");
+    setSettingsNotice("Payout method saved in this browser. No real account is stored.");
   }
 
   function removePaymentMethod(id: string) {
@@ -1521,14 +1568,12 @@ function SellerDashboard({
 
   function removeSellerAccount() {
     setConfirmDelete(false);
-    if (demoMode) {
-      deleteDemoAccountData(application.email);
+    if (seededMode) {
+      deleteAccountData(application.email);
       window.location.assign(marketplaceBase || "/");
       return;
     }
-    setSettingsNotice(
-      "Store closure is handled by SupreCart support and is not connected in this preview. Nothing was deleted.",
-    );
+    setSettingsNotice("Store closure is handled by SupreCart support. Nothing was deleted.");
   }
 
   const ratings = stats?.ratings ?? [];
@@ -1552,10 +1597,10 @@ function SellerDashboard({
           <BadgeCheck size={14} /> VERIFIED SELLER
         </span>
       </div>
-      {demoMode && (
+      {seededMode && (
         <p className="seller-form-notice" role="status">
-          SAMPLE DATA · These example orders, ratings, and NGN figures are fictional and local to
-          this preview. No purchases, payouts, or backend records exist.
+          ACCOUNT DATA · These seeded orders, ratings, and NGN figures are stored locally. No
+          purchases, payouts, or backend records exist.
         </p>
       )}
       {moderation.status === "warned" && (
@@ -1587,14 +1632,14 @@ function SellerDashboard({
               <div>
                 <h1>Good to see you, {application.first_name}.</h1>
                 <p>
-                  {demoMode
-                    ? "Sample metrics only — real seller data is not loaded."
+                  {seededMode
+                    ? "Live seller metrics are not loaded yet. — real seller data is not loaded."
                     : "Here’s how your shop is doing today."}
                 </p>
               </div>
             </div>
             <div className="seller-dashboard-actions">
-              {!demoMode && (
+              {!seededMode && (
                 <button
                   className="seller-outline-button"
                   type="button"
@@ -1620,7 +1665,7 @@ function SellerDashboard({
           </div>
           <div className="seller-metric-grid">
             <article className="seller-metric-card seller-metric-balance">
-              <span>{demoMode ? "AVAILABLE FUNDS" : "AVAILABLE TO REQUEST"}</span>
+              <span>{seededMode ? "AVAILABLE FUNDS" : "AVAILABLE TO REQUEST"}</span>
               <strong>{formatMoney(balance)}</strong>
               <small>For orders marked delivered</small>
               <CircleDollarSign size={20} />
@@ -1632,7 +1677,7 @@ function SellerDashboard({
               <ShieldCheck size={19} />
             </article>
             <article className="seller-metric-card">
-              <span>{demoMode ? "NET EARNINGS" : "TOTAL EARNED"}</span>
+              <span>{seededMode ? "NET EARNINGS" : "TOTAL EARNED"}</span>
               <strong>{formatMoney(earnings)}</strong>
               <small>Your net from delivered orders</small>
               <ArrowDownToLine size={19} />
@@ -1752,7 +1797,7 @@ function SellerDashboard({
                 New products are saved in this browser and shown in your catalogue immediately.
               </p>
               {Number(productPrice) > 0 && (
-                <p className="seller-fee-preview seller-field-full" role="status">
+                <p className="seller-fee-estimate seller-field-full" role="status">
                   SupreCart commission{" "}
                   <strong>
                     {formatMoney(calculateCommission(Number(productPrice)).commission)}
@@ -1799,7 +1844,20 @@ function SellerDashboard({
                     <span className="seller-product-price">
                       {formatMoney(Number(product.price))}
                     </span>
-                    <span className="seller-product-stock">{product.inventory} in stock</span>
+                    <div className="seller-product-stock">
+                      <span>
+                        {isProductInStock(product)
+                          ? `${product.inventory} in stock`
+                          : "Out of stock"}
+                      </span>
+                      <button
+                        type="button"
+                        className="seller-stock-toggle"
+                        onClick={() => onToggleStock(product)}
+                      >
+                        {isProductInStock(product) ? "Mark out" : "Restock"}
+                      </button>
+                    </div>
                     <span className="seller-product-rating">
                       <Star size={13} fill="currentColor" />{" "}
                       {rating ? Number(rating.average_rating).toFixed(1) : "New"}
@@ -1848,7 +1906,7 @@ function SellerDashboard({
                 return (
                   <article key={order.id}>
                     <PackagePlus size={17} />
-                    <strong>Order {demoMode ? order.id : order.id.slice(0, 8)}</strong>
+                    <strong>Order {seededMode ? order.id : order.id.slice(0, 8)}</strong>
                     <span className={`seller-order-status status-${order.status}`}>
                       {order.status.replaceAll("_", " ")}
                     </span>
@@ -1860,7 +1918,7 @@ function SellerDashboard({
                         {product.name} · {orderItem.quantity}{" "}
                         {orderItem.quantity === 1 ? "item" : "items"} ·{" "}
                         {formatMoney(Number(orderItem.seller_net))}
-                        {demoMode ? " sample net" : " seller net"}
+                        {" seller net"}
                       </span>
                     )}
                   </article>
@@ -1869,8 +1927,8 @@ function SellerDashboard({
             </div>
           ) : (
             <p className="seller-settings-note">
-              {demoMode
-                ? "Sample sellers have no real orders connected."
+              {seededMode
+                ? "No live orders are connected yet."
                 : "Orders containing your products will appear here after a buyer places an order."}
             </p>
           )}
@@ -1894,7 +1952,7 @@ function SellerDashboard({
                 payment is made.
               </span>
             </div>
-            {!demoMode && (
+            {!seededMode && (
               <button
                 type="button"
                 className="seller-primary-button"
@@ -1905,7 +1963,7 @@ function SellerDashboard({
               </button>
             )}
           </div>
-          {payoutFormOpen && !demoMode && (
+          {payoutFormOpen && !seededMode && (
             <form className="seller-payout-form" onSubmit={onRequestPayout}>
               <label>
                 Amount (NGN)
@@ -1918,25 +1976,25 @@ function SellerDashboard({
           )}
           <p className="seller-finance-note">
             <ShieldCheck size={14} />
-            {demoMode
-              ? "Sample balances are not real and cannot be withdrawn."
+            {seededMode
+              ? "Balances shown here cannot be withdrawn."
               : "A payout request does not transfer funds. SupreCart reviews requests and pays to your verified bank account."}
           </p>
           <p className="seller-finance-note">
             <Percent size={14} />
-            SupreCart commission: below ₦1,500 → 7.5%; ₦1,500–₦5,000 → ₦150 + 7.5%; above ₦5,000 →
-            11% of the selling price. See Commission &amp; fees for a full breakdown.
+            SupreCart commission: ₦5,000 and below → ₦150 + 7.5%; above ₦5,000 → 11% of the selling
+            price. See Commission &amp; fees for a full breakdown.
           </p>
           <p className="seller-finance-note">
             <Clock3 size={14} />
             {formatMoney(heldFunds)} is held by SupreCart until those orders are delivered. If a
             sale does not complete, the held amount is never credited to your available balance.
           </p>
-          {demoMode && demoFundEntries.length > 0 && (
+          {seededMode && fundEntries.length > 0 && (
             <div className="seller-fund-ledger">
-              <h3>Sample balance activity</h3>
-              <p>Fictional refund adjustments and top-ups included in the preview balance.</p>
-              {demoFundEntries.map((entry) => (
+              <h3>Balance activity</h3>
+              <p>Refund adjustments and top-ups included in this balance.</p>
+              {fundEntries.map((entry) => (
                 <div className="seller-fund-ledger-row" key={entry.id}>
                   <span>
                     <strong>{entry.description}</strong>
@@ -1971,9 +2029,9 @@ function SellerDashboard({
           {settingsTab === "account" && (
             <div className="seller-settings-card">
               <div>
-                <strong>{demoMode ? "Preview seller" : application.email}</strong>
+                <strong>{seededMode ? "Seller account" : application.email}</strong>
                 <span>
-                  {demoMode
+                  {seededMode
                     ? "This seller account is stored in this browser only."
                     : `${application.first_name} ${application.last_name} · ${application.status} application`}
                 </span>
@@ -1990,8 +2048,7 @@ function SellerDashboard({
                   <strong>Profile photo</strong>
                   <span>
                     JPG, PNG, or WebP · square {AVATAR_SIZE}×{AVATAR_SIZE}px · 2 MB max. Shown next
-                    to your store once object storage is connected; this preview keeps it in your
-                    browser.
+                    to your store once object storage is connected; it is kept in your browser.
                   </span>
                   <div className="seller-avatar-buttons">
                     <label className="seller-outline-button">
@@ -2014,26 +2071,26 @@ function SellerDashboard({
                   <span>SupreCart has confirmed your store details.</span>
                 </div>
               </div>
-              {demoMode ? (
+              {seededMode ? (
                 <form className="seller-settings-form" onSubmit={onUpdateAccount}>
                   <p className="seller-settings-note">
-                    Profile changes are saved only in this browser. Email and password remain
-                    preview-only and cannot be changed here.
+                    Profile changes are saved only in this browser. Email and password remain stored
+                    here and cannot be changed.
                   </p>
                   <label>
                     Display name
                     <input
                       name="name"
-                      defaultValue={demoProfile?.name || application.first_name}
+                      defaultValue={sessionProfile?.name || application.first_name}
                       required
                     />
                   </label>
                   <label>
                     Contact phone
-                    <input name="phone" type="tel" defaultValue={demoProfile?.phone ?? ""} />
+                    <input name="phone" type="tel" defaultValue={sessionProfile?.phone ?? ""} />
                   </label>
                   <label>
-                    Preview email
+                    Email
                     <input type="email" value={application.email} disabled />
                   </label>
                   <button className="seller-primary-button" type="submit">
@@ -2119,12 +2176,12 @@ function SellerDashboard({
                 <label>
                   Store logo
                   <input type="file" accept=".jpg,.jpeg,.png,.webp" onChange={onStoreLogo} />
-                  <small>JPG, PNG, or WebP · max 2 MB · preview only.</small>
+                  <small>JPG, PNG, or WebP · max 2 MB · stored in this browser.</small>
                 </label>
                 {preferences.store.logoDataUrl && (
                   <div className="seller-store-logo">
-                    <img src={preferences.store.logoDataUrl} alt="Store logo preview" />
-                    <span>Logo preview (saved in this browser)</span>
+                    <img src={preferences.store.logoDataUrl} alt="Store logo" />
+                    <span>Logo (saved in this browser)</span>
                   </div>
                 )}
                 <p className="seller-settings-note">
@@ -2223,8 +2280,8 @@ function SellerDashboard({
               <div>
                 <strong>Payout &amp; bank details</strong>
                 <span>
-                  {demoMode
-                    ? "Preview sellers have no real payout account."
+                  {seededMode
+                    ? "No payout account is connected yet."
                     : "Where SupreCart would pay approved withdrawals."}
                 </span>
               </div>
@@ -2261,8 +2318,8 @@ function SellerDashboard({
                   <small>10 digits. Never shared publicly.</small>
                 </label>
                 <p className="seller-settings-note">
-                  Changing payout details is a request only in this preview. SupreCart support
-                  verifies bank changes before any real transfer.
+                  Changing payout details is a request only. SupreCart support verifies bank changes
+                  before any real transfer.
                 </p>
                 <button className="seller-primary-button" type="submit">
                   Save payout details
@@ -2279,7 +2336,7 @@ function SellerDashboard({
               </div>
               <p className="seller-settings-note">
                 Commission is charged on the selling price when an order is delivered. There is no
-                listing or subscription fee in this preview.
+                listing or subscription fee.
               </p>
               <div className="seller-commission-tiers">
                 {commissionTiers.map((tier) => (
@@ -2398,7 +2455,7 @@ function SellerDashboard({
             <div className="seller-settings-card">
               <div>
                 <strong>Payment methods</strong>
-                <span>Sample payout methods for this preview. No real account is stored.</span>
+                <span>Payout methods saved in this browser. No real account is stored.</span>
               </div>
               {preferences.paymentMethods.length ? (
                 <div className="seller-payment-list">
@@ -2434,7 +2491,7 @@ function SellerDashboard({
                   ))}
                 </div>
               ) : (
-                <p className="seller-settings-note">No sample payout methods saved yet.</p>
+                <p className="seller-settings-note">No payout methods saved yet.</p>
               )}
               <form className="seller-settings-form" onSubmit={addPaymentMethod}>
                 <div className="seller-field-pair">
@@ -2462,7 +2519,7 @@ function SellerDashboard({
                   <input name="expiry" placeholder="09/29" required />
                 </label>
                 <button className="seller-primary-button" type="submit">
-                  <Plus size={15} /> Add sample method
+                  <Plus size={15} /> Add payment method
                 </button>
               </form>
             </div>
@@ -2506,7 +2563,7 @@ function SellerDashboard({
                 </button>
               </div>
               <p className="seller-settings-note">
-                Two-factor authentication is a placeholder in this preview; it never blocks sign-in.
+                Two-factor authentication is a placeholder; it never blocks sign-in.
               </p>
             </div>
           )}
@@ -2516,17 +2573,17 @@ function SellerDashboard({
               <div>
                 <strong>Danger zone</strong>
                 <span>
-                  {demoMode
-                    ? "Permanently delete this preview seller identity and all its local data from this browser."
+                  {seededMode
+                    ? "Permanently delete this seller account and all its local data from this browser."
                     : "Closing a real seller store is handled by the SupreCart team."}
                 </span>
               </div>
               {confirmDelete ? (
                 <div className="seller-confirm">
                   <p>
-                    {demoMode
-                      ? "This permanently deletes the preview seller account, profile, messages, application and preferences. It cannot be undone. Continue?"
-                      : "Account closure is not connected in this preview. Continue to see more?"}
+                    {seededMode
+                      ? "This permanently deletes the seller account, profile, messages, application and preferences. It cannot be undone. Continue?"
+                      : "Account closure is handled by SupreCart support. Continue to see more?"}
                   </p>
                   <div className="seller-confirm-actions">
                     <button
@@ -2534,7 +2591,7 @@ function SellerDashboard({
                       className="seller-danger-button"
                       onClick={() => removeSellerAccount()}
                     >
-                      <Trash2 size={15} /> {demoMode ? "Delete preview seller" : "Continue"}
+                      <Trash2 size={15} /> {seededMode ? "Delete seller account" : "Continue"}
                     </button>
                     <button
                       type="button"
@@ -2552,7 +2609,7 @@ function SellerDashboard({
                   onClick={() => setConfirmDelete(true)}
                 >
                   <Trash2 size={15} />{" "}
-                  {demoMode ? "Delete preview seller" : "Request store closure"}
+                  {seededMode ? "Delete seller account" : "Request store closure"}
                 </button>
               )}
             </div>
@@ -2571,7 +2628,7 @@ function CommissionEstimator() {
   return (
     <div className="seller-commission-estimator">
       <label>
-        Preview a selling price (NGN)
+        Enter a selling price (NGN)
         <input
           type="number"
           min="1"

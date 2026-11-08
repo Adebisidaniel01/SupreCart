@@ -5,14 +5,15 @@ import { Button } from "@/components/ui/button";
 import { trackLogin } from "@/lib/analytics";
 import {
   ensureSellerAccount,
-  findDemoAccount,
+  findAccount,
   getAccountModeration,
-  getDemoAccounts,
+  getAccounts,
   isPresetAccount,
-  saveDemoAccount,
+  saveAccount,
   verifyAccountPassword,
-} from "@/lib/demo-accounts";
+} from "@/lib/accounts";
 import { getSellerApplication } from "@/lib/seller-applications";
+import { cleanEmail, cleanSecret } from "@/lib/input";
 
 export const Route = createFileRoute("/login")({
   head: () => ({
@@ -31,20 +32,20 @@ function Login() {
   async function signIn(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
-    const email = String(formData.get("email")).trim().toLowerCase();
-    const password = String(formData.get("password"));
-    const sellerAccount = findDemoAccount(email, "seller");
-    const buyerAccount = findDemoAccount(email, "buyer");
+    const email = cleanEmail(formData.get("email"));
+    const password = cleanSecret(formData.get("password"));
+    const sellerAccount = findAccount(email, "seller");
+    const buyerAccount = findAccount(email, "buyer");
     const approvedBuyer =
       buyerAccount && getSellerApplication(buyerAccount.email)?.status === "approved"
         ? ensureSellerAccount(buyerAccount)
         : null;
-    const demoAccount = sellerAccount ?? approvedBuyer ?? buyerAccount;
-    if (!demoAccount) {
+    const sessionAccount = sellerAccount ?? approvedBuyer ?? buyerAccount;
+    if (!sessionAccount) {
       setError("No account matches that email yet. Create an account first.");
       return;
     }
-    const moderation = getAccountModeration(demoAccount.email);
+    const moderation = getAccountModeration(sessionAccount.email);
     if (moderation.status === "banned") {
       setError(
         moderation.reason
@@ -54,7 +55,7 @@ function Login() {
       return;
     }
     const passwordFree =
-      isPresetAccount(email, demoAccount.role) ||
+      isPresetAccount(email, sessionAccount.role) ||
       Boolean(approvedBuyer && isPresetAccount(email, "buyer"));
     if (!passwordFree) {
       try {
@@ -79,10 +80,10 @@ function Login() {
         return;
       }
     }
-    saveDemoAccount(demoAccount);
-    trackLogin(demoAccount.role === "seller" ? "seller_preview" : "buyer_preview");
+    saveAccount(sessionAccount);
+    trackLogin(sessionAccount.role === "seller" ? "seller" : "buyer");
     setError("");
-    await navigate({ to: demoAccount.role === "seller" ? "/sellers" : "/" });
+    await navigate({ to: sessionAccount.role === "seller" ? "/sellers" : "/" });
   }
 
   return (
@@ -109,19 +110,18 @@ function Login() {
             Password
             <input type="password" name="password" autoComplete="current-password" />
             <small>
-              Use the password you chose when you created your account. Preview accounts can sign in
+              Use the password you chose when you created your account. Listed accounts can sign in
               without one.
             </small>
           </label>
           <p className="account-forgot-link">
             <Link to="/forgot-password">Forgot password?</Link>
           </p>
-          <div className="demo-disclaimer">
+          <div className="local-data-note">
             <ShieldCheck size={15} />
             <span>
-              Preview buyer accounts and approved seller accounts (no password or email
-              verification):
-              {getDemoAccounts("buyer").map((account) => (
+              Buyer accounts and approved seller accounts (no password or email verification):
+              {getAccounts("buyer").map((account) => (
                 <span key={account.email}>
                   <br />
                   {account.name} — {account.email}
@@ -141,8 +141,8 @@ function Login() {
         <p className="account-switch">
           New to SupreCart? <Link to="/signup">Create an account</Link>
         </p>
-        <p className="demo-disclaimer">
-          <ShieldCheck size={15} /> Preview accounts are stored in this browser only.
+        <p className="local-data-note">
+          <ShieldCheck size={15} /> Accounts are stored in this browser only.
         </p>
       </div>
       <aside className="account-aside">

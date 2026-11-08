@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
-import { canCancelDemoOrder, cancelDemoOrder, getDemoOrders } from "@/lib/demo-orders";
+import { canCancelOrder, cancelOrder, getOrders } from "@/lib/orders";
 
-const previewOrderKey = "suprecart-preview-orders";
+const checkoutOrderKey = "suprecart-checkout-orders";
 
-function savePreviewOrder(overrides: Record<string, unknown> = {}) {
+function saveCheckoutOrder(overrides: Record<string, unknown> = {}) {
   const order = {
     batchNumber: "CC-BATCH-TEST",
     createdAt: new Date().toISOString(),
@@ -21,7 +21,7 @@ function savePreviewOrder(overrides: Record<string, unknown> = {}) {
     shipments: [],
     ...overrides,
   };
-  window.localStorage.setItem(previewOrderKey, JSON.stringify([order]));
+  window.localStorage.setItem(checkoutOrderKey, JSON.stringify([order]));
   return order;
 }
 
@@ -29,17 +29,17 @@ beforeEach(() => {
   window.localStorage.clear();
 });
 
-describe("demo order cancellation", () => {
+describe("order cancellation", () => {
   it("requests cancellation for a Processing order with a reason and keeps it in this browser", () => {
-    const processing = getDemoOrders("vickybabs@gmail.com").find(
+    const processing = getOrders("vickybabs@gmail.com").find(
       (order) => order.status === "Processing",
     );
     expect(processing).toBeDefined();
     if (!processing) return;
 
-    expect(canCancelDemoOrder(processing)).toBe(true);
+    expect(canCancelOrder(processing)).toBe(true);
 
-    const updated = cancelDemoOrder(
+    const updated = cancelOrder(
       "vickybabs@gmail.com",
       processing.id,
       "Delivery is taking too long",
@@ -50,39 +50,39 @@ describe("demo order cancellation", () => {
     expect(requested?.cancellation_requested_at).toBeTruthy();
     expect(requested?.cancellation_reason).toBe("Delivery is taking too long");
     expect(
-      getDemoOrders("vickybabs@gmail.com").find((order) => order.id === processing.id)?.status,
+      getOrders("vickybabs@gmail.com").find((order) => order.id === processing.id)?.status,
     ).toBe("Cancellation requested");
   });
 
   it("requires a cancellation reason", () => {
-    const processing = getDemoOrders("vickybabs@gmail.com").find(
+    const processing = getOrders("vickybabs@gmail.com").find(
       (order) => order.status === "Processing",
     );
     expect(processing).toBeDefined();
     if (!processing) return;
 
-    expect(() => cancelDemoOrder("vickybabs@gmail.com", processing.id, "   ")).toThrow(
+    expect(() => cancelOrder("vickybabs@gmail.com", processing.id, "   ")).toThrow(
       /cancellation reason/,
     );
   });
 
   it("refuses to cancel an order that has already shipped", () => {
-    const inTransit = getDemoOrders("blackrose@gmail.com").find(
+    const inTransit = getOrders("blackrose@gmail.com").find(
       (order) => order.status === "In transit",
     );
     expect(inTransit).toBeDefined();
     if (!inTransit) return;
 
-    expect(canCancelDemoOrder(inTransit)).toBe(false);
-    expect(() => cancelDemoOrder("blackrose@gmail.com", inTransit.id, "Changed my mind")).toThrow(
+    expect(canCancelOrder(inTransit)).toBe(false);
+    expect(() => cancelOrder("blackrose@gmail.com", inTransit.id, "Changed my mind")).toThrow(
       /no longer be cancelled/,
     );
   });
 
-  it("shows checkout preview orders in the account and lets the buyer request cancellation", () => {
-    const preview = savePreviewOrder();
-    const saved = getDemoOrders("vickybabs@gmail.com").find(
-      (order) => order.id === preview.batchNumber,
+  it("shows checkout orders in the account and lets the buyer request cancellation", () => {
+    const savedOrder = saveCheckoutOrder();
+    const saved = getOrders("vickybabs@gmail.com").find(
+      (order) => order.id === savedOrder.batchNumber,
     );
 
     expect(saved).toBeDefined();
@@ -91,38 +91,38 @@ describe("demo order cancellation", () => {
     expect(saved?.status).toBe("Processing");
     if (!saved) return;
 
-    expect(canCancelDemoOrder(saved)).toBe(true);
+    expect(canCancelOrder(saved)).toBe(true);
 
-    const updated = cancelDemoOrder(
+    const updated = cancelOrder(
       "vickybabs@gmail.com",
-      preview.batchNumber,
+      savedOrder.batchNumber,
       "Ordered by mistake",
     );
-    expect(updated.find((order) => order.id === preview.batchNumber)?.status).toBe(
+    expect(updated.find((order) => order.id === savedOrder.batchNumber)?.status).toBe(
       "Cancellation requested",
     );
   });
 
   it("closes the cancellation window 24 hours after ordering", () => {
-    const preview = savePreviewOrder({
+    const savedOrder = saveCheckoutOrder({
       createdAt: new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString(),
     });
-    const saved = getDemoOrders("vickybabs@gmail.com").find(
-      (order) => order.id === preview.batchNumber,
+    const saved = getOrders("vickybabs@gmail.com").find(
+      (order) => order.id === savedOrder.batchNumber,
     );
 
     expect(saved).toBeDefined();
     if (!saved) return;
 
-    expect(canCancelDemoOrder(saved)).toBe(false);
+    expect(canCancelOrder(saved)).toBe(false);
     expect(() =>
-      cancelDemoOrder("vickybabs@gmail.com", preview.batchNumber, "Changed my mind"),
+      cancelOrder("vickybabs@gmail.com", savedOrder.batchNumber, "Changed my mind"),
     ).toThrow(/24-hour cancellation window/);
   });
 
-  it("does not show checkout preview orders to another account", () => {
-    savePreviewOrder();
-    expect(getDemoOrders("blackrose@gmail.com")).not.toContainEqual(
+  it("does not show checkout orders to another account", () => {
+    saveCheckoutOrder();
+    expect(getOrders("blackrose@gmail.com")).not.toContainEqual(
       expect.objectContaining({ id: "CC-BATCH-TEST" }),
     );
   });

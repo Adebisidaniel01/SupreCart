@@ -20,14 +20,14 @@ import {
   type AdminWorkspaceValue,
   type PeopleFilter,
 } from "@/lib/admin-workspace";
-import { deleteDemoAccountData } from "@/lib/demo-account-cleanup";
+import { deleteAccountData } from "@/lib/account-cleanup";
 import {
-  getAllDemoAccounts,
+  getAllAccounts,
   getAccountModeration,
   setAccountModeration,
   subscribeAccountModeration,
   type AccountModerationStatus,
-} from "@/lib/demo-accounts";
+} from "@/lib/accounts";
 import {
   readSellerApplications,
   reviewSellerApplication,
@@ -112,7 +112,7 @@ function AdminLayout() {
     }
     const syncPeople = () =>
       setPeople(
-        getAllDemoAccounts().map((account) => {
+        getAllAccounts().map((account) => {
           const moderation = getAccountModeration(account.email);
           return {
             ...account,
@@ -142,7 +142,7 @@ function AdminLayout() {
 
   function refreshPeople() {
     setPeople(
-      getAllDemoAccounts().map((account) => {
+      getAllAccounts().map((account) => {
         const moderation = getAccountModeration(account.email);
         return {
           ...account,
@@ -169,7 +169,7 @@ function AdminLayout() {
   }
 
   function removePerson(person: AdminPerson) {
-    deleteDemoAccountData(person.email);
+    deleteAccountData(person.email);
     refreshPeople();
     setSellerApplications(readSellerApplications());
     setMessage(`${person.name}'s local account and data were deleted.`);
@@ -293,10 +293,10 @@ function AdminLayout() {
             <ShieldCheck size={15} /> Protected by a secure, server-verified session.
           </p>
           <p className="admin-setup-note">
-            Configure <code>ADMIN_USERNAME</code> and either <code>ADMIN_PASSWORD</code> or{" "}
-            <code>ADMIN_PASSWORD_HASH</code> in your server environment. Until then, the demo
-            login <code>timie_daniel</code> / <code>BlackRose</code> works on previews. No session
-            secret is required until the admin site moves to a domain.
+            Set <code>ADMIN_USERNAME</code> and either <code>ADMIN_PASSWORD</code> or{" "}
+            <code>ADMIN_PASSWORD_HASH</code> in your server environment. No admin credentials are
+            bundled with the source code. A session secret is optional until the admin site moves to
+            a domain.
           </p>
         </section>
         <aside className="admin-login-art" aria-hidden="true">
@@ -412,7 +412,7 @@ function AdminLayout() {
           </Link>
           <div className="admin-sidebar-bottom">
             <span className="admin-online-dot" />
-            <span>Preview workspace</span>
+            <span>Admin workspace</span>
             <button
               type="button"
               aria-label="Sign out"
@@ -430,8 +430,8 @@ function AdminLayout() {
               Workspace <span>/</span> {currentSection}
             </div>
             <div className="admin-topbar-right">
-              <span className="admin-preview-pill">
-                <span /> PREVIEW DATA
+              <span className="admin-data-pill">
+                <span /> OVERVIEW DATA
               </span>
               <span className="admin-avatar">CC</span>
             </div>
@@ -440,7 +440,7 @@ function AdminLayout() {
             <Outlet />
             <footer className="admin-footer">
               <span>SUPRECART ADMIN STUDIO</span>
-              <span>Preview mode · No live data connected</span>
+              <span>Overview mode · No live data connected</span>
             </footer>
           </div>
         </section>

@@ -89,10 +89,13 @@ export function useStore() {
   if (!store) throw new Error("Store provider required");
   return store;
 }
-export function Wordmark() {
+export function Wordmark({ variant = "default" }: { variant?: "default" | "light" }) {
   return (
     <span className="wordmark">
-      <img src="/suprecart-logo.png" alt="SupreCart" />
+      <img
+        src={variant === "light" ? "/suprecart-logo-light.png" : "/suprecart-logo.png"}
+        alt="SupreCart"
+      />
     </span>
   );
 }
@@ -169,7 +172,7 @@ export function Storefront({ children }: { children: ReactNode }) {
         setBagDetails({ ...emptyBagDetails, ...parsed });
       }
     } catch (error) {
-      console.error("Could not restore the saved SupreCart preview basket.", error);
+      console.error("Could not restore the saved SupreCart basket.", error);
       setNotice("Your saved basket could not be restored in this browser.");
     }
     setReady(true);
@@ -182,7 +185,7 @@ export function Storefront({ children }: { children: ReactNode }) {
       localStorage.setItem("suprecart-favorites", JSON.stringify(favorites));
       localStorage.setItem("suprecart-bag-details", JSON.stringify(bagDetails));
     } catch (error) {
-      console.error("Could not save the SupreCart preview basket in this browser.", error);
+      console.error("Could not save the SupreCart basket in this browser.", error);
       setNotice("Your browser could not save this basket. Keep this tab open to preserve it.");
     }
   }, [cart, favorites, bagDetails, ready]);
@@ -647,7 +650,7 @@ export function Storefront({ children }: { children: ReactNode }) {
         <div className="footer-main page-width">
           <div className="footer-about">
             <Link to="/" aria-label="SupreCart home">
-              <Wordmark />
+              <Wordmark variant="light" />
             </Link>
             <p>
               A little bit of everything, from sellers worth knowing. Find your kind of good at
@@ -743,7 +746,7 @@ export function Storefront({ children }: { children: ReactNode }) {
                   if (!list.includes(value)) list.push(value);
                   localStorage.setItem("suprecart-newsletter", JSON.stringify(list));
                   setNewsletterNote(
-                    "Saved on this device for the preview. Newsletter delivery is not connected yet.",
+                    "Saved on this device. Newsletter delivery is not connected yet.",
                   );
                   trackNewsletterSignup();
                   setEmail("");
@@ -778,7 +781,7 @@ export function Storefront({ children }: { children: ReactNode }) {
           <p>
             © 2026 SupreCart. All rights reserved.{" "}
             <span>
-              For more inquiries, contact <a href="tel:080800800800">080-800800800</a>.
+              For more inquiries, contact <a href="tel:09015505210">09015505210</a>.
             </span>
           </p>
           <div>
@@ -841,7 +844,7 @@ export function Storefront({ children }: { children: ReactNode }) {
                 <span className="seller-detail-rating">
                   <Star size={13} fill="currentColor" /> {selected.sellerRating} seller rating
                 </span>
-                <span>{sellerListings} listings in this preview</span>
+                <span>{sellerListings} listings</span>
               </div>
               {hasSizes && (
                 <>
@@ -898,9 +901,7 @@ export function Storefront({ children }: { children: ReactNode }) {
                   <MessageCircle size={17} /> Message seller
                 </Button>
               )}
-              <p className="sample-note">
-                Preview catalogue. Orders and payments are not processed.
-              </p>
+              <p className="local-note">Orders and payments are not processed.</p>
             </div>
           )}
           {panel === "cart" && (
@@ -1072,9 +1073,9 @@ export function Storefront({ children }: { children: ReactNode }) {
                   >
                     Continue to checkout <ArrowRight />
                   </Button>
-                  <p className="sample-note">
-                    Bag details are saved on this device to speed up checkout preview. Checkout is
-                    preview-only; no payments are collected.
+                  <p className="local-note">
+                    Bag details are saved on this device to speed up checkout. No payments are
+                    collected.
                   </p>
                 </>
               )}

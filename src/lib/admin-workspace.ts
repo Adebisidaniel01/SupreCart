@@ -1,11 +1,11 @@
 import { createContext, useContext } from "react";
 import type { getAdminDashboard } from "@/lib/admin";
-import type { AccountModerationStatus, DemoAccount } from "@/lib/demo-accounts";
+import type { AccountModerationStatus, Account } from "@/lib/accounts";
 import type { SellerApplication } from "@/lib/seller-applications";
 
 export type AdminDashboard = Awaited<ReturnType<typeof getAdminDashboard>>;
 
-export type AdminPerson = DemoAccount & {
+export type AdminPerson = Account & {
   avatar: string;
   status: AccountModerationStatus;
   reason: string;

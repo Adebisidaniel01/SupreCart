@@ -692,7 +692,7 @@ button {
 .sizes button {
   width: 44px;
 }
-.sample-note {
+.local-note {
   font-size: 12px;
   color: var(--muted-foreground);
   line-height: 1.6;
@@ -2162,7 +2162,7 @@ body {
 .quantity button {
   border-radius: 5px;
 }
-.sample-note {
+.local-note {
   color: #757b70;
 }
 .cart-item {
@@ -3041,7 +3041,7 @@ body {
   text-decoration: underline;
   text-underline-offset: 3px;
 }
-.demo-disclaimer {
+.local-data-note {
   display: flex;
   align-items: flex-start;
   gap: 7px;
@@ -3050,11 +3050,11 @@ body {
   font-size: 10px;
   line-height: 1.5;
 }
-.demo-disclaimer svg {
+.local-data-note svg {
   flex-shrink: 0;
   color: #738267;
 }
-.demo-code {
+.local-code {
   padding: 12px;
   border-radius: 6px;
   background: #f0f1e9;
@@ -3846,7 +3846,7 @@ body {
   color: #303a30;
   font-weight: 700;
 }
-.order-summary .demo-disclaimer {
+.order-summary .local-data-note {
   padding-top: 13px;
   border-top: 1px solid #eeede7;
 }
@@ -3866,7 +3866,7 @@ body {
 .checkout-lines {
   margin-block: 13px;
 }
-.payment-preview {
+.payment-note {
   padding: 12px;
   border-radius: 6px;
   background: #f6f1e4;
@@ -5171,7 +5171,7 @@ body {
   font-size: 9px;
 }
 .admin-online-dot,
-.admin-preview-pill > span,
+.admin-data-pill > span,
 .admin-live-label > span {
   width: 7px;
   height: 7px;
@@ -5219,7 +5219,7 @@ body {
   align-items: center;
   gap: 15px;
 }
-.admin-preview-pill {
+.admin-data-pill {
   display: inline-flex;
   align-items: center;
   gap: 7px;
@@ -5231,7 +5231,7 @@ body {
   font-size: 8px;
   letter-spacing: 0.05em;
 }
-.admin-preview-pill > span {
+.admin-data-pill > span {
   width: 6px;
   height: 6px;
 }
@@ -5291,7 +5291,7 @@ body {
   color: #89958b;
   font-size: 15px;
 }
-.admin-preview-banner {
+.admin-data-banner {
   display: flex;
   min-height: 39px;
   align-items: center;
@@ -5303,7 +5303,7 @@ body {
   color: #68745d;
   font-size: 10px;
 }
-.admin-preview-banner > svg {
+.admin-data-banner > svg {
   flex: 0 0 auto;
   color: #718b4d;
 }
@@ -5777,7 +5777,7 @@ body {
   .admin-topbar-right {
     gap: 8px;
   }
-  .admin-preview-pill {
+  .admin-data-pill {
     padding: 6px 7px;
     font-size: 7px;
   }
@@ -5795,7 +5795,7 @@ body {
   .admin-period {
     min-height: 32px;
   }
-  .admin-preview-banner {
+  .admin-data-banner {
     align-items: flex-start;
     font-size: 9px;
     line-height: 1.5;
@@ -10042,7 +10042,7 @@ a.skip-link:focus-visible {
   }
 }
 
-/* Customer care preview */
+/* Customer care */
 .support-page {
   max-width: 1100px;
   padding: 22px 24px 42px;
@@ -10260,7 +10260,7 @@ a.skip-link:focus-visible {
   font-size: 11px;
 }
 
-/* Demo order cancellation */
+/* Order cancellation */
 .account-order-actions {
   grid-column: 2 / -1;
   display: flex;
@@ -10546,7 +10546,7 @@ a.skip-link:focus-visible {
     margin-top: 18px;
     font-size: 12px;
   }
-  .auth-page .demo-disclaimer {
+  .auth-page .local-data-note {
     margin-top: 18px;
     padding: 11px 12px;
     border-radius: 12px;
@@ -10599,9 +10599,6 @@ a.skip-link:focus-visible {
 /* Design audit fixes */
 .footer-about > a:first-child {
   display: inline-flex;
-  padding: 6px 10px;
-  border-radius: 8px;
-  background: #fff;
 }
 .footer .wordmark img {
   mix-blend-mode: normal;
@@ -10627,4 +10624,263 @@ a.skip-link:focus-visible {
   flex-wrap: wrap;
   gap: 10px;
   margin-top: 15px;
+}
+.buyer-account-shell {
+  width: 100%;
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 0;
+}
+.buyer-account-hero {
+  position: relative;
+  overflow: hidden;
+  padding: 26px 32px 30px;
+  border-radius: 24px 24px 0 0;
+  background: #1f3d2e;
+  color: #f7f5ec;
+}
+.buyer-account-hero::after {
+  position: absolute;
+  top: -150px;
+  right: -90px;
+  width: 380px;
+  height: 380px;
+  border: 1px solid rgb(255 255 255 / 12%);
+  border-radius: 50%;
+  background: radial-gradient(circle, rgb(173 208 183 / 16%), transparent 62%);
+  content: "";
+}
+.buyer-account-hero-top {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+}
+.buyer-account-hero .back-link {
+  color: #d6e4d9;
+}
+.buyer-account-hero .back-link:hover {
+  color: #fff;
+}
+.buyer-account-hero-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.buyer-account-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 11px;
+  border: 1px solid rgb(255 255 255 / 18%);
+  border-radius: 999px;
+  color: #e4efe6;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.buyer-account-hero .button {
+  border-color: rgb(255 255 255 / 28%);
+  background: transparent;
+  color: #fff;
+}
+.buyer-account-hero .button:hover {
+  background: rgb(255 255 255 / 10%);
+  color: #fff;
+}
+.buyer-account-identity {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  margin-top: 32px;
+}
+.buyer-account-avatar {
+  width: 78px;
+  height: 78px;
+  border: 2px solid rgb(255 255 255 / 22%);
+  border-radius: 50%;
+  background: #d9e9dc;
+  color: #21533e;
+  font-size: 26px;
+  overflow: hidden;
+}
+.buyer-account-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.buyer-account-identity .eyebrow {
+  margin: 0 0 6px;
+  color: #a9c8b5;
+}
+.buyer-account-identity h1 {
+  margin: 0;
+  color: #fff;
+  font-size: clamp(27px, 4vw, 40px);
+  line-height: 1.05;
+  letter-spacing: -0.035em;
+}
+.buyer-account-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 10px 0 0;
+  color: #c7d8cc;
+  font-size: 12px;
+}
+.buyer-account-meta-dot {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: #8dad99;
+}
+.buyer-account-hero .local-data-note {
+  position: relative;
+  z-index: 1;
+  max-width: none;
+  margin: 24px 0 0;
+  padding-top: 18px;
+  border-top: 1px solid rgb(255 255 255 / 12%);
+  color: #b9cec0;
+  font-size: 10px;
+  line-height: 1.6;
+}
+.buyer-account-nav {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 12px 20px;
+  border: 1px solid #e7e0d2;
+  border-top: 0;
+  background: #fffdf8;
+  overflow-x: auto;
+}
+.buyer-account-nav::-webkit-scrollbar {
+  display: none;
+}
+.buyer-account-nav button,
+.buyer-account-nav a {
+  display: inline-flex;
+  flex: 0 0 auto;
+  min-height: 40px;
+  align-items: center;
+  gap: 8px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: #647166;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 650;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.buyer-account-nav button:hover,
+.buyer-account-nav a:hover {
+  background: #f0f5ed;
+  color: #255c40;
+}
+.buyer-account-nav button.active {
+  background: #255c40;
+  color: #fff;
+  box-shadow: 0 6px 16px rgb(37 92 64 / 18%);
+}
+.buyer-account-nav button.active svg {
+  color: #fff;
+}
+.buyer-account-nav svg {
+  color: #7c8a7f;
+}
+.buyer-account-content {
+  padding: 26px 32px 34px;
+  border: 1px solid #e7e0d2;
+  border-top: 0;
+  border-radius: 0 0 24px 24px;
+  background: #fffdf8;
+}
+.account-page.account-dashboard-layout .buyer-account-content .account-dashboard-main {
+  padding-left: 0;
+}
+.buyer-account-content .account-summary-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.buyer-account-content .account-summary-card {
+  border-radius: 14px;
+  background: #fff;
+}
+.buyer-account-content .account-dashboard-card {
+  border-radius: 14px;
+  background: #fff;
+}
+.buyer-account-content .account-settings-tabs {
+  border-radius: 12px;
+  background: #f7f5ed;
+}
+.buyer-account-content .account-settings-section-header h2 {
+  margin-top: 0;
+}
+@media (max-width: 900px) {
+  .buyer-account-content .account-summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 720px) {
+  .buyer-account-hero {
+    padding: 22px 20px 26px;
+    border-radius: 18px 18px 0 0;
+  }
+  .buyer-account-hero-top {
+    align-items: flex-start;
+  }
+  .buyer-account-hero-actions {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+  .buyer-account-status {
+    display: none;
+  }
+  .buyer-account-identity {
+    align-items: flex-start;
+    gap: 14px;
+    margin-top: 26px;
+  }
+  .buyer-account-avatar {
+    width: 62px;
+    height: 62px;
+    font-size: 22px;
+  }
+  .buyer-account-nav {
+    padding: 10px 12px;
+  }
+  .buyer-account-content {
+    padding: 20px 16px 26px;
+    border-radius: 0 0 18px 18px;
+  }
+  .buyer-account-content .account-summary-grid {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 480px) {
+  .buyer-account-hero-top {
+    flex-direction: column;
+    gap: 12px;
+  }
+  .buyer-account-hero-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+  .buyer-account-hero-actions .button {
+    min-height: 40px;
+  }
+  .buyer-account-meta {
+    font-size: 11px;
+  }
 }

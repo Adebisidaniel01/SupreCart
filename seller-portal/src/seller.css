@@ -1009,7 +1009,7 @@
 .seller-settings-form .seller-primary-button {
   width: max-content;
 }
-.seller-fee-preview {
+.seller-fee-estimate {
   margin: 0;
   padding: 11px 13px;
   border: 1px dashed #bcd8cd;
@@ -1019,7 +1019,7 @@
   font-size: 11px;
   line-height: 1.6;
 }
-.seller-fee-preview strong {
+.seller-fee-estimate strong {
   color: #118f7a;
 }
 .seller-commission-tiers {
@@ -2004,7 +2004,26 @@
     justify-self: end;
     font-size: 11px;
   }
-  .seller-product-state {
+.seller-product-stock {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.seller-stock-toggle {
+  width: max-content;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #3e5046;
+  font-size: 8px;
+  font-weight: 650;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.seller-stock-toggle:hover {
+  color: var(--seller-green);
+}
+.seller-product-state {
     grid-area: state;
     justify-self: end;
     font-size: 10px;

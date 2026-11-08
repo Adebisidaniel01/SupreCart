@@ -39,13 +39,13 @@ function AdminOverview() {
           Last 30 days <span>⌄</span>
         </div>
       </div>
-      <div className="admin-preview-banner">
+      <div className="admin-data-banner">
         <Sparkles size={15} />
         <span>
-          These are illustrative sample figures. Connect your analytics and finance services to see
+          These are illustrative figures. Connect your analytics and finance services to see
           live data.
         </span>
-        <span className="admin-banner-tag">SAMPLE</span>
+        <span className="admin-banner-tag">ILLUSTRATIVE</span>
       </div>
       <section className="admin-stat-grid" aria-label="Marketplace summary">
         {dashboard.stats.map((stat, index) => {
@@ -90,7 +90,7 @@ function AdminOverview() {
           <div
             className="admin-bar-chart"
             role="img"
-            aria-label="Sample daily visits: Monday 42, Tuesday 64, Wednesday 52, Thursday 78, Friday 60, Saturday 92, Sunday 72 percent of peak."
+            aria-label="Daily visits: Monday 42, Tuesday 64, Wednesday 52, Thursday 78, Friday 60, Saturday 92, Sunday 72 percent of peak."
           >
             {dashboard.visits.map((item) => (
               <div className="admin-chart-day" key={item.day}>

@@ -9,14 +9,14 @@ const pages: Record<string, { title: string; eyebrow: string; body: string[] }> 
     body: [
       "SupreCart is a buyer-first marketplace bringing independent sellers and thoughtful finds together in one easy place.",
       "From everyday style and footwear to home, tech, accessories and beauty, we’re here to make discovering something great feel simple.",
-      "Our seller and product details are preview content while the marketplace is being prepared for launch.",
+      "Our seller and product details are being prepared for launch.",
     ],
   },
   contact: {
     title: "We’re here to help.",
     eyebrow: "CONTACT",
     body: [
-      "For more inquiries, contact us on 080-800800800.",
+      "For more inquiries, contact us on 09015505210.",
       "Our customer-care hours and dedicated support channels will be shared when the marketplace launches.",
     ],
   },
@@ -25,7 +25,7 @@ const pages: Record<string, { title: string; eyebrow: string; body: string[] }> 
     eyebrow: "SHIPPING INFORMATION",
     body: [
       "Delivery options, destinations, costs and estimated arrival times will be confirmed at checkout when our delivery partners are connected.",
-      "This storefront is a preview. Submitting checkout details here does not create a delivery request.",
+      "Submitting checkout details here does not create a delivery request.",
     ],
   },
   returns: {
@@ -33,33 +33,33 @@ const pages: Record<string, { title: string; eyebrow: string; body: string[] }> 
     eyebrow: "RETURNS & EXCHANGES",
     body: [
       "Our final returns and exchanges policy will be published before the marketplace opens for orders.",
-      "This preview does not accept orders or process returns.",
+      "This storefront does not accept orders or process returns.",
     ],
   },
   faq: {
     title: "The essentials, answered.",
     eyebrow: "FREQUENTLY ASKED QUESTIONS",
     body: [
-      "Is SupreCart live? The storefront is currently a product and buyer-experience preview.",
-      "Can I place an order? You can explore the checkout preview, but orders and payments are not processed.",
-      "Are sellers and ratings real? Seller names, ratings and products shown here are sample marketplace content.",
+      "Is SupreCart live? The storefront is currently a product and buyer-experience showcase.",
+      "Can I place an order? You can explore checkout, but orders and payments are not processed.",
+      "Are sellers and ratings real? Seller names, ratings and products shown here are seeded marketplace content.",
     ],
   },
   privacy: {
     title: "Your trust matters.",
     eyebrow: "PRIVACY",
     body: [
-      "This preview stores cart, wishlist and account details only in your browser. Do not enter sensitive personal or payment information.",
+      "Cart, wishlist and account details are stored only in your browser. Do not enter sensitive personal or payment information.",
       "If you allow analytics cookies, we use Google Analytics to understand how the storefront and seller portal are used. Analytics can see product and cart events, but never your name, email address, delivery address, password or payment details.",
       "No actual email verification, newsletter signup, account authentication or payment service is connected yet. A complete privacy notice will be published before launch.",
     ],
   },
   terms: {
-    title: "A marketplace in preview.",
+    title: "Marketplace terms.",
     eyebrow: "TERMS",
     body: [
-      "SupreCart is currently a preview storefront. Product descriptions, prices, seller information and ratings are illustrative and may not represent items available for purchase.",
-      "No order, payment, delivery, subscription or seller transaction is created through this preview.",
+      "Product descriptions, prices, seller information and ratings are illustrative and may not represent items available for purchase.",
+      "No order, payment, delivery, subscription or seller transaction is created through this storefront.",
     ],
   },
   size: {
@@ -77,7 +77,7 @@ const pages: Record<string, { title: string; eyebrow: string; body: string[] }> 
       "SupreCart uses one essential first-party cookie to remember your cookie choice. It does not track you across other sites.",
       "If you allow analytics, we load Google Analytics (GA4) to measure page views, searches, cart activity, wishlist use, checkout steps and errors. Google Analytics cookies stay off until you accept analytics, and you can reject or manage them from the banner. Marketing cookies are not installed.",
       "To change your mind, clear this site's cookies and choose again from the banner.",
-      "This preview stores cart, wishlist and account details only in your browser. Do not enter sensitive personal or payment information.",
+      "Cart, wishlist and account details are stored only in your browser. Do not enter sensitive personal or payment information.",
     ],
   },
 };

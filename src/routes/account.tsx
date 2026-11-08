@@ -14,7 +14,6 @@ import {
   Lock,
   LogOut,
   MapPin,
-  Menu,
   MessageCircle,
   Package,
   Plus,
@@ -25,27 +24,26 @@ import {
   Trash2,
   Upload,
   UserRound,
-  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
-  clearDemoAccount,
+  clearAccount,
   ensureSellerAccount,
-  findDemoAccount,
+  findAccount,
   getAccountModeration,
   readActiveAccount,
-  saveDemoAccount,
-  type DemoAccount,
-} from "@/lib/demo-accounts";
-import { deleteDemoAccountData } from "@/lib/demo-account-cleanup";
+  saveAccount,
+  type Account,
+} from "@/lib/accounts";
+import { deleteAccountData } from "@/lib/account-cleanup";
 import {
-  canCancelDemoOrder,
-  cancelDemoOrder,
-  getDemoOrders,
-  getDemoProfile,
-  saveDemoProfile,
-  type DemoOrder,
-} from "@/lib/demo-orders";
+  canCancelOrder,
+  cancelOrder,
+  getOrders,
+  getProfile,
+  saveProfile as saveStoredProfile,
+  type Order,
+} from "@/lib/orders";
 import {
   getSellerApplication,
   submitSellerApplication as saveSellerApplication,
@@ -54,6 +52,7 @@ import {
 } from "@/lib/seller-applications";
 import { trackEvent } from "@/lib/analytics";
 import { avatarErrorMessage, processAvatarFile } from "@/lib/avatar";
+import { cleanEmail, cleanMultiline, cleanPhone, cleanText } from "@/lib/input";
 import {
   accountPreferenceScope,
   createPaymentMethod,
@@ -69,7 +68,7 @@ import {
   type RegionPreferences,
 } from "@/lib/account-preferences";
 
-type BuyerOrder = DemoOrder;
+type BuyerOrder = Order;
 
 type BuyerAddress = {
   id: string;
@@ -84,7 +83,7 @@ type BuyerAddress = {
   is_default: boolean;
 };
 
-const addressStorageKey = (email: string) => `suprecart-demo-addresses:${email.toLowerCase()}`;
+const addressStorageKey = (email: string) => `suprecart-addresses:${email.toLowerCase()}`;
 
 function readLocalAddresses(email: string): BuyerAddress[] {
   try {
@@ -152,14 +151,12 @@ export const Route = createFileRoute("/account")({
 
 function BuyerAccount() {
   const navigate = useNavigate();
-  const [demoAccount, setDemoAccount] = useState<DemoAccount | null>(null);
-  const [demoProfile, setDemoProfile] = useState({ name: "", phone: "" });
+  const [sessionAccount, setSessionAccount] = useState<Account | null>(null);
+  const [sessionProfile, setSessionProfile] = useState({ name: "", phone: "" });
   const [orders, setOrders] = useState<BuyerOrder[]>([]);
   const [addresses, setAddresses] = useState<BuyerAddress[]>([]);
   const [section, setSection] = useState<AccountSection>("overview");
   const [settingsTab, setSettingsTab] = useState<SettingsTab>("profile");
-  const [settingsOpen, setSettingsOpen] = useState(false);
-  const [navOpen, setNavOpen] = useState(false);
   const [preferences, setPreferences] = useState<AccountPreferences>(defaultAccountPreferences);
   const [preferencesScope, setPreferencesScope] = useState("");
   const [sellerApplication, setSellerApplication] = useState<SellerApplication | null>(null);
@@ -181,33 +178,31 @@ function BuyerAccount() {
       void navigate({ to: "/sellers" });
       return;
     }
-    setDemoAccount(activeAccount);
-    setDemoProfile(getDemoProfile(activeAccount.email, activeAccount.name));
-    setOrders(getDemoOrders(activeAccount.email));
+    setSessionAccount(activeAccount);
+    setSessionProfile(getProfile(activeAccount.email, activeAccount.name));
+    setOrders(getOrders(activeAccount.email));
     setAddresses(readLocalAddresses(activeAccount.email));
     setError("");
     setLoading(false);
   }, [navigate]);
 
   useEffect(() => {
-    if (!demoAccount) {
+    if (!sessionAccount) {
       setSellerApplication(null);
       return;
     }
-    const syncApplication = () => setSellerApplication(getSellerApplication(demoAccount.email));
+    const syncApplication = () => setSellerApplication(getSellerApplication(sessionAccount.email));
     syncApplication();
     return subscribeSellerApplications(syncApplication);
-  }, [demoAccount]);
+  }, [sessionAccount]);
 
   useEffect(() => {
     const syncSection = () => {
       if (window.location.hash === "#seller") {
         setSection("seller");
-        setSettingsOpen(false);
       } else if (window.location.hash === "#settings") {
         setSection("settings");
         setSettingsTab("profile");
-        setSettingsOpen(true);
       }
     };
     syncSection();
@@ -215,8 +210,8 @@ function BuyerAccount() {
     return () => window.removeEventListener("hashchange", syncSection);
   }, []);
 
-  const identity = demoAccount?.email ?? "";
-  const moderation = demoAccount ? getAccountModeration(demoAccount.email) : null;
+  const identity = sessionAccount?.email ?? "";
+  const moderation = sessionAccount ? getAccountModeration(sessionAccount.email) : null;
   const preferencesKey = useMemo(
     () => (identity ? accountPreferenceScope("buyer", identity) : ""),
     [identity],
@@ -246,19 +241,19 @@ function BuyerAccount() {
 
   function submitSellerApplication(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!demoAccount) {
+    if (!sessionAccount) {
       setError("Sign in to your buyer account before applying to sell.");
       return;
     }
     const form = new FormData(event.currentTarget);
     const application = saveSellerApplication({
-      email: demoAccount.email,
-      name: demoAccount.name,
-      storeName: String(form.get("storeName")).trim(),
-      phone: String(form.get("phone")).trim(),
-      productDescription: String(form.get("productDescription")).trim(),
-      bankName: String(form.get("bankName")).trim(),
-      bankAccountNumber: String(form.get("bankAccountNumber")).trim(),
+      email: sessionAccount.email,
+      name: sessionAccount.name,
+      storeName: cleanText(form.get("storeName"), 120),
+      phone: cleanPhone(form.get("phone")),
+      productDescription: cleanMultiline(form.get("productDescription"), 1000),
+      bankName: cleanText(form.get("bankName"), 120),
+      bankAccountNumber: cleanText(form.get("bankAccountNumber"), 20).replace(/\D/g, ""),
     });
     setSellerApplication(application);
     setError("");
@@ -290,9 +285,9 @@ function BuyerAccount() {
     event.preventDefault();
     const formElement = event.currentTarget;
     const form = new FormData(formElement);
-    const brand = String(form.get("brand"));
-    const last4 = String(form.get("last4")).replace(/\D/g, "");
-    const expiry = String(form.get("expiry")).trim();
+    const brand = cleanText(form.get("brand"), 40);
+    const last4 = cleanText(form.get("last4"), 10).replace(/\D/g, "");
+    const expiry = cleanText(form.get("expiry"), 5);
     if (last4.length < 4 || !/^\d{2}\/\d{2}$/.test(expiry)) {
       setError("Enter the last 4 digits and an expiry in MM/YY format.");
       return;
@@ -302,7 +297,7 @@ function BuyerAccount() {
     updatePreferences({ ...preferences, paymentMethods: [...preferences.paymentMethods, method] });
     formElement.reset();
     setError("");
-    setNotice("Sample payment method saved in this browser. No real card is stored or charged.");
+    setNotice("Payment method saved in this browser. No real card is stored or charged.");
   }
 
   function removePaymentMethod(id: string) {
@@ -324,49 +319,49 @@ function BuyerAccount() {
   }
 
   function signOutOtherSessions() {
-    setNotice("This preview keeps one session in this browser, so there are no other devices.");
+    setNotice("This app keeps one session in this browser, so there are no other devices.");
   }
 
   async function removeAccount() {
-    if (demoAccount) {
-      deleteDemoAccountData(demoAccount.email);
-      setDemoAccount(null);
+    if (sessionAccount) {
+      deleteAccountData(sessionAccount.email);
+      setSessionAccount(null);
       await navigate({ to: "/login" });
     }
   }
 
   function saveProfile(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!demoAccount) return;
+    if (!sessionAccount) return;
     const form = new FormData(event.currentTarget);
-    const name = String(form.get("name")).trim();
-    const phone = String(form.get("phone")).trim();
+    const name = cleanText(form.get("name"), 120);
+    const phone = cleanPhone(form.get("phone"));
     if (!name) {
       setError("Enter your name before saving.");
       return;
     }
-    saveDemoProfile(demoAccount.email, { name, phone });
-    setDemoAccount({ ...demoAccount, name });
-    setDemoProfile({ name, phone });
+    saveStoredProfile(sessionAccount.email, { name, phone });
+    setSessionAccount({ ...sessionAccount, name });
+    setSessionProfile({ name, phone });
     setError("");
     setNotice("Your profile has been updated in this browser.");
   }
 
   function addAddress(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!demoAccount) return;
+    if (!sessionAccount) return;
     const formElement = event.currentTarget;
     const form = new FormData(formElement);
     const nextAddress: BuyerAddress = {
       id: crypto.randomUUID(),
-      first_name: String(form.get("first_name")).trim(),
-      last_name: String(form.get("last_name")).trim(),
-      email: String(form.get("email")).trim().toLowerCase(),
-      phone: String(form.get("phone")).trim(),
-      lga: String(form.get("lga")).trim(),
-      community: String(form.get("community")).trim(),
-      street_address: String(form.get("street_address")).trim(),
-      landmark: String(form.get("landmark")).trim(),
+      first_name: cleanText(form.get("first_name"), 80),
+      last_name: cleanText(form.get("last_name"), 80),
+      email: cleanEmail(form.get("email")),
+      phone: cleanPhone(form.get("phone")),
+      lga: cleanText(form.get("lga"), 80),
+      community: cleanText(form.get("community"), 120),
+      street_address: cleanText(form.get("street_address"), 200),
+      landmark: cleanText(form.get("landmark"), 160),
       is_default: addresses.length === 0 || form.get("is_default") === "on",
     };
     const updated = [
@@ -376,35 +371,34 @@ function BuyerAccount() {
       nextAddress,
     ];
     setAddresses(updated);
-    writeLocalAddresses(demoAccount.email, updated);
+    writeLocalAddresses(sessionAccount.email, updated);
     formElement.reset();
     setNotice("Delivery address saved in this browser.");
   }
 
   function removeAddress(addressId: string) {
-    if (!demoAccount) return;
+    if (!sessionAccount) return;
     const updated = addresses.filter((address) => address.id !== addressId);
     setAddresses(updated);
-    writeLocalAddresses(demoAccount.email, updated);
+    writeLocalAddresses(sessionAccount.email, updated);
   }
 
   async function signOut() {
-    clearDemoAccount();
-    setDemoAccount(null);
+    clearAccount();
+    setSessionAccount(null);
     await navigate({ to: "/login" });
   }
 
   async function openSellerStudio() {
-    if (!demoAccount) return;
+    if (!sessionAccount) return;
     const sellerAccount =
-      findDemoAccount(demoAccount.email, "seller") ??
-      (sellerApplication?.status === "approved" ? ensureSellerAccount(demoAccount) : null);
+      findAccount(sessionAccount.email, "seller") ??
+      (sellerApplication?.status === "approved" ? ensureSellerAccount(sessionAccount) : null);
     if (!sellerAccount) {
       setSection("seller");
-      setNavOpen(false);
       return;
     }
-    saveDemoAccount(sellerAccount);
+    saveAccount(sellerAccount);
     await navigate({ to: "/sellers" });
   }
 
@@ -415,13 +409,13 @@ function BuyerAccount() {
   }
 
   function confirmCancelOrder(orderId: string, reason: string) {
-    if (!demoAccount) return;
+    if (!sessionAccount) return;
     try {
-      setOrders(cancelDemoOrder(demoAccount.email, orderId, reason));
+      setOrders(cancelOrder(sessionAccount.email, orderId, reason));
       setCancellingOrderId("");
       setOrderError("");
       setOrderNotice(
-        `Cancellation request for order ${orderId} was saved in this preview and is awaiting review. No payment or refund has been processed.`,
+        `Cancellation request for order ${orderId} was saved and is awaiting review. No payment or refund has been processed.`,
       );
     } catch (cause) {
       setOrderError(
@@ -432,40 +426,54 @@ function BuyerAccount() {
     }
   }
 
-  const firstName = demoProfile.name || "there";
+  const firstName = sessionProfile.name || "there";
   const [addressFirstName = "", ...addressLastNameParts] = firstName.split(/\s+/);
   const addressLastName = addressLastNameParts.join(" ");
 
   return (
     <main id="main-content" tabIndex={-1} className="account-page account-dashboard-layout">
-      <section className="account-panel account-dashboard">
-        <Link to="/" className="back-link">
-          <ArrowLeft size={15} /> Back to SupreCart
-        </Link>
-        <div className="account-brand">
-          <img className="account-mark" src="/suprecart-logo.png" alt="SupreCart" />
-          <span>
-            SUPRECART <small>YOUR MARKETPLACE</small>
-          </span>
-        </div>
-        <div className="account-dashboard-heading">
-          <div>
-            <p className="eyebrow">YOUR ACCOUNT</p>
-            <h1>Good to see you, {firstName}.</h1>
-            <p className="account-intro">Your SupreCart profile and activity.</p>
-            {demoAccount && (
-              <p className="demo-disclaimer" role="status">
-                SAMPLE DATA · This account, its orders and profile edits live in this browser only.
-                No real order is placed and no payment is taken.
-              </p>
-            )}
+      <section className="account-panel account-dashboard buyer-account-shell">
+        <header className="buyer-account-hero">
+          <div className="buyer-account-hero-top">
+            <Link to="/" className="back-link">
+              <ArrowLeft size={15} /> Back to SupreCart
+            </Link>
+            <div className="buyer-account-hero-actions">
+              <span className="buyer-account-status">
+                <ShieldCheck size={14} /> Buyer account
+              </span>
+              <Button variant="outline" onClick={() => void signOut()}>
+                <LogOut size={15} /> Sign out
+              </Button>
+            </div>
           </div>
-          <Button variant="outline" onClick={() => void signOut()}>
-            <LogOut size={15} /> Sign out
-          </Button>
-        </div>
+          <div className="buyer-account-identity">
+            <span className="account-avatar buyer-account-avatar">
+              {preferences.avatarDataUrl ? (
+                <img src={preferences.avatarDataUrl} alt="" />
+              ) : (
+                <UserRound size={30} />
+              )}
+            </span>
+            <div>
+              <p className="eyebrow">YOUR ACCOUNT</p>
+              <h1>Good to see you, {firstName}.</h1>
+              <p className="buyer-account-meta">
+                <span>{sessionAccount?.email}</span>
+                <span className="buyer-account-meta-dot" aria-hidden="true" />
+                <span>{sessionProfile.phone || "No phone added yet"}</span>
+              </p>
+            </div>
+          </div>
+          {sessionAccount && (
+            <p className="local-data-note" role="status">
+              ACCOUNT DATA - This account, its orders and profile edits live in this browser only.
+              No real order is placed and no payment is taken.
+            </p>
+          )}
+        </header>
 
-        {loading && <p className="account-intro">Loading your account…</p>}
+        {loading && <p className="account-intro">Loading your account...</p>}
         {error && (
           <p className="form-error" role="alert">
             {error}
@@ -473,107 +481,46 @@ function BuyerAccount() {
         )}
         {!loading && (
           <>
-            <div className="account-mobile-nav-bar">
+            <nav className="buyer-account-nav" aria-label="Account sections">
+              {(
+                [
+                  ["overview", "Overview", House],
+                  ["orders", "Orders", Package],
+                  ["addresses", "Addresses", MapPin],
+                  ["seller", "Sell with us", Store],
+                ] as const
+              ).map(([key, label, Icon]) => (
+                <button
+                  type="button"
+                  key={key}
+                  className={section === key ? "active" : ""}
+                  onClick={() => {
+                    setSection(key);
+                    setError("");
+                    setNotice("");
+                  }}
+                >
+                  <Icon size={17} /> {label}
+                </button>
+              ))}
+              <Link to="/messages" search={{ productId: undefined }}>
+                <MessageCircle size={17} /> Messages
+              </Link>
               <button
                 type="button"
-                className="account-mobile-nav-toggle"
-                aria-expanded={navOpen}
-                aria-controls="account-section-nav"
-                onClick={() => setNavOpen((open) => !open)}
+                className={section === "settings" ? "active" : ""}
+                onClick={() => {
+                  setSection("settings");
+                  setSettingsTab("profile");
+                  setError("");
+                  setNotice("");
+                  setConfirmDelete(false);
+                }}
               >
-                {navOpen ? <X size={17} /> : <Menu size={17} />}
-                <span>Account menu</span>
+                <Settings size={17} /> Settings
               </button>
-            </div>
-            <div className="account-dashboard-body">
-              <nav
-                id="account-section-nav"
-                className={`account-section-nav${navOpen ? " is-open" : ""}`}
-                aria-label="Account sections"
-              >
-                <div className="account-sidebar-intro">
-                  <span className="account-sidebar-icon">
-                    <UserRound size={19} />
-                  </span>
-                  <div>
-                    <strong>Your account</strong>
-                    <span>GOOD FINDS, YOUR WAY.</span>
-                  </div>
-                </div>
-                <div className="account-sidebar-caption">YOUR SPACE</div>
-                {(
-                  [
-                    ["overview", "Overview", House],
-                    ["orders", "Orders", Package],
-                    ["addresses", "Addresses", MapPin],
-                    ["seller", "Sell with us", Store],
-                  ] as const
-                ).map(([key, label, Icon]) => (
-                  <button
-                    type="button"
-                    key={key}
-                    className={section === key ? "active" : ""}
-                    onClick={() => {
-                      setSection(key);
-                      setSettingsOpen(false);
-                      setError("");
-                      setNotice("");
-                      setNavOpen(false);
-                    }}
-                  >
-                    <Icon size={16} /> {label}
-                  </button>
-                ))}
-                <div className="account-nav-group">
-                  <button
-                    type="button"
-                    className={section === "settings" ? "active" : ""}
-                    onClick={() => {
-                      setSettingsOpen((v) => !v);
-                      if (section !== "settings") {
-                        setSection("settings");
-                        setSettingsTab("profile");
-                        setError("");
-                        setNotice("");
-                      }
-                    }}
-                  >
-                    <Settings size={16} /> Account settings
-                  </button>
-                  {settingsOpen && (
-                    <div className="account-nav-submenu">
-                      {settingsTabs.map(([key, label, Icon]) => (
-                        <button
-                          type="button"
-                          key={key}
-                          className={section === "settings" && settingsTab === key ? "active" : ""}
-                          onClick={() => {
-                            setSection("settings");
-                            setSettingsTab(key as SettingsTab);
-                            setError("");
-                            setNotice("");
-                            setConfirmDelete(false);
-                            setNavOpen(false);
-                          }}
-                        >
-                          <Icon size={15} /> {label}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-                <Link
-                  to="/messages"
-                  search={{ productId: undefined }}
-                  onClick={() => setNavOpen(false)}
-                >
-                  <MessageCircle size={16} /> Messages
-                </Link>
-                <div className="account-sidebar-foot">
-                  <ShieldCheck size={15} />
-                  <span>Your information is protected by SupreCart.</span>
-                </div>
-              </nav>
+            </nav>
+            <div className="buyer-account-content">
               <div className="account-dashboard-main">
                 {moderation?.status === "warned" && (
                   <p className="account-warning-note" role="alert">
@@ -650,15 +597,15 @@ function BuyerAccount() {
                       <dl>
                         <div>
                           <dt>Name</dt>
-                          <dd>{demoProfile.name || firstName}</dd>
+                          <dd>{sessionProfile.name || firstName}</dd>
                         </div>
                         <div>
                           <dt>Email</dt>
-                          <dd>{demoAccount?.email}</dd>
+                          <dd>{sessionAccount?.email}</dd>
                         </div>
                         <div>
                           <dt>Phone</dt>
-                          <dd>{demoProfile.phone || "Not added"}</dd>
+                          <dd>{sessionProfile.phone || "Not added"}</dd>
                         </div>
                         <div>
                           <dt>Account type</dt>
@@ -786,13 +733,12 @@ function BuyerAccount() {
                                   </li>
                                 </ol>
                                 <p className="account-order-note">
-                                  Requested in this preview. No payment or refund has been processed
-                                  yet.
+                                  Requested. No payment or refund has been processed yet.
                                 </p>
                               </div>
                             ) : order.status === "Cancelled" ? (
                               <p className="account-order-note">
-                                Cancelled in this preview
+                                Cancelled
                                 {order.cancelled_at
                                   ? ` on ${new Date(order.cancelled_at).toLocaleDateString()}`
                                   : ""}
@@ -804,13 +750,13 @@ function BuyerAccount() {
                                 onSubmit={(event) => {
                                   event.preventDefault();
                                   const form = new FormData(event.currentTarget);
-                                  confirmCancelOrder(order.id, String(form.get("reason") ?? ""));
+                                  confirmCancelOrder(order.id, cleanText(form.get("reason"), 300));
                                 }}
                               >
                                 <p>
                                   Request cancellation for order {order.id}? It will be reviewed
-                                  before any refund is processed. This preview does not send the
-                                  request anywhere.
+                                  before any refund is processed. This request is saved in this
+                                  browser only.
                                 </p>
                                 <label>
                                   Cancellation reason
@@ -841,7 +787,7 @@ function BuyerAccount() {
                               </form>
                             ) : (
                               <div className="account-order-actions">
-                                {canCancelDemoOrder(order) ? (
+                                {canCancelOrder(order) ? (
                                   <button
                                     type="button"
                                     className="account-danger-link"
@@ -870,7 +816,7 @@ function BuyerAccount() {
                       </ul>
                     ) : (
                       <p className="account-intro">
-                        No orders yet. This preview keeps order history in this browser only.
+                        No orders yet. Order history is kept in this browser only.
                       </p>
                     )}
                     <p className="account-intro account-order-support">
@@ -882,7 +828,7 @@ function BuyerAccount() {
                   <>
                     <section className="account-dashboard-card">
                       <h2>Delivery addresses</h2>
-                      <p className="demo-disclaimer">
+                      <p className="local-data-note">
                         Addresses are stored in this browser only and are not shared with any
                         delivery service.
                       </p>
@@ -935,7 +881,7 @@ function BuyerAccount() {
                           <input
                             name="email"
                             type="email"
-                            defaultValue={demoAccount?.email ?? ""}
+                            defaultValue={sessionAccount?.email ?? ""}
                             required
                           />
                         </label>
@@ -1029,8 +975,8 @@ function BuyerAccount() {
                             <span>APPROVED</span>
                           </div>
                           <p className="account-intro">
-                            Your shop, orders and payouts live in one focused workspace. This
-                            preview keeps seller changes in this browser only.
+                            Your shop, orders and payouts live in one focused workspace. Seller
+                            changes are kept in this browser only.
                           </p>
                         </div>
                         <Button onClick={() => void openSellerStudio()}>
@@ -1097,7 +1043,7 @@ function BuyerAccount() {
                             <input
                               name="phone"
                               type="tel"
-                              defaultValue={sellerApplication?.phone ?? demoProfile.phone ?? ""}
+                              defaultValue={sellerApplication?.phone ?? sessionProfile.phone ?? ""}
                               placeholder="+234"
                               required
                             />
@@ -1148,8 +1094,8 @@ function BuyerAccount() {
                           </label>
                         </div>
                         <p className="account-field-hint">
-                          Payout details are preview-only and are never sent to a bank. You can
-                          update them before any real payout is connected.
+                          Payout details are stored in this browser and are never sent to a bank.
+                          You can update them before any real payout is connected.
                         </p>
                         <Button type="submit">
                           {sellerApplication?.status === "rejected"
@@ -1167,6 +1113,25 @@ function BuyerAccount() {
                       <h2>
                         {settingsTabs.find(([k]) => k === settingsTab)?.[1] || "Account settings"}
                       </h2>
+                    </div>
+                    <div className="account-settings-tabs" role="tablist" aria-label="Settings">
+                      {settingsTabs.map(([key, label, Icon]) => (
+                        <button
+                          type="button"
+                          key={key}
+                          role="tab"
+                          aria-selected={settingsTab === key}
+                          className={settingsTab === key ? "active" : ""}
+                          onClick={() => {
+                            setSettingsTab(key as SettingsTab);
+                            setError("");
+                            setNotice("");
+                            setConfirmDelete(false);
+                          }}
+                        >
+                          <Icon size={15} /> {label}
+                        </button>
+                      ))}
                     </div>
                     {settingsTab === "profile" && (
                       <section className="account-dashboard-card">
@@ -1206,22 +1171,22 @@ function BuyerAccount() {
                             </div>
                           </div>
                         </div>
-                        <p className="demo-disclaimer">
+                        <p className="local-data-note">
                           Profile changes stay in this browser. Your email address identifies the
                           account and cannot be changed here.
                         </p>
                         <form className="account-form" onSubmit={saveProfile}>
                           <label>
                             Display name
-                            <input name="name" defaultValue={demoProfile.name} required />
+                            <input name="name" defaultValue={sessionProfile.name} required />
                           </label>
                           <label>
                             Phone
-                            <input name="phone" type="tel" defaultValue={demoProfile.phone} />
+                            <input name="phone" type="tel" defaultValue={sessionProfile.phone} />
                           </label>
                           <label>
                             Account email
-                            <input value={demoAccount?.email ?? ""} disabled />
+                            <input value={sessionAccount?.email ?? ""} disabled />
                           </label>
                           <Button type="submit">Save profile</Button>
                         </form>
@@ -1232,7 +1197,7 @@ function BuyerAccount() {
                       <section className="account-dashboard-card">
                         <p className="account-intro">
                           Choose what SupreCart should tell you about. These preferences are saved
-                          in this browser while messaging is still a preview.
+                          in this browser.
                         </p>
                         <div className="account-toggle-list">
                           {(
@@ -1318,8 +1283,8 @@ function BuyerAccount() {
                     {settingsTab === "payments" && (
                       <section className="account-dashboard-card">
                         <p className="account-intro">
-                          Sample payment methods for the preview checkout. SupreCart never stores a
-                          full card number and this preview collects no payments.
+                          Payment methods for checkout. SupreCart never stores a full card number
+                          and no payments are collected.
                         </p>
                         {preferences.paymentMethods.length ? (
                           <div className="account-payment-list">
@@ -1355,13 +1320,13 @@ function BuyerAccount() {
                             ))}
                           </div>
                         ) : (
-                          <p className="account-intro">No sample payment methods saved yet.</p>
+                          <p className="account-intro">No payment methods saved yet.</p>
                         )}
                         <form
                           className="account-form account-payment-form"
                           onSubmit={addPaymentMethod}
                         >
-                          <h3>Add a sample method</h3>
+                          <h3>Add a payment method</h3>
                           <div className="field-pair">
                             <label>
                               Brand
@@ -1387,7 +1352,7 @@ function BuyerAccount() {
                             <input name="expiry" placeholder="09/29" required />
                           </label>
                           <Button type="submit" variant="outline">
-                            <Plus size={15} /> Add sample method
+                            <Plus size={15} /> Add payment method
                           </Button>
                         </form>
                       </section>
@@ -1437,8 +1402,7 @@ function BuyerAccount() {
                           </Button>
                         </div>
                         <p className="account-field-hint">
-                          Two-factor authentication is a placeholder in this preview; it never
-                          blocks sign-in.
+                          Two-factor authentication is a placeholder; it never blocks sign-in.
                         </p>
                       </section>
                     )}
@@ -1446,11 +1410,11 @@ function BuyerAccount() {
                     {settingsTab === "danger" && (
                       <section className="account-dashboard-card account-danger-zone">
                         <p className="account-intro">
-                          {demoAccount
-                            ? "Permanently delete this local preview account, its profile, orders, messages, seller application and saved preferences from this browser."
-                            : "Closing a real SupreCart account is handled by our team. Account deletion is not connected in this preview."}
+                          {sessionAccount
+                            ? "Permanently delete this local account, its profile, orders, messages, seller application and saved preferences from this browser."
+                            : "Closing a real SupreCart account is handled by our team."}
                         </p>
-                        {demoAccount ? (
+                        {sessionAccount ? (
                           confirmDelete ? (
                             <div className="account-confirm">
                               <p>
@@ -1463,7 +1427,7 @@ function BuyerAccount() {
                                   variant="destructive"
                                   onClick={() => void removeAccount()}
                                 >
-                                  <Trash2 size={15} /> Delete preview account
+                                  <Trash2 size={15} /> Delete account
                                 </Button>
                                 <Button
                                   type="button"
@@ -1480,7 +1444,7 @@ function BuyerAccount() {
                               variant="outline"
                               onClick={() => setConfirmDelete(true)}
                             >
-                              <Trash2 size={15} /> Delete preview account
+                              <Trash2 size={15} /> Delete account
                             </Button>
                           )
                         ) : (
@@ -1501,22 +1465,6 @@ function BuyerAccount() {
           </>
         )}
       </section>
-      <aside className="account-aside">
-        <span>
-          GOOD FINDS.
-          <br />
-          GOOD PEOPLE.
-        </span>
-        <p>
-          A little more considered.
-          <br />A lot more to discover.
-        </p>
-        <div className="account-aside-note">
-          Your marketplace,
-          <br />
-          <strong>your way.</strong>
-        </div>
-      </aside>
     </main>
   );
 }
