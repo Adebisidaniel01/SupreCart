@@ -7,6 +7,7 @@ import {
   BadgeCheck,
   Bell,
   Check,
+  ChevronDown,
   CreditCard,
   Clock3,
   Globe,
@@ -14,6 +15,7 @@ import {
   Lock,
   LogOut,
   MapPin,
+  Menu,
   MessageCircle,
   Package,
   Plus,
@@ -139,6 +141,14 @@ const settingsTabs = [
   ["danger", "Danger zone", AlertTriangle],
 ] as const;
 
+const buyerSections = [
+  ["overview", "Overview", House],
+  ["orders", "Orders", Package],
+  ["addresses", "Addresses", MapPin],
+  ["seller", "Sell with us", Store],
+  ["settings", "Settings", Settings],
+] as const;
+
 export const Route = createFileRoute("/account")({
   head: () => ({
     meta: [
@@ -157,6 +167,8 @@ function BuyerAccount() {
   const [addresses, setAddresses] = useState<BuyerAddress[]>([]);
   const [section, setSection] = useState<AccountSection>("overview");
   const [settingsTab, setSettingsTab] = useState<SettingsTab>("profile");
+  const [accountMenuOpen, setAccountMenuOpen] = useState(false);
+  const [settingsMenuOpen, setSettingsMenuOpen] = useState(false);
   const [preferences, setPreferences] = useState<AccountPreferences>(defaultAccountPreferences);
   const [preferencesScope, setPreferencesScope] = useState("");
   const [sellerApplication, setSellerApplication] = useState<SellerApplication | null>(null);
@@ -494,8 +506,9 @@ function BuyerAccount() {
         </header>
 
         {!loading && (
-          <>
+          <div className="buyer-account-body">
             <nav className="buyer-account-nav" aria-label="Account sections">
+              <span className="buyer-account-nav-label">Account menu</span>
               {(
                 [
                   ["overview", "Overview", House],
@@ -599,85 +612,93 @@ function BuyerAccount() {
                         </button>
                       </article>
                     </section>
-                    <section className="account-dashboard-card">
-                      <div className="account-profile-heading">
-                        <span className="account-avatar">
-                          {preferences.avatarDataUrl ? (
-                            <img src={preferences.avatarDataUrl} alt="" />
-                          ) : (
-                            <UserRound size={22} />
-                          )}
-                        </span>
-                        <h2>Profile overview</h2>
+                    <div className="buyer-account-overview-grid">
+                      <section className="account-dashboard-card">
+                        <div className="account-profile-heading">
+                          <span className="account-avatar">
+                            {preferences.avatarDataUrl ? (
+                              <img src={preferences.avatarDataUrl} alt="" />
+                            ) : (
+                              <UserRound size={22} />
+                            )}
+                          </span>
+                          <h2>Profile overview</h2>
+                        </div>
+                        <dl>
+                          <div>
+                            <dt>Name</dt>
+                            <dd>{fullName || "Not set"}</dd>
+                          </div>
+                          <div>
+                            <dt>Email</dt>
+                            <dd>{sessionAccount?.email}</dd>
+                          </div>
+                          <div>
+                            <dt>Phone</dt>
+                            <dd>{sessionProfile.phone || "Not added"}</dd>
+                          </div>
+                          <div>
+                            <dt>Account type</dt>
+                            <dd className="account-verification">
+                              <ShieldCheck size={15} />
+                              Buyer · stored in this browser
+                            </dd>
+                          </div>
+                        </dl>
+                      </section>
+                      <section className="account-dashboard-card">
+                        <div className="account-dashboard-section-heading">
+                          <h2>Recent orders</h2>
+                          <button type="button" onClick={() => setSection("orders")}>
+                            See all
+                          </button>
+                        </div>
+                        {orders.length ? (
+                          <ul className="account-order-list">
+                            {orders.slice(0, 3).map((order) => (
+                              <li key={order.id}>
+                                <Package size={16} />
+                                <span>Order {order.id}</span>
+                                <span
+                                  className={`account-order-status${orderStatusClass(order.status)}`}
+                                >
+                                  {order.status}
+                                </span>
+                                <time dateTime={order.created_at}>
+                                  {new Date(order.created_at).toLocaleDateString()}
+                                </time>
+                                {order.items && <small>{order.items}</small>}
+                                {order.total !== undefined && (
+                                  <strong>
+                                    {new Intl.NumberFormat("en-NG", {
+                                      style: "currency",
+                                      currency: "NGN",
+                                      maximumFractionDigits: 0,
+                                    }).format(order.total)}
+                                  </strong>
+                                )}
+                              </li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <p className="account-intro">Your order history will appear here.</p>
+                        )}
+                      </section>
+                    </div>
+                    <div className="buyer-account-overview-footer">
+                      <div>
+                        <strong>Keep exploring</strong>
+                        <span>Fresh finds from independent sellers, all in one place.</span>
                       </div>
-                      <dl>
-                        <div>
-                          <dt>Name</dt>
-                          <dd>{fullName || "Not set"}</dd>
-                        </div>
-                        <div>
-                          <dt>Email</dt>
-                          <dd>{sessionAccount?.email}</dd>
-                        </div>
-                        <div>
-                          <dt>Phone</dt>
-                          <dd>{sessionProfile.phone || "Not added"}</dd>
-                        </div>
-                        <div>
-                          <dt>Account type</dt>
-                          <dd className="account-verification">
-                            <ShieldCheck size={15} />
-                            Buyer · stored in this browser
-                          </dd>
-                        </div>
-                      </dl>
-                    </section>
-                    <section className="account-dashboard-card">
-                      <div className="account-dashboard-section-heading">
-                        <h2>Recent orders</h2>
-                        <button type="button" onClick={() => setSection("orders")}>
-                          See all
-                        </button>
-                      </div>
-                      {orders.length ? (
-                        <ul className="account-order-list">
-                          {orders.slice(0, 3).map((order) => (
-                            <li key={order.id}>
-                              <Package size={16} />
-                              <span>Order {order.id}</span>
-                              <span
-                                className={`account-order-status${orderStatusClass(order.status)}`}
-                              >
-                                {order.status}
-                              </span>
-                              <time dateTime={order.created_at}>
-                                {new Date(order.created_at).toLocaleDateString()}
-                              </time>
-                              {order.items && <small>{order.items}</small>}
-                              {order.total !== undefined && (
-                                <strong>
-                                  {new Intl.NumberFormat("en-NG", {
-                                    style: "currency",
-                                    currency: "NGN",
-                                    maximumFractionDigits: 0,
-                                  }).format(order.total)}
-                                </strong>
-                              )}
-                            </li>
-                          ))}
-                        </ul>
-                      ) : (
-                        <p className="account-intro">Your order history will appear here.</p>
-                      )}
-                    </section>
-                    <Button
-                      size="lg"
-                      onClick={() =>
-                        navigate({ to: "/shop", search: { filter: "All", query: "" } })
-                      }
-                    >
-                      Explore the marketplace <ArrowRight size={16} />
-                    </Button>
+                      <Button
+                        size="lg"
+                        onClick={() =>
+                          navigate({ to: "/shop", search: { filter: "All", query: "" } })
+                        }
+                      >
+                        Explore the marketplace <ArrowRight size={16} />
+                      </Button>
+                    </div>
                   </>
                 )}
                 {section === "orders" && (
@@ -1478,7 +1499,7 @@ function BuyerAccount() {
                 )}
               </div>
             </div>
-          </>
+          </div>
         )}
       </section>
     </main>

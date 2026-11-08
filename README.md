@@ -52,7 +52,7 @@ Preset accounts can sign in with any password. New accounts are saved in this br
 
 ## Admin access
 
-Set `ADMIN_USERNAME` and either `ADMIN_PASSWORD` or `ADMIN_PASSWORD_HASH` in the server environment (`.env` locally), then sign in at `/admin` with the admin username and password. No admin credentials are committed to the repository, so `/admin` stays locked until those server-side secrets are configured. `ADMIN_SESSION_SECRET` is optional: when it is omitted, the admin session key is derived from the configured credentials. Warnings, bans, and account deletions are applied to local browser accounts only.
+Sign in at `/admin` with the local demo credentials `timie_daniel` / `BlackRose`. Set `ADMIN_USERNAME` and either `ADMIN_PASSWORD` or `ADMIN_PASSWORD_HASH` in the server environment (`.env` locally) to override the demo credentials. `ADMIN_SESSION_SECRET` is optional: when it is omitted, the admin session key is derived from the configured credentials. Warnings, bans, and account deletions are applied to local browser accounts only.
 
 ## Local data and safety
 
