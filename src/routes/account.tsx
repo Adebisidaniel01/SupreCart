@@ -222,6 +222,32 @@ function BuyerAccount() {
     return () => window.removeEventListener("hashchange", syncSection);
   }, []);
 
+  useEffect(() => {
+    if (!accountMenuOpen && !settingsMenuOpen) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setAccountMenuOpen(false);
+        setSettingsMenuOpen(false);
+      }
+    };
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target as Element | null;
+      if (target?.closest(".buyer-menu")) return;
+      setAccountMenuOpen(false);
+      setSettingsMenuOpen(false);
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("pointerdown", handlePointerDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("pointerdown", handlePointerDown);
+    };
+  }, [accountMenuOpen, settingsMenuOpen]);
+
+  const activeSectionLabel = buyerSections.find(([key]) => key === section)?.[1] ?? "Account";
+  const activeSettingsLabel =
+    settingsTabs.find(([key]) => key === settingsTab)?.[1] ?? "Account settings";
+
   const identity = sessionAccount?.email ?? "";
   const moderation = sessionAccount ? getAccountModeration(sessionAccount.email) : null;
   const preferencesKey = useMemo(
@@ -451,6 +477,18 @@ function BuyerAccount() {
     }
   }
 
+  function openSection(next: AccountSection) {
+    setSection(next);
+    if (next === "settings") {
+      setSettingsTab("profile");
+      setConfirmDelete(false);
+    }
+    setError("");
+    setNotice("");
+    setAccountMenuOpen(false);
+    setSettingsMenuOpen(false);
+  }
+
   const fullName = sessionProfile.name || sessionAccount?.name || "";
   const firstName = fullName.split(/\s+/)[0] || "there";
   const [addressFirstName = "", ...addressLastNameParts] = fullName.split(/\s+/);
@@ -507,48 +545,56 @@ function BuyerAccount() {
 
         {!loading && (
           <div className="buyer-account-body">
-            <nav className="buyer-account-nav" aria-label="Account sections">
-              <span className="buyer-account-nav-label">Account menu</span>
-              {(
-                [
-                  ["overview", "Overview", House],
-                  ["orders", "Orders", Package],
-                  ["addresses", "Addresses", MapPin],
-                  ["seller", "Sell with us", Store],
-                ] as const
-              ).map(([key, label, Icon]) => (
+            <div className="buyer-account-toolbar">
+              <div className="buyer-menu buyer-account-menu">
                 <button
                   type="button"
-                  key={key}
-                  className={section === key ? "active" : ""}
-                  aria-current={section === key ? "page" : undefined}
+                  className="buyer-menu-trigger"
+                  aria-haspopup="menu"
+                  aria-expanded={accountMenuOpen}
+                  aria-controls="buyer-account-menu"
                   onClick={() => {
-                    setSection(key);
-                    setError("");
-                    setNotice("");
+                    setAccountMenuOpen((open) => !open);
+                    setSettingsMenuOpen(false);
                   }}
                 >
-                  <Icon size={17} /> {label}
+                  <Menu size={17} />
+                  <span>{activeSectionLabel}</span>
+                  <ChevronDown size={15} className="buyer-menu-chevron" />
                 </button>
-              ))}
-              <Link to="/messages" search={{ productId: undefined }}>
-                <MessageCircle size={17} /> Messages
-              </Link>
-              <button
-                type="button"
-                className={section === "settings" ? "active" : ""}
-                aria-current={section === "settings" ? "page" : undefined}
-                onClick={() => {
-                  setSection("settings");
-                  setSettingsTab("profile");
-                  setError("");
-                  setNotice("");
-                  setConfirmDelete(false);
-                }}
-              >
-                <Settings size={17} /> Settings
-              </button>
-            </nav>
+                {accountMenuOpen && (
+                  <div id="buyer-account-menu" className="buyer-dropdown" role="menu">
+                    <p className="buyer-dropdown-label">Account menu</p>
+                    {buyerSections.map(([key, label, Icon]) => (
+                      <button
+                        type="button"
+                        key={key}
+                        role="menuitem"
+                        className={section === key ? "active" : ""}
+                        aria-current={section === key ? "page" : undefined}
+                        onClick={() => openSection(key)}
+                      >
+                        <Icon size={16} /> {label}
+                      </button>
+                    ))}
+                    <Link
+                      to="/messages"
+                      search={{ productId: undefined }}
+                      role="menuitem"
+                      onClick={() => {
+                        setAccountMenuOpen(false);
+                        setSettingsMenuOpen(false);
+                      }}
+                    >
+                      <MessageCircle size={16} /> Messages
+                    </Link>
+                  </div>
+                )}
+              </div>
+              <p className="buyer-account-toolbar-note">
+                Your account sections, kept together in one menu.
+              </p>
+            </div>
             <div className="buyer-account-content">
               <div className="account-dashboard-main">
                 {moderation?.status === "warned" && (
@@ -1146,29 +1192,55 @@ function BuyerAccount() {
                 )}
                 {section === "settings" && (
                   <>
-                    <div className="account-settings-section-header">
-                      <h2>
-                        {settingsTabs.find(([k]) => k === settingsTab)?.[1] || "Account settings"}
-                      </h2>
-                    </div>
-                    <div className="account-settings-tabs" role="tablist" aria-label="Settings">
-                      {settingsTabs.map(([key, label, Icon]) => (
+                    <div className="account-settings-section-header buyer-settings-header">
+                      <div>
+                        <p className="eyebrow">ACCOUNT SETTINGS</p>
+                        <h2>{activeSettingsLabel}</h2>
+                      </div>
+                      <div className="buyer-menu buyer-settings-menu">
                         <button
                           type="button"
-                          key={key}
-                          role="tab"
-                          aria-selected={settingsTab === key}
-                          className={settingsTab === key ? "active" : ""}
+                          className="buyer-menu-trigger"
+                          aria-haspopup="menu"
+                          aria-expanded={settingsMenuOpen}
+                          aria-controls="buyer-settings-menu"
                           onClick={() => {
-                            setSettingsTab(key as SettingsTab);
-                            setError("");
-                            setNotice("");
-                            setConfirmDelete(false);
+                            setSettingsMenuOpen((open) => !open);
+                            setAccountMenuOpen(false);
                           }}
                         >
-                          <Icon size={15} /> {label}
+                          <Settings size={17} />
+                          <span>Settings</span>
+                          <ChevronDown size={15} className="buyer-menu-chevron" />
                         </button>
-                      ))}
+                        {settingsMenuOpen && (
+                          <div
+                            id="buyer-settings-menu"
+                            className="buyer-dropdown buyer-settings-dropdown"
+                            role="menu"
+                          >
+                            <p className="buyer-dropdown-label">Account settings</p>
+                            {settingsTabs.map(([key, label, Icon]) => (
+                              <button
+                                type="button"
+                                key={key}
+                                role="menuitem"
+                                className={settingsTab === key ? "active" : ""}
+                                aria-current={settingsTab === key ? "page" : undefined}
+                                onClick={() => {
+                                  setSettingsTab(key as SettingsTab);
+                                  setError("");
+                                  setNotice("");
+                                  setConfirmDelete(false);
+                                  setSettingsMenuOpen(false);
+                                }}
+                              >
+                                <Icon size={16} /> {label}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                     </div>
                     {settingsTab === "profile" && (
                       <section className="account-dashboard-card">
