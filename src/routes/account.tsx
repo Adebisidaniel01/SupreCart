@@ -2,15 +2,17 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import {
   AlertTriangle,
-  ArrowLeft,
   ArrowRight,
   BadgeCheck,
   Bell,
   Check,
   ChevronDown,
+  ChevronRight,
+  CircleHelp,
   CreditCard,
   Clock3,
   Globe,
+  Headphones,
   House,
   Lock,
   LogOut,
@@ -21,9 +23,11 @@ import {
   Plus,
   Settings,
   ShieldCheck,
+  ShoppingBag,
   Smartphone,
   Store,
   Trash2,
+  Truck,
   Upload,
   UserRound,
 } from "lucide-react";
@@ -54,6 +58,7 @@ import {
 } from "@/lib/seller-applications";
 import { trackEvent } from "@/lib/analytics";
 import { avatarErrorMessage, processAvatarFile } from "@/lib/avatar";
+import { products } from "@/lib/catalog";
 import { cleanEmail, cleanMultiline, cleanPhone, cleanText } from "@/lib/input";
 import {
   accountPreferenceScope,
@@ -126,10 +131,41 @@ const cancellationReasons = [
   "Other",
 ] as const;
 
+const nairaFormatter = new Intl.NumberFormat("en-NG", {
+  style: "currency",
+  currency: "NGN",
+  maximumFractionDigits: 0,
+});
+
+type OrderFilter = "all" | BuyerOrder["status"];
+
+const orderFilters = [
+  ["all", "All orders"],
+  ["Processing", "Processing"],
+  ["In transit", "In transit"],
+  ["Delivered", "Delivered"],
+  ["Cancellation requested", "Cancellation requested"],
+  ["Cancelled", "Cancelled"],
+] as const;
+
 function orderStatusClass(status: BuyerOrder["status"]) {
-  if (status === "Cancellation requested") return " is-requested";
-  if (status === "Cancelled") return " is-cancelled";
-  return "";
+  if (status === "Processing") return "is-processing";
+  if (status === "In transit") return "is-transit";
+  if (status === "Delivered") return "is-delivered";
+  if (status === "Cancellation requested") return "is-requested";
+  return "is-cancelled";
+}
+
+function orderProgressStep(status: BuyerOrder["status"]) {
+  if (status === "Delivered") return 4;
+  if (status === "In transit") return 3;
+  if (status === "Processing") return 2;
+  return 1;
+}
+
+function orderProducts(items: string) {
+  const haystack = items.toLowerCase();
+  return products.filter((product) => haystack.includes(product.name.toLowerCase())).slice(0, 3);
 }
 
 const settingsTabs = [
@@ -167,8 +203,8 @@ function BuyerAccount() {
   const [addresses, setAddresses] = useState<BuyerAddress[]>([]);
   const [section, setSection] = useState<AccountSection>("overview");
   const [settingsTab, setSettingsTab] = useState<SettingsTab>("profile");
+  const [orderFilter, setOrderFilter] = useState<OrderFilter>("all");
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
-  const [settingsMenuOpen, setSettingsMenuOpen] = useState(false);
   const [preferences, setPreferences] = useState<AccountPreferences>(defaultAccountPreferences);
   const [preferencesScope, setPreferencesScope] = useState("");
   const [sellerApplication, setSellerApplication] = useState<SellerApplication | null>(null);
@@ -210,9 +246,10 @@ function BuyerAccount() {
 
   useEffect(() => {
     const syncSection = () => {
-      if (window.location.hash === "#seller") {
-        setSection("seller");
-      } else if (window.location.hash === "#settings") {
+      const hash = window.location.hash.replace("#", "");
+      if (hash === "orders" || hash === "addresses" || hash === "seller") {
+        setSection(hash);
+      } else if (hash === "settings") {
         setSection("settings");
         setSettingsTab("profile");
       }
@@ -223,18 +260,14 @@ function BuyerAccount() {
   }, []);
 
   useEffect(() => {
-    if (!accountMenuOpen && !settingsMenuOpen) return;
+    if (!accountMenuOpen) return;
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        setAccountMenuOpen(false);
-        setSettingsMenuOpen(false);
-      }
+      if (event.key === "Escape") setAccountMenuOpen(false);
     };
     const handlePointerDown = (event: PointerEvent) => {
       const target = event.target as Element | null;
-      if (target?.closest(".buyer-menu")) return;
+      if (target?.closest(".buyer-hub-mobile-nav")) return;
       setAccountMenuOpen(false);
-      setSettingsMenuOpen(false);
     };
     window.addEventListener("keydown", handleKeyDown);
     window.addEventListener("pointerdown", handlePointerDown);
@@ -242,7 +275,7 @@ function BuyerAccount() {
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("pointerdown", handlePointerDown);
     };
-  }, [accountMenuOpen, settingsMenuOpen]);
+  }, [accountMenuOpen]);
 
   const activeSectionLabel = buyerSections.find(([key]) => key === section)?.[1] ?? "Account";
   const activeSettingsLabel =
@@ -432,6 +465,18 @@ function BuyerAccount() {
     const updated = addresses.filter((address) => address.id !== addressId);
     setAddresses(updated);
     writeLocalAddresses(sessionAccount.email, updated);
+    setNotice("Delivery address removed from this browser.");
+  }
+
+  function makeDefaultAddress(addressId: string) {
+    if (!sessionAccount) return;
+    const updated = addresses.map((address) => ({
+      ...address,
+      is_default: address.id === addressId,
+    }));
+    setAddresses(updated);
+    writeLocalAddresses(sessionAccount.email, updated);
+    setNotice("Default delivery address updated for this browser.");
   }
 
   async function signOut() {
@@ -486,33 +531,56 @@ function BuyerAccount() {
     setError("");
     setNotice("");
     setAccountMenuOpen(false);
-    setSettingsMenuOpen(false);
+  }
+
+  function openSettings(next: SettingsTab) {
+    setSection("settings");
+    setSettingsTab(next);
+    setConfirmDelete(false);
+    setError("");
+    setNotice("");
+    setAccountMenuOpen(false);
+  }
+
+  function buyAgain(order: BuyerOrder) {
+    const firstProduct = orderProducts(order.items)[0];
+    const fallbackQuery = order.items.split(/[·,+]/)[0]?.trim() ?? "";
+    void navigate({
+      to: "/shop",
+      search: { filter: "All", query: firstProduct?.name ?? fallbackQuery },
+    });
   }
 
   const fullName = sessionProfile.name || sessionAccount?.name || "";
   const firstName = fullName.split(/\s+/)[0] || "there";
   const [addressFirstName = "", ...addressLastNameParts] = fullName.split(/\s+/);
   const addressLastName = addressLastNameParts.join(" ");
+  const defaultAddress = addresses.find((address) => address.is_default) ?? addresses[0];
+  const defaultPayment =
+    preferences.paymentMethods.find((method) => method.isDefault) ?? preferences.paymentMethods[0];
+  const activeNotifications = Object.values(preferences.notifications).filter(Boolean).length;
+  const filteredOrders =
+    orderFilter === "all" ? orders : orders.filter((order) => order.status === orderFilter);
+  const sellerStatus = sellerApplication
+    ? sellerApplication.status === "approved"
+      ? "Approved"
+      : sellerApplication.status === "pending"
+        ? "In review"
+        : "Not approved"
+    : "Not applied";
 
   return (
-    <main id="main-content" tabIndex={-1} className="account-page account-dashboard-layout">
-      <section className="account-panel account-dashboard buyer-account-shell">
-        <header className="buyer-account-hero">
-          <div className="buyer-account-hero-top">
-            <Link to="/" className="back-link">
-              <ArrowLeft size={15} /> Back to SupreCart
-            </Link>
-            <div className="buyer-account-hero-actions">
-              <span className="buyer-account-status">
-                <ShieldCheck size={14} /> Buyer account
-              </span>
-              <Button variant="outline" onClick={() => void signOut()}>
-                <LogOut size={15} /> Sign out
-              </Button>
-            </div>
-          </div>
-          <div className="buyer-account-identity">
-            <span className="account-avatar buyer-account-avatar">
+    <main id="main-content" tabIndex={-1} className="buyer-hub-page">
+      <nav className="buyer-hub-breadcrumb" aria-label="Breadcrumb">
+        <Link to="/">Home</Link>
+        <ChevronRight size={12} aria-hidden="true" />
+        <span>Your Account</span>
+      </nav>
+
+      <section className="buyer-hub-shell">
+        <header className="buyer-hub-header">
+          <div className="buyer-hub-header-user">
+            <span className="account-avatar buyer-hub-avatar">
               {preferences.avatarDataUrl ? (
                 <img src={preferences.avatarDataUrl} alt="" />
               ) : (
@@ -520,51 +588,109 @@ function BuyerAccount() {
               )}
             </span>
             <div>
-              <p className="eyebrow">YOUR ACCOUNT</p>
-              <h1>{loading ? "Loading your account..." : `Good to see you, ${firstName}.`}</h1>
-              <p className="buyer-account-meta">
+              <p className="buyer-hub-overline">YOUR ACCOUNT</p>
+              <h1>{loading ? "Your Account" : `Hello, ${firstName}`}</h1>
+              <p className="buyer-hub-header-meta">
                 {loading ? (
                   <span>Loading account details...</span>
                 ) : (
                   <>
                     <span>{sessionAccount?.email}</span>
-                    <span className="buyer-account-meta-dot" aria-hidden="true" />
+                    <span aria-hidden="true">·</span>
                     <span>{sessionProfile.phone || "No phone added yet"}</span>
                   </>
                 )}
               </p>
             </div>
           </div>
-          {sessionAccount && (
-            <p className="local-data-note" role="status">
-              ACCOUNT DATA - This account, its orders and profile edits live in this browser only.
-              No real order is placed and no payment is taken.
-            </p>
-          )}
+          <div className="buyer-hub-header-actions">
+            <Link
+              to="/messages"
+              search={{ productId: undefined }}
+              className="buyer-hub-header-link"
+            >
+              <MessageCircle size={16} /> Messages
+            </Link>
+            <Link to="/" className="buyer-hub-header-link">
+              <ShoppingBag size={16} /> Continue shopping
+            </Link>
+          </div>
         </header>
 
+        {sessionAccount && (
+          <p className="buyer-hub-local-note" role="status">
+            <ShieldCheck size={14} />
+            Demo account: orders, profile edits and saved details live in this browser only. No real
+            order is placed and no payment is taken.
+          </p>
+        )}
+
         {!loading && (
-          <div className="buyer-account-body">
-            <div className="buyer-account-toolbar">
-              <div className="buyer-menu buyer-account-menu">
+          <div className="buyer-hub-layout">
+            <aside className="buyer-hub-sidebar">
+              <div className="buyer-hub-sidebar-profile">
+                <span className="account-avatar">
+                  {preferences.avatarDataUrl ? (
+                    <img src={preferences.avatarDataUrl} alt="" />
+                  ) : (
+                    <UserRound size={20} />
+                  )}
+                </span>
+                <div>
+                  <strong>{fullName || "SupreCart buyer"}</strong>
+                  <span>Buyer account</span>
+                </div>
+              </div>
+              <nav className="buyer-hub-sidebar-nav" aria-label="Account sections">
+                <p className="buyer-hub-sidebar-label">Your account</p>
+                {buyerSections.map(([key, label, Icon]) => (
+                  <button
+                    type="button"
+                    key={key}
+                    className={section === key ? "active" : ""}
+                    aria-current={section === key ? "page" : undefined}
+                    onClick={() => openSection(key)}
+                  >
+                    <Icon size={17} />
+                    <span>{label}</span>
+                    <ChevronRight size={14} className="buyer-hub-sidebar-chevron" />
+                  </button>
+                ))}
+              </nav>
+              <div className="buyer-hub-sidebar-services">
+                <p className="buyer-hub-sidebar-label">Help & services</p>
+                <Link to="/messages" search={{ productId: undefined }}>
+                  <MessageCircle size={16} /> Messages
+                </Link>
+                <Link to="/support">
+                  <Headphones size={16} /> Customer service
+                </Link>
+                <Link to="/info/$slug" params={{ slug: "faq" }}>
+                  <CircleHelp size={16} /> Help centre
+                </Link>
+              </div>
+              <button type="button" className="buyer-hub-signout" onClick={() => void signOut()}>
+                <LogOut size={16} /> Sign out
+              </button>
+            </aside>
+
+            <div className="buyer-hub-main">
+              <div className="buyer-hub-mobile-nav">
                 <button
                   type="button"
-                  className="buyer-menu-trigger"
+                  className="buyer-hub-mobile-trigger"
                   aria-haspopup="menu"
                   aria-expanded={accountMenuOpen}
-                  aria-controls="buyer-account-menu"
-                  onClick={() => {
-                    setAccountMenuOpen((open) => !open);
-                    setSettingsMenuOpen(false);
-                  }}
+                  aria-controls="buyer-hub-mobile-menu"
+                  onClick={() => setAccountMenuOpen((open) => !open)}
                 >
                   <Menu size={17} />
                   <span>{activeSectionLabel}</span>
-                  <ChevronDown size={15} className="buyer-menu-chevron" />
+                  <ChevronDown size={15} className="buyer-hub-mobile-chevron" />
                 </button>
                 {accountMenuOpen && (
-                  <div id="buyer-account-menu" className="buyer-dropdown" role="menu">
-                    <p className="buyer-dropdown-label">Account menu</p>
+                  <div id="buyer-hub-mobile-menu" className="buyer-hub-mobile-dropdown" role="menu">
+                    <p className="buyer-hub-sidebar-label">Account menu</p>
                     {buyerSections.map(([key, label, Icon]) => (
                       <button
                         type="button"
@@ -581,22 +707,18 @@ function BuyerAccount() {
                       to="/messages"
                       search={{ productId: undefined }}
                       role="menuitem"
-                      onClick={() => {
-                        setAccountMenuOpen(false);
-                        setSettingsMenuOpen(false);
-                      }}
+                      onClick={() => setAccountMenuOpen(false)}
                     >
                       <MessageCircle size={16} /> Messages
                     </Link>
+                    <button type="button" role="menuitem" onClick={() => void signOut()}>
+                      <LogOut size={16} /> Sign out
+                    </button>
                   </div>
                 )}
               </div>
-              <p className="buyer-account-toolbar-note">
-                Your account sections, kept together in one menu.
-              </p>
-            </div>
-            <div className="buyer-account-content">
-              <div className="account-dashboard-main">
+
+              <div className="buyer-hub-notices">
                 {moderation?.status === "warned" && (
                   <p className="account-warning-note" role="alert">
                     <AlertTriangle size={14} />
@@ -613,64 +735,239 @@ function BuyerAccount() {
                     {error}
                   </p>
                 )}
-                {section === "overview" && (
-                  <>
-                    <section className="account-summary-grid">
-                      <article className="account-summary-card">
-                        <span>ORDERS</span>
-                        <strong>{orders.length}</strong>
-                        <button type="button" onClick={() => setSection("orders")}>
-                          View order history <ArrowRight size={14} />
-                        </button>
-                      </article>
-                      <article className="account-summary-card">
-                        <span>SAVED ADDRESSES</span>
-                        <strong>{addresses.length}</strong>
-                        <button type="button" onClick={() => setSection("addresses")}>
-                          Manage delivery details <ArrowRight size={14} />
-                        </button>
-                      </article>
-                      <article className="account-summary-card account-summary-seller">
-                        <span>SELL WITH SUPRECART</span>
-                        <strong>
-                          {sellerApplication
-                            ? sellerApplication.status === "approved"
-                              ? "Approved"
-                              : sellerApplication.status === "pending"
-                                ? "In review"
-                                : "Not approved"
-                            : "Not applied"}
-                        </strong>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            sellerApplication?.status === "approved"
-                              ? void openSellerStudio()
-                              : setSection("seller")
-                          }
-                        >
-                          {sellerApplication?.status === "approved"
-                            ? "Open seller studio"
-                            : sellerApplication?.status === "pending"
-                              ? "View application"
-                              : "Start your application"}{" "}
-                          <ArrowRight size={14} />
-                        </button>
-                      </article>
-                    </section>
-                    <div className="buyer-account-overview-grid">
-                      <section className="account-dashboard-card">
-                        <div className="account-profile-heading">
-                          <span className="account-avatar">
-                            {preferences.avatarDataUrl ? (
-                              <img src={preferences.avatarDataUrl} alt="" />
-                            ) : (
-                              <UserRound size={22} />
-                            )}
-                          </span>
-                          <h2>Profile overview</h2>
+              </div>
+              {section === "overview" && (
+                <>
+                  <section className="buyer-hub-welcome">
+                    <div>
+                      <span className="buyer-hub-welcome-kicker">
+                        <ShieldCheck size={14} /> BUYER ACCOUNT
+                      </span>
+                      <h2>Welcome back, {firstName}</h2>
+                      <p>
+                        Track orders, manage delivery details and keep your SupreCart account up to
+                        date.
+                      </p>
+                    </div>
+                    <div className="buyer-hub-welcome-actions">
+                      <Button
+                        size="lg"
+                        onClick={() =>
+                          navigate({ to: "/shop", search: { filter: "All", query: "" } })
+                        }
+                      >
+                        <ShoppingBag size={16} /> Continue shopping
+                      </Button>
+                      <Link
+                        to="/messages"
+                        search={{ productId: undefined }}
+                        className="buyer-hub-welcome-link"
+                      >
+                        View messages <ChevronRight size={14} />
+                      </Link>
+                    </div>
+                  </section>
+
+                  <div className="buyer-hub-quick-grid">
+                    <button
+                      type="button"
+                      className="buyer-hub-quick-card"
+                      onClick={() => openSection("orders")}
+                    >
+                      <span className="buyer-hub-quick-icon">
+                        <Package size={20} />
+                      </span>
+                      <span>
+                        <strong>Your Orders</strong>
+                        <small>
+                          {orders.length} {orders.length === 1 ? "order" : "orders"} placed
+                        </small>
+                      </span>
+                      <ChevronRight size={16} />
+                    </button>
+                    <button
+                      type="button"
+                      className="buyer-hub-quick-card"
+                      onClick={() => openSection("addresses")}
+                    >
+                      <span className="buyer-hub-quick-icon">
+                        <MapPin size={20} />
+                      </span>
+                      <span>
+                        <strong>Your Addresses</strong>
+                        <small>
+                          {addresses.length
+                            ? `${addresses.length} saved ${addresses.length === 1 ? "address" : "addresses"}`
+                            : "Add a delivery address"}
+                        </small>
+                      </span>
+                      <ChevronRight size={16} />
+                    </button>
+                    <button
+                      type="button"
+                      className="buyer-hub-quick-card"
+                      onClick={() => openSettings("payments")}
+                    >
+                      <span className="buyer-hub-quick-icon">
+                        <CreditCard size={20} />
+                      </span>
+                      <span>
+                        <strong>Payment Options</strong>
+                        <small>
+                          {preferences.paymentMethods.length
+                            ? `${preferences.paymentMethods.length} saved`
+                            : "No payment method saved"}
+                        </small>
+                      </span>
+                      <ChevronRight size={16} />
+                    </button>
+                    <button
+                      type="button"
+                      className="buyer-hub-quick-card"
+                      onClick={() => openSettings("notifications")}
+                    >
+                      <span className="buyer-hub-quick-icon">
+                        <Bell size={20} />
+                      </span>
+                      <span>
+                        <strong>Notifications</strong>
+                        <small>{activeNotifications} preferences active</small>
+                      </span>
+                      <ChevronRight size={16} />
+                    </button>
+                    <button
+                      type="button"
+                      className="buyer-hub-quick-card"
+                      onClick={() => openSettings("security")}
+                    >
+                      <span className="buyer-hub-quick-icon">
+                        <Lock size={20} />
+                      </span>
+                      <span>
+                        <strong>Login & Security</strong>
+                        <small>
+                          {preferences.twoFactorEnabled ? "Extra protection on" : "Review sign-in"}
+                        </small>
+                      </span>
+                      <ChevronRight size={16} />
+                    </button>
+                    <button
+                      type="button"
+                      className="buyer-hub-quick-card"
+                      onClick={() =>
+                        sellerApplication?.status === "approved"
+                          ? void openSellerStudio()
+                          : openSection("seller")
+                      }
+                    >
+                      <span className="buyer-hub-quick-icon">
+                        <Store size={20} />
+                      </span>
+                      <span>
+                        <strong>Sell on SupreCart</strong>
+                        <small>{sellerStatus}</small>
+                      </span>
+                      <ChevronRight size={16} />
+                    </button>
+                  </div>
+
+                  <div className="buyer-hub-overview-columns">
+                    <section className="buyer-hub-panel buyer-hub-recent-orders">
+                      <div className="buyer-hub-section-head">
+                        <div>
+                          <span className="buyer-hub-overline">RECENT PURCHASES</span>
+                          <h3>Recent orders</h3>
                         </div>
-                        <dl>
+                        <button type="button" onClick={() => openSection("orders")}>
+                          See all orders <ArrowRight size={14} />
+                        </button>
+                      </div>
+                      {orders.length ? (
+                        <div className="buyer-hub-recent-list">
+                          {orders.slice(0, 3).map((order) => {
+                            const images = orderProducts(order.items);
+                            return (
+                              <article key={order.id} className="buyer-hub-recent-order">
+                                <div className="buyer-hub-order-thumbs">
+                                  {images.length ? (
+                                    images
+                                      .slice(0, 2)
+                                      .map((product) => (
+                                        <img
+                                          key={product.id}
+                                          src={product.image}
+                                          alt=""
+                                          loading="lazy"
+                                        />
+                                      ))
+                                  ) : (
+                                    <span className="buyer-hub-order-thumb-fallback">
+                                      <Package size={19} />
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="buyer-hub-recent-copy">
+                                  <span
+                                    className={`buyer-hub-status ${orderStatusClass(order.status)}`}
+                                  >
+                                    {order.status}
+                                  </span>
+                                  <strong>{order.items}</strong>
+                                  <small>
+                                    Order {order.id} ·{" "}
+                                    {new Date(order.created_at).toLocaleDateString("en-NG", {
+                                      day: "numeric",
+                                      month: "short",
+                                      year: "numeric",
+                                    })}
+                                  </small>
+                                </div>
+                                <div className="buyer-hub-recent-total">
+                                  <strong>{nairaFormatter.format(order.total)}</strong>
+                                  <button
+                                    type="button"
+                                    onClick={() => openSection("orders")}
+                                    className="buyer-hub-text-link"
+                                  >
+                                    View <ChevronRight size={13} />
+                                  </button>
+                                </div>
+                              </article>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <div className="buyer-hub-empty">
+                          <span>
+                            <Package size={22} />
+                          </span>
+                          <strong>No orders yet</strong>
+                          <p>When you place an order, it will appear here.</p>
+                          <Button
+                            variant="outline"
+                            onClick={() =>
+                              navigate({ to: "/shop", search: { filter: "All", query: "" } })
+                            }
+                          >
+                            Start shopping
+                          </Button>
+                        </div>
+                      )}
+                    </section>
+
+                    <div className="buyer-hub-side-stack">
+                      <section className="buyer-hub-panel">
+                        <div className="buyer-hub-panel-title">
+                          <h3>Account details</h3>
+                          <button
+                            type="button"
+                            className="buyer-hub-text-link"
+                            onClick={() => openSettings("profile")}
+                          >
+                            Edit
+                          </button>
+                        </div>
+                        <dl className="buyer-hub-details">
                           <div>
                             <dt>Name</dt>
                             <dd>{fullName || "Not set"}</dd>
@@ -683,271 +980,524 @@ function BuyerAccount() {
                             <dt>Phone</dt>
                             <dd>{sessionProfile.phone || "Not added"}</dd>
                           </div>
-                          <div>
-                            <dt>Account type</dt>
-                            <dd className="account-verification">
-                              <ShieldCheck size={15} />
-                              Buyer · stored in this browser
-                            </dd>
-                          </div>
                         </dl>
                       </section>
-                      <section className="account-dashboard-card">
-                        <div className="account-dashboard-section-heading">
-                          <h2>Recent orders</h2>
-                          <button type="button" onClick={() => setSection("orders")}>
-                            See all
+
+                      <section className="buyer-hub-panel">
+                        <div className="buyer-hub-panel-title">
+                          <h3>Default address</h3>
+                          <button
+                            type="button"
+                            className="buyer-hub-text-link"
+                            onClick={() => openSection("addresses")}
+                          >
+                            Manage
                           </button>
                         </div>
-                        {orders.length ? (
-                          <ul className="account-order-list">
-                            {orders.slice(0, 3).map((order) => (
-                              <li key={order.id}>
-                                <Package size={16} />
-                                <span>Order {order.id}</span>
-                                <span
-                                  className={`account-order-status${orderStatusClass(order.status)}`}
-                                >
-                                  {order.status}
-                                </span>
-                                <time dateTime={order.created_at}>
-                                  {new Date(order.created_at).toLocaleDateString()}
-                                </time>
-                                {order.items && <small>{order.items}</small>}
-                                {order.total !== undefined && (
-                                  <strong>
-                                    {new Intl.NumberFormat("en-NG", {
-                                      style: "currency",
-                                      currency: "NGN",
-                                      maximumFractionDigits: 0,
-                                    }).format(order.total)}
-                                  </strong>
-                                )}
-                              </li>
-                            ))}
-                          </ul>
+                        {defaultAddress ? (
+                          <div className="buyer-hub-address-summary">
+                            <MapPin size={17} />
+                            <p>
+                              <strong>
+                                {defaultAddress.first_name} {defaultAddress.last_name}
+                              </strong>
+                              {defaultAddress.street_address}, {defaultAddress.community},{" "}
+                              {defaultAddress.lga}
+                            </p>
+                          </div>
                         ) : (
-                          <p className="account-intro">Your order history will appear here.</p>
+                          <div className="buyer-hub-mini-empty">
+                            <p>No delivery address saved yet.</p>
+                            <button
+                              type="button"
+                              className="buyer-hub-text-link"
+                              onClick={() => openSection("addresses")}
+                            >
+                              Add an address <ArrowRight size={13} />
+                            </button>
+                          </div>
+                        )}
+                      </section>
+
+                      <section className="buyer-hub-panel">
+                        <div className="buyer-hub-panel-title">
+                          <h3>Payment options</h3>
+                          <button
+                            type="button"
+                            className="buyer-hub-text-link"
+                            onClick={() => openSettings("payments")}
+                          >
+                            Manage
+                          </button>
+                        </div>
+                        {defaultPayment ? (
+                          <div className="buyer-hub-payment-summary">
+                            <CreditCard size={17} />
+                            <p>
+                              <strong>{defaultPayment.brand}</strong>
+                              Card ending {defaultPayment.last4} · Expires {defaultPayment.expiry}
+                            </p>
+                            {defaultPayment.isDefault && (
+                              <span className="buyer-hub-default-badge">DEFAULT</span>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="buyer-hub-mini-empty">
+                            <p>No payment method saved.</p>
+                            <button
+                              type="button"
+                              className="buyer-hub-text-link"
+                              onClick={() => openSettings("payments")}
+                            >
+                              Add a method <ArrowRight size={13} />
+                            </button>
+                          </div>
                         )}
                       </section>
                     </div>
-                    <div className="buyer-account-overview-footer">
+                  </div>
+
+                  <section className="buyer-hub-panel buyer-hub-recommendations">
+                    <div className="buyer-hub-section-head">
                       <div>
-                        <strong>Keep exploring</strong>
-                        <span>Fresh finds from independent sellers, all in one place.</span>
+                        <span className="buyer-hub-overline">POPULAR ON SUPRECART</span>
+                        <h3>Recommended for you</h3>
                       </div>
+                      <Link to="/shop" search={{ filter: "All", query: "" }}>
+                        Shop all <ArrowRight size={14} />
+                      </Link>
+                    </div>
+                    <div className="buyer-hub-product-grid">
+                      {products.slice(0, 4).map((product) => (
+                        <Link
+                          key={product.id}
+                          to="/shop"
+                          search={{ filter: "All", query: product.name }}
+                          className="buyer-hub-product-card"
+                        >
+                          <img src={product.image} alt="" loading="lazy" />
+                          <span>{product.brand}</span>
+                          <strong>{product.name}</strong>
+                          <p>{nairaFormatter.format(product.price)}</p>
+                          <small>
+                            {product.rating} ★ · {product.reviews} reviews
+                          </small>
+                        </Link>
+                      ))}
+                    </div>
+                  </section>
+                </>
+              )}
+              {section === "orders" && (
+                <>
+                  <div className="buyer-hub-page-heading">
+                    <div>
+                      <span className="buyer-hub-overline">YOUR PURCHASES</span>
+                      <h2>Your Orders</h2>
+                      <p>Track packages, request cancellations and buy your favourites again.</p>
+                    </div>
+                    <Button
+                      variant="outline"
+                      onClick={() =>
+                        navigate({ to: "/shop", search: { filter: "All", query: "" } })
+                      }
+                    >
+                      <ShoppingBag size={15} /> Continue shopping
+                    </Button>
+                  </div>
+
+                  <div className="buyer-hub-order-filters" role="tablist" aria-label="Order status">
+                    {orderFilters.map(([key, label]) => {
+                      const count =
+                        key === "all"
+                          ? orders.length
+                          : orders.filter((order) => order.status === key).length;
+                      return (
+                        <button
+                          type="button"
+                          key={key}
+                          role="tab"
+                          aria-selected={orderFilter === key}
+                          className={orderFilter === key ? "active" : ""}
+                          onClick={() => setOrderFilter(key)}
+                        >
+                          {label} <span>{count}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {orderNotice && (
+                    <p className="account-success-note" role="status">
+                      {orderNotice}
+                    </p>
+                  )}
+                  {orderError && (
+                    <p className="account-warning-note" role="alert">
+                      <AlertTriangle size={15} />
+                      {orderError}
+                    </p>
+                  )}
+
+                  {orders.length ? (
+                    filteredOrders.length ? (
+                      <div className="buyer-hub-order-list" id="buyer-orders-list">
+                        {filteredOrders.map((order) => {
+                          const images = orderProducts(order.items);
+                          const progressStep = orderProgressStep(order.status);
+                          const trackable =
+                            order.status === "Processing" ||
+                            order.status === "In transit" ||
+                            order.status === "Delivered";
+                          return (
+                            <article key={order.id} className="buyer-hub-order-card">
+                              <header className="buyer-hub-order-head">
+                                <div>
+                                  <span>ORDER PLACED</span>
+                                  <strong>
+                                    {new Date(order.created_at).toLocaleDateString("en-NG", {
+                                      day: "numeric",
+                                      month: "short",
+                                      year: "numeric",
+                                    })}
+                                  </strong>
+                                </div>
+                                <div>
+                                  <span>TOTAL</span>
+                                  <strong>{nairaFormatter.format(order.total)}</strong>
+                                </div>
+                                <div>
+                                  <span>SHIP TO</span>
+                                  <strong>{order.delivery}</strong>
+                                </div>
+                                <div>
+                                  <span>ORDER #</span>
+                                  <strong>{order.id}</strong>
+                                </div>
+                                <span
+                                  className={`buyer-hub-status ${orderStatusClass(order.status)}`}
+                                >
+                                  {order.status}
+                                </span>
+                              </header>
+
+                              <div className="buyer-hub-order-body">
+                                <div className="buyer-hub-order-thumbs">
+                                  {images.length ? (
+                                    images.map((product) => (
+                                      <img
+                                        key={product.id}
+                                        src={product.image}
+                                        alt={product.name}
+                                        loading="lazy"
+                                      />
+                                    ))
+                                  ) : (
+                                    <span className="buyer-hub-order-thumb-fallback">
+                                      <Package size={22} />
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="buyer-hub-order-copy">
+                                  <h3>{order.items}</h3>
+                                  <p>
+                                    {order.source === "checkout"
+                                      ? "Placed through SupreCart checkout"
+                                      : "Marketplace order"}
+                                    {order.delivery ? ` · Delivering to ${order.delivery}` : ""}
+                                  </p>
+                                  {trackable && (
+                                    <ol className="buyer-hub-order-progress">
+                                      {[
+                                        "Order placed",
+                                        "Processing",
+                                        "In transit",
+                                        "Delivered",
+                                      ].map((label, index) => (
+                                        <li
+                                          key={label}
+                                          className={index + 1 <= progressStep ? "is-complete" : ""}
+                                        >
+                                          <span>
+                                            {index + 1 <= progressStep ? (
+                                              <Check size={11} />
+                                            ) : (
+                                              index + 1
+                                            )}
+                                          </span>
+                                          <small>{label}</small>
+                                        </li>
+                                      ))}
+                                    </ol>
+                                  )}
+                                </div>
+                                <div className="buyer-hub-order-actions">
+                                  <Button size="sm" onClick={() => buyAgain(order)}>
+                                    <ShoppingBag size={14} /> Buy again
+                                  </Button>
+                                  <Link
+                                    to="/support"
+                                    search={{ orderId: order.id }}
+                                    className="buyer-hub-outline-link"
+                                  >
+                                    <Headphones size={14} /> Get help
+                                  </Link>
+                                  {canCancelOrder(order) && (
+                                    <button
+                                      type="button"
+                                      className="buyer-hub-danger-link"
+                                      onClick={() => beginCancelOrder(order.id)}
+                                    >
+                                      Cancel order
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+
+                              {order.status === "Cancellation requested" ? (
+                                <div className="account-order-refund">
+                                  <p>
+                                    <strong>Refund status:</strong> Pending review
+                                  </p>
+                                  {order.cancellation_reason && (
+                                    <p>Reason: {order.cancellation_reason}</p>
+                                  )}
+                                  <ol className="account-refund-timeline">
+                                    <li className="is-complete">
+                                      <span>Request submitted</span>
+                                      {order.cancellation_requested_at && (
+                                        <time dateTime={order.cancellation_requested_at}>
+                                          {new Date(
+                                            order.cancellation_requested_at,
+                                          ).toLocaleDateString()}
+                                        </time>
+                                      )}
+                                    </li>
+                                    <li>
+                                      <span>Seller and logistics review</span>
+                                    </li>
+                                    <li>
+                                      <span>Refund processed</span>
+                                    </li>
+                                  </ol>
+                                  <p className="account-order-note">
+                                    Requested. No payment or refund has been processed yet.
+                                  </p>
+                                </div>
+                              ) : order.status === "Cancelled" ? (
+                                <p className="buyer-hub-order-cancel-note">
+                                  Cancelled
+                                  {order.cancelled_at
+                                    ? ` on ${new Date(order.cancelled_at).toLocaleDateString()}`
+                                    : ""}
+                                  . No payment or refund was processed.
+                                </p>
+                              ) : cancellingOrderId === order.id ? (
+                                <form
+                                  className="account-order-cancel"
+                                  onSubmit={(event) => {
+                                    event.preventDefault();
+                                    const form = new FormData(event.currentTarget);
+                                    confirmCancelOrder(
+                                      order.id,
+                                      cleanText(form.get("reason"), 300),
+                                    );
+                                  }}
+                                >
+                                  <p>
+                                    Request cancellation for order {order.id}? It will be reviewed
+                                    before any refund is processed. This request is saved in this
+                                    browser only.
+                                  </p>
+                                  <label>
+                                    Cancellation reason
+                                    <select name="reason" required defaultValue="">
+                                      <option value="" disabled>
+                                        Select a reason
+                                      </option>
+                                      {cancellationReasons.map((reason) => (
+                                        <option key={reason} value={reason}>
+                                          {reason}
+                                        </option>
+                                      ))}
+                                    </select>
+                                  </label>
+                                  <div className="account-confirm-actions">
+                                    <Button size="sm" variant="destructive" type="submit">
+                                      Submit request
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      type="button"
+                                      onClick={() => setCancellingOrderId("")}
+                                    >
+                                      Keep order
+                                    </Button>
+                                  </div>
+                                </form>
+                              ) : (
+                                order.status === "Processing" &&
+                                !canCancelOrder(order) && (
+                                  <p className="buyer-hub-order-cancel-note">
+                                    The 24-hour cancellation window for this order has closed.
+                                  </p>
+                                )
+                              )}
+                            </article>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div className="buyer-hub-empty">
+                        <span>
+                          <Package size={22} />
+                        </span>
+                        <strong>No {orderFilter.toLowerCase()} orders</strong>
+                        <p>Try another order status to see more of your purchases.</p>
+                        <Button variant="outline" onClick={() => setOrderFilter("all")}>
+                          View all orders
+                        </Button>
+                      </div>
+                    )
+                  ) : (
+                    <div className="buyer-hub-empty">
+                      <span>
+                        <Package size={22} />
+                      </span>
+                      <strong>You have not placed an order yet</strong>
+                      <p>Order history is kept in this browser only.</p>
                       <Button
-                        size="lg"
                         onClick={() =>
                           navigate({ to: "/shop", search: { filter: "All", query: "" } })
                         }
                       >
-                        Explore the marketplace <ArrowRight size={16} />
+                        Start shopping <ArrowRight size={14} />
                       </Button>
                     </div>
-                  </>
-                )}
-                {section === "orders" && (
-                  <section className="account-dashboard-card">
-                    <div className="account-dashboard-section-heading">
-                      <h2>Order history</h2>
-                      <span>{orders.length}</span>
+                  )}
+
+                  <div className="buyer-hub-order-help">
+                    <div>
+                      <Truck size={18} />
+                      <p>
+                        <strong>Need help with a delivery?</strong>
+                        Our customer care team can help with order questions and cancellation
+                        requests.
+                      </p>
                     </div>
-                    {orderNotice && (
-                      <p className="account-success-note" role="status">
-                        {orderNotice}
+                    <Link to="/support" className="buyer-hub-text-link">
+                      Chat with customer care <ArrowRight size={14} />
+                    </Link>
+                  </div>
+                </>
+              )}
+              {section === "addresses" && (
+                <>
+                  <div className="buyer-hub-page-heading">
+                    <div>
+                      <span className="buyer-hub-overline">DELIVERY DETAILS</span>
+                      <h2>Your Addresses</h2>
+                      <p>
+                        Save the places you order to most often. Addresses stay in this browser
+                        only.
                       </p>
-                    )}
-                    {orderError && (
-                      <p className="account-warning-note" role="alert">
-                        <AlertTriangle size={15} />
-                        {orderError}
-                      </p>
-                    )}
-                    {orders.length ? (
-                      <ul className="account-order-list">
-                        {orders.map((order) => (
-                          <li key={order.id}>
-                            <Package size={16} />
-                            <span>Order {order.id}</span>
-                            <span
-                              className={`account-order-status${orderStatusClass(order.status)}`}
-                            >
-                              {order.status}
-                            </span>
-                            <time dateTime={order.created_at}>
-                              {new Date(order.created_at).toLocaleDateString()}
-                            </time>
-                            {order.items && <small>{order.items}</small>}
-                            {order.delivery && <small>Delivery: {order.delivery}</small>}
-                            {order.total !== undefined && (
-                              <strong>
-                                {new Intl.NumberFormat("en-NG", {
-                                  style: "currency",
-                                  currency: "NGN",
-                                  maximumFractionDigits: 0,
-                                }).format(order.total)}
-                              </strong>
-                            )}
-                            {order.status === "Cancellation requested" ? (
-                              <div className="account-order-refund">
-                                <p>
-                                  <strong>Refund status:</strong> Pending review
-                                </p>
-                                {order.cancellation_reason && (
-                                  <p>Reason: {order.cancellation_reason}</p>
-                                )}
-                                <ol className="account-refund-timeline">
-                                  <li className="is-complete">
-                                    <span>Request submitted</span>
-                                    {order.cancellation_requested_at && (
-                                      <time dateTime={order.cancellation_requested_at}>
-                                        {new Date(
-                                          order.cancellation_requested_at,
-                                        ).toLocaleDateString()}
-                                      </time>
-                                    )}
-                                  </li>
-                                  <li>
-                                    <span>Seller and logistics review</span>
-                                  </li>
-                                  <li>
-                                    <span>Refund processed</span>
-                                  </li>
-                                </ol>
-                                <p className="account-order-note">
-                                  Requested. No payment or refund has been processed yet.
-                                </p>
-                              </div>
-                            ) : order.status === "Cancelled" ? (
-                              <p className="account-order-note">
-                                Cancelled
-                                {order.cancelled_at
-                                  ? ` on ${new Date(order.cancelled_at).toLocaleDateString()}`
-                                  : ""}
-                                . No payment or refund was processed.
-                              </p>
-                            ) : cancellingOrderId === order.id ? (
-                              <form
-                                className="account-order-cancel"
-                                onSubmit={(event) => {
-                                  event.preventDefault();
-                                  const form = new FormData(event.currentTarget);
-                                  confirmCancelOrder(order.id, cleanText(form.get("reason"), 300));
-                                }}
-                              >
-                                <p>
-                                  Request cancellation for order {order.id}? It will be reviewed
-                                  before any refund is processed. This request is saved in this
-                                  browser only.
-                                </p>
-                                <label>
-                                  Cancellation reason
-                                  <select name="reason" required defaultValue="">
-                                    <option value="" disabled>
-                                      Select a reason
-                                    </option>
-                                    {cancellationReasons.map((reason) => (
-                                      <option key={reason} value={reason}>
-                                        {reason}
-                                      </option>
-                                    ))}
-                                  </select>
-                                </label>
-                                <div className="account-confirm-actions">
-                                  <Button size="sm" variant="destructive" type="submit">
-                                    Submit request
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    type="button"
-                                    onClick={() => setCancellingOrderId("")}
-                                  >
-                                    Keep order
-                                  </Button>
-                                </div>
-                              </form>
-                            ) : (
-                              <div className="account-order-actions">
-                                {canCancelOrder(order) ? (
-                                  <button
-                                    type="button"
-                                    className="account-danger-link"
-                                    onClick={() => beginCancelOrder(order.id)}
-                                  >
-                                    Cancel order
-                                  </button>
-                                ) : (
-                                  <span className="account-order-note">
-                                    {order.status === "Processing"
-                                      ? "The 24-hour cancellation window for this order has closed."
-                                      : "Cancellation is only available before dispatch."}
-                                  </span>
-                                )}
-                                <Link
-                                  to="/support"
-                                  search={{ orderId: order.id }}
-                                  className="account-inline-link"
-                                >
-                                  Get help
-                                </Link>
-                              </div>
-                            )}
-                          </li>
-                        ))}
-                      </ul>
-                    ) : (
-                      <p className="account-intro">
-                        No orders yet. Order history is kept in this browser only.
-                      </p>
-                    )}
-                    <p className="account-intro account-order-support">
-                      Need help with an order? <Link to="/support">Chat with customer care</Link>.
-                    </p>
-                  </section>
-                )}
-                {section === "addresses" && (
-                  <>
-                    <section className="account-dashboard-card">
-                      <h2>Delivery addresses</h2>
-                      <p className="local-data-note">
-                        Addresses are stored in this browser only and are not shared with any
-                        delivery service.
-                      </p>
+                    </div>
+                    <Button
+                      variant="outline"
+                      onClick={() =>
+                        document
+                          .getElementById("buyer-address-form")
+                          ?.scrollIntoView({ behavior: "smooth", block: "start" })
+                      }
+                    >
+                      <Plus size={15} /> Add a new address
+                    </Button>
+                  </div>
+
+                  <div className="buyer-hub-address-layout">
+                    <section className="buyer-hub-panel">
+                      <div className="buyer-hub-panel-title">
+                        <h3>Saved delivery addresses</h3>
+                        <span className="buyer-hub-count">{addresses.length}</span>
+                      </div>
                       {addresses.length ? (
-                        <div className="account-address-list">
+                        <div className="buyer-hub-address-grid">
                           {addresses.map((address) => (
-                            <article key={address.id} className="account-address-card">
-                              <div>
-                                <strong>
-                                  {address.first_name} {address.last_name}
-                                </strong>
-                                {address.is_default && <span>DEFAULT</span>}
-                              </div>
+                            <article
+                              key={address.id}
+                              className={`buyer-hub-address-card${address.is_default ? " is-default" : ""}`}
+                            >
+                              <header>
+                                <span>
+                                  <MapPin size={18} />
+                                </span>
+                                <div>
+                                  <strong>
+                                    {address.first_name} {address.last_name}
+                                  </strong>
+                                  {address.is_default && (
+                                    <small className="buyer-hub-default-badge">DEFAULT</small>
+                                  )}
+                                </div>
+                              </header>
                               <p>
-                                {address.street_address}, {address.community}, {address.lga}
+                                {address.street_address}
+                                <br />
+                                {address.community}, {address.lga}
                               </p>
                               <small>
-                                {address.phone} · {address.email}
-                                {address.landmark ? ` · ${address.landmark}` : ""}
+                                {address.phone}
+                                <br />
+                                {address.email}
+                                {address.landmark ? (
+                                  <>
+                                    <br />
+                                    Landmark: {address.landmark}
+                                  </>
+                                ) : null}
                               </small>
-                              <button
-                                type="button"
-                                className="account-danger-link"
-                                onClick={() => removeAddress(address.id)}
-                              >
-                                Remove address
-                              </button>
+                              <footer>
+                                {!address.is_default && (
+                                  <button
+                                    type="button"
+                                    className="buyer-hub-text-link"
+                                    onClick={() => makeDefaultAddress(address.id)}
+                                  >
+                                    Set as default
+                                  </button>
+                                )}
+                                <button
+                                  type="button"
+                                  className="buyer-hub-danger-link"
+                                  onClick={() => removeAddress(address.id)}
+                                >
+                                  Remove
+                                </button>
+                              </footer>
                             </article>
                           ))}
                         </div>
                       ) : (
-                        <p className="account-intro">No saved delivery addresses yet.</p>
+                        <div className="buyer-hub-empty">
+                          <span>
+                            <MapPin size={22} />
+                          </span>
+                          <strong>No saved delivery addresses</strong>
+                          <p>Add an address to make checkout faster.</p>
+                        </div>
                       )}
                     </section>
-                    <form className="account-dashboard-card account-form" onSubmit={addAddress}>
-                      <h2>Add a delivery address</h2>
+
+                    <form
+                      id="buyer-address-form"
+                      className="buyer-hub-panel account-form buyer-hub-address-form"
+                      onSubmit={addAddress}
+                    >
+                      <div>
+                        <span className="buyer-hub-overline">NEW ADDRESS</span>
+                        <h3>Add a delivery address</h3>
+                      </div>
                       <div className="field-pair">
                         <label>
                           First name
@@ -995,581 +1545,597 @@ function BuyerAccount() {
                         <input name="is_default" type="checkbox" />
                         Make this my default delivery address
                       </label>
-                      <Button type="submit">Save address</Button>
+                      <Button type="submit">
+                        <Check size={15} /> Save address
+                      </Button>
                     </form>
-                  </>
-                )}
-                {section === "seller" && (
-                  <>
-                    <section className="account-dashboard-card seller-account-hero">
-                      <span className="seller-account-kicker">
-                        <Store size={15} /> SELL ON SUPRECART
-                      </span>
-                      <h2>
-                        {sellerApplication?.status === "approved"
-                          ? "Your studio is ready."
-                          : sellerApplication?.status === "pending"
-                            ? "Your application is with us."
-                            : sellerApplication?.status === "rejected"
-                              ? "Let’s try that again."
-                              : "Bring what you make to more people."}
-                      </h2>
-                      <p className="account-intro">
-                        {sellerApplication?.status === "approved"
-                          ? "Manage products, orders and payouts in the seller studio, or update your details here whenever life changes."
-                          : sellerApplication?.status === "pending"
-                            ? "Our team reviews every seller application by hand. Nothing goes live until your shop is approved."
-                            : sellerApplication?.status === "rejected"
-                              ? sellerApplication.reviewNote ||
-                                "Your application was not approved this time. You can update your details and submit again."
-                              : "Tell us a little about your shop. Approved sellers can manage products, orders and payouts in a dedicated studio."}
+                  </div>
+                </>
+              )}
+              {section === "seller" && (
+                <>
+                  <div className="buyer-hub-page-heading">
+                    <div>
+                      <span className="buyer-hub-overline">GROW WITH SUPRECART</span>
+                      <h2>Sell on SupreCart</h2>
+                      <p>
+                        Apply for a seller account, track your review and manage your seller studio.
                       </p>
-                      {sellerApplication && (
-                        <div className={`seller-application-state is-${sellerApplication.status}`}>
-                          {sellerApplication.status === "approved" ? (
-                            <BadgeCheck size={18} />
-                          ) : sellerApplication.status === "pending" ? (
-                            <Clock3 size={18} />
-                          ) : (
-                            <AlertTriangle size={18} />
-                          )}
-                          <div>
-                            <strong>
-                              {sellerApplication.status === "approved"
-                                ? "Approved seller"
-                                : sellerApplication.status === "pending"
-                                  ? "Pending review"
-                                  : "Application not approved"}
-                            </strong>
-                            <span>
-                              {sellerApplication.storeName} · Submitted{" "}
-                              {new Date(sellerApplication.submittedAt).toLocaleDateString()}
-                            </span>
-                          </div>
+                    </div>
+                  </div>
+                  <section className="account-dashboard-card seller-account-hero">
+                    <span className="seller-account-kicker">
+                      <Store size={15} /> SELL ON SUPRECART
+                    </span>
+                    <h2>
+                      {sellerApplication?.status === "approved"
+                        ? "Your studio is ready."
+                        : sellerApplication?.status === "pending"
+                          ? "Your application is with us."
+                          : sellerApplication?.status === "rejected"
+                            ? "Let’s try that again."
+                            : "Bring what you make to more people."}
+                    </h2>
+                    <p className="account-intro">
+                      {sellerApplication?.status === "approved"
+                        ? "Manage products, orders and payouts in the seller studio, or update your details here whenever life changes."
+                        : sellerApplication?.status === "pending"
+                          ? "Our team reviews every seller application by hand. Nothing goes live until your shop is approved."
+                          : sellerApplication?.status === "rejected"
+                            ? sellerApplication.reviewNote ||
+                              "Your application was not approved this time. You can update your details and submit again."
+                            : "Tell us a little about your shop. Approved sellers can manage products, orders and payouts in a dedicated studio."}
+                    </p>
+                    {sellerApplication && (
+                      <div className={`seller-application-state is-${sellerApplication.status}`}>
+                        {sellerApplication.status === "approved" ? (
+                          <BadgeCheck size={18} />
+                        ) : sellerApplication.status === "pending" ? (
+                          <Clock3 size={18} />
+                        ) : (
+                          <AlertTriangle size={18} />
+                        )}
+                        <div>
+                          <strong>
+                            {sellerApplication.status === "approved"
+                              ? "Approved seller"
+                              : sellerApplication.status === "pending"
+                                ? "Pending review"
+                                : "Application not approved"}
+                          </strong>
+                          <span>
+                            {sellerApplication.storeName} · Submitted{" "}
+                            {new Date(sellerApplication.submittedAt).toLocaleDateString()}
+                          </span>
                         </div>
-                      )}
-                    </section>
+                      </div>
+                    )}
+                  </section>
 
-                    {sellerApplication?.status === "approved" ? (
-                      <section className="account-dashboard-card seller-studio-card">
-                        <div>
-                          <div className="account-dashboard-section-heading">
-                            <h2>Seller studio</h2>
-                            <span>APPROVED</span>
+                  {sellerApplication?.status === "approved" ? (
+                    <section className="account-dashboard-card seller-studio-card">
+                      <div>
+                        <div className="account-dashboard-section-heading">
+                          <h2>Seller studio</h2>
+                          <span>APPROVED</span>
+                        </div>
+                        <p className="account-intro">
+                          Your shop, orders and payouts live in one focused workspace. Seller
+                          changes are kept in this browser only.
+                        </p>
+                      </div>
+                      <Button onClick={() => void openSellerStudio()}>
+                        Open seller studio <ArrowRight size={15} />
+                      </Button>
+                    </section>
+                  ) : sellerApplication?.status === "pending" ? (
+                    <section className="account-dashboard-card">
+                      <h2>What happens next</h2>
+                      <ol className="seller-review-steps">
+                        <li>
+                          <span>01</span>
+                          <div>
+                            <strong>We review your details</strong>
+                            <p>Our team checks your shop, products and payout information.</p>
                           </div>
-                          <p className="account-intro">
-                            Your shop, orders and payouts live in one focused workspace. Seller
-                            changes are kept in this browser only.
-                          </p>
-                        </div>
-                        <Button onClick={() => void openSellerStudio()}>
-                          Open seller studio <ArrowRight size={15} />
-                        </Button>
-                      </section>
-                    ) : sellerApplication?.status === "pending" ? (
-                      <section className="account-dashboard-card">
-                        <h2>What happens next</h2>
-                        <ol className="seller-review-steps">
-                          <li>
-                            <span>01</span>
-                            <div>
-                              <strong>We review your details</strong>
-                              <p>Our team checks your shop, products and payout information.</p>
-                            </div>
-                          </li>
-                          <li>
-                            <span>02</span>
-                            <div>
-                              <strong>You get an answer here</strong>
-                              <p>
-                                Your account dashboard updates when the application is reviewed.
-                              </p>
-                            </div>
-                          </li>
-                          <li>
-                            <span>03</span>
-                            <div>
-                              <strong>Your studio opens</strong>
-                              <p>Once approved, your seller workspace unlocks at /sellers.</p>
-                            </div>
-                          </li>
-                        </ol>
-                      </section>
-                    ) : (
-                      <form
-                        className="account-dashboard-card account-form seller-application-form"
-                        onSubmit={submitSellerApplication}
-                      >
-                        <div>
-                          <h2>
-                            {sellerApplication?.status === "rejected"
-                              ? "Update your application"
-                              : "Seller application"}
-                          </h2>
-                          <p className="account-intro">
-                            Fields marked below are shared with the review team. No payment or
-                            product goes live from this form.
-                          </p>
-                        </div>
-                        <div className="field-pair">
-                          <label>
-                            Shop or business name
-                            <input
-                              name="storeName"
-                              defaultValue={sellerApplication?.storeName ?? ""}
-                              placeholder="e.g. Form & Field"
-                              required
-                            />
-                          </label>
-                          <label>
-                            Phone number
-                            <input
-                              name="phone"
-                              type="tel"
-                              defaultValue={sellerApplication?.phone ?? sessionProfile.phone ?? ""}
-                              placeholder="+234"
-                              required
-                            />
-                          </label>
-                        </div>
+                        </li>
+                        <li>
+                          <span>02</span>
+                          <div>
+                            <strong>You get an answer here</strong>
+                            <p>Your account dashboard updates when the application is reviewed.</p>
+                          </div>
+                        </li>
+                        <li>
+                          <span>03</span>
+                          <div>
+                            <strong>Your studio opens</strong>
+                            <p>Once approved, your seller workspace unlocks at /sellers.</p>
+                          </div>
+                        </li>
+                      </ol>
+                    </section>
+                  ) : (
+                    <form
+                      className="account-dashboard-card account-form seller-application-form"
+                      onSubmit={submitSellerApplication}
+                    >
+                      <div>
+                        <h2>
+                          {sellerApplication?.status === "rejected"
+                            ? "Update your application"
+                            : "Seller application"}
+                        </h2>
+                        <p className="account-intro">
+                          Fields marked below are shared with the review team. No payment or product
+                          goes live from this form.
+                        </p>
+                      </div>
+                      <div className="field-pair">
                         <label>
-                          What will you sell?
-                          <textarea
-                            name="productDescription"
-                            rows={4}
-                            defaultValue={sellerApplication?.productDescription ?? ""}
-                            placeholder="A short introduction to your products, materials and how you make or source them."
+                          Shop or business name
+                          <input
+                            name="storeName"
+                            defaultValue={sellerApplication?.storeName ?? ""}
+                            placeholder="e.g. Form & Field"
                             required
                           />
                         </label>
-                        <div className="field-pair">
-                          <label>
-                            Bank name
-                            <select
-                              name="bankName"
-                              defaultValue={sellerApplication?.bankName ?? ""}
-                              required
-                            >
-                              <option value="" disabled>
-                                Select your bank…
-                              </option>
-                              {sellerApplication?.bankName &&
-                                !nigerianBanks.includes(sellerApplication.bankName) && (
-                                  <option value={sellerApplication.bankName}>
-                                    {sellerApplication.bankName} (saved)
-                                  </option>
-                                )}
-                              {nigerianBanks.map((bank) => (
-                                <option key={bank} value={bank}>
-                                  {bank}
-                                </option>
-                              ))}
-                            </select>
-                          </label>
-                          <label>
-                            Account number
-                            <input
-                              name="bankAccountNumber"
-                              inputMode="numeric"
-                              defaultValue={sellerApplication?.bankAccountNumber ?? ""}
-                              required
-                            />
-                          </label>
-                        </div>
-                        <p className="account-field-hint">
-                          Payout details are stored in this browser and are never sent to a bank.
-                          You can update them before any real payout is connected.
-                        </p>
-                        <Button type="submit">
-                          {sellerApplication?.status === "rejected"
-                            ? "Resubmit for review"
-                            : "Submit for review"}{" "}
-                          <ArrowRight size={15} />
-                        </Button>
-                      </form>
-                    )}
-                  </>
-                )}
-                {section === "settings" && (
-                  <>
-                    <div className="account-settings-section-header buyer-settings-header">
-                      <div>
-                        <p className="eyebrow">ACCOUNT SETTINGS</p>
-                        <h2>{activeSettingsLabel}</h2>
+                        <label>
+                          Phone number
+                          <input
+                            name="phone"
+                            type="tel"
+                            defaultValue={sellerApplication?.phone ?? sessionProfile.phone ?? ""}
+                            placeholder="+234"
+                            required
+                          />
+                        </label>
                       </div>
-                      <div className="buyer-menu buyer-settings-menu">
+                      <label>
+                        What will you sell?
+                        <textarea
+                          name="productDescription"
+                          rows={4}
+                          defaultValue={sellerApplication?.productDescription ?? ""}
+                          placeholder="A short introduction to your products, materials and how you make or source them."
+                          required
+                        />
+                      </label>
+                      <div className="field-pair">
+                        <label>
+                          Bank name
+                          <select
+                            name="bankName"
+                            defaultValue={sellerApplication?.bankName ?? ""}
+                            required
+                          >
+                            <option value="" disabled>
+                              Select your bank…
+                            </option>
+                            {sellerApplication?.bankName &&
+                              !nigerianBanks.includes(sellerApplication.bankName) && (
+                                <option value={sellerApplication.bankName}>
+                                  {sellerApplication.bankName} (saved)
+                                </option>
+                              )}
+                            {nigerianBanks.map((bank) => (
+                              <option key={bank} value={bank}>
+                                {bank}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                        <label>
+                          Account number
+                          <input
+                            name="bankAccountNumber"
+                            inputMode="numeric"
+                            defaultValue={sellerApplication?.bankAccountNumber ?? ""}
+                            required
+                          />
+                        </label>
+                      </div>
+                      <p className="account-field-hint">
+                        Payout details are stored in this browser and are never sent to a bank. You
+                        can update them before any real payout is connected.
+                      </p>
+                      <Button type="submit">
+                        {sellerApplication?.status === "rejected"
+                          ? "Resubmit for review"
+                          : "Submit for review"}{" "}
+                        <ArrowRight size={15} />
+                      </Button>
+                    </form>
+                  )}
+                </>
+              )}
+              {section === "settings" && (
+                <>
+                  <div className="buyer-hub-page-heading">
+                    <div>
+                      <span className="buyer-hub-overline">ACCOUNT SETTINGS</span>
+                      <h2>Account Settings</h2>
+                      <p>Manage your profile, preferences and account security.</p>
+                    </div>
+                  </div>
+
+                  <div className="buyer-hub-settings-layout">
+                    <aside className="buyer-hub-settings-nav" aria-label="Account settings">
+                      <p className="buyer-hub-sidebar-label">Settings</p>
+                      {settingsTabs.map(([key, label, Icon]) => (
                         <button
                           type="button"
-                          className="buyer-menu-trigger"
-                          aria-haspopup="menu"
-                          aria-expanded={settingsMenuOpen}
-                          aria-controls="buyer-settings-menu"
-                          onClick={() => {
-                            setSettingsMenuOpen((open) => !open);
-                            setAccountMenuOpen(false);
-                          }}
+                          key={key}
+                          className={settingsTab === key ? "active" : ""}
+                          aria-current={settingsTab === key ? "page" : undefined}
+                          onClick={() => openSettings(key as SettingsTab)}
                         >
-                          <Settings size={17} />
-                          <span>Settings</span>
-                          <ChevronDown size={15} className="buyer-menu-chevron" />
+                          <Icon size={16} />
+                          <span>{label}</span>
+                          <ChevronRight size={13} />
                         </button>
-                        {settingsMenuOpen && (
-                          <div
-                            id="buyer-settings-menu"
-                            className="buyer-dropdown buyer-settings-dropdown"
-                            role="menu"
-                          >
-                            <p className="buyer-dropdown-label">Account settings</p>
-                            {settingsTabs.map(([key, label, Icon]) => (
-                              <button
-                                type="button"
-                                key={key}
-                                role="menuitem"
-                                className={settingsTab === key ? "active" : ""}
-                                aria-current={settingsTab === key ? "page" : undefined}
-                                onClick={() => {
-                                  setSettingsTab(key as SettingsTab);
-                                  setError("");
-                                  setNotice("");
-                                  setConfirmDelete(false);
-                                  setSettingsMenuOpen(false);
-                                }}
-                              >
-                                <Icon size={16} /> {label}
-                              </button>
-                            ))}
-                          </div>
-                        )}
+                      ))}
+                    </aside>
+
+                    <div className="buyer-hub-settings-content">
+                      <label className="buyer-hub-settings-select">
+                        Settings section
+                        <select
+                          value={settingsTab}
+                          onChange={(event) => openSettings(event.target.value as SettingsTab)}
+                        >
+                          {settingsTabs.map(([key, label]) => (
+                            <option key={key} value={key}>
+                              {label}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <div className="buyer-hub-settings-title">
+                        <Settings size={18} />
+                        <h3>{activeSettingsLabel}</h3>
                       </div>
-                    </div>
-                    {settingsTab === "profile" && (
-                      <section className="account-dashboard-card">
-                        <div className="account-profile-photo">
-                          <span className="account-avatar account-avatar-lg">
-                            {preferences.avatarDataUrl ? (
-                              <img src={preferences.avatarDataUrl} alt="Your profile photo" />
-                            ) : (
-                              <UserRound size={28} />
-                            )}
-                          </span>
-                          <div className="account-profile-photo-actions">
-                            <strong>Profile photo</strong>
-                            <span>
-                              Shown on your account and reviews. Saved in this browser only.
-                            </span>
-                            <div className="account-avatar-buttons">
-                              <label className="account-upload-button">
-                                <Upload size={14} />{" "}
-                                {preferences.avatarDataUrl ? "Change photo" : "Add photo"}
-                                <input
-                                  type="file"
-                                  accept=".jpg,.jpeg,.png,.webp"
-                                  onChange={onAvatarFile}
-                                  hidden
-                                />
-                              </label>
-                              {preferences.avatarDataUrl && (
-                                <button
-                                  type="button"
-                                  className="account-link-button"
-                                  onClick={removeAvatar}
-                                >
-                                  <Trash2 size={14} /> Remove
-                                </button>
+                      {settingsTab === "profile" && (
+                        <section className="account-dashboard-card">
+                          <div className="account-profile-photo">
+                            <span className="account-avatar account-avatar-lg">
+                              {preferences.avatarDataUrl ? (
+                                <img src={preferences.avatarDataUrl} alt="Your profile photo" />
+                              ) : (
+                                <UserRound size={28} />
                               )}
+                            </span>
+                            <div className="account-profile-photo-actions">
+                              <strong>Profile photo</strong>
+                              <span>
+                                Shown on your account and reviews. Saved in this browser only.
+                              </span>
+                              <div className="account-avatar-buttons">
+                                <label className="account-upload-button">
+                                  <Upload size={14} />{" "}
+                                  {preferences.avatarDataUrl ? "Change photo" : "Add photo"}
+                                  <input
+                                    type="file"
+                                    accept=".jpg,.jpeg,.png,.webp"
+                                    onChange={onAvatarFile}
+                                    hidden
+                                  />
+                                </label>
+                                {preferences.avatarDataUrl && (
+                                  <button
+                                    type="button"
+                                    className="account-link-button"
+                                    onClick={removeAvatar}
+                                  >
+                                    <Trash2 size={14} /> Remove
+                                  </button>
+                                )}
+                              </div>
                             </div>
                           </div>
-                        </div>
-                        <p className="local-data-note">
-                          Profile changes stay in this browser. Your email address identifies the
-                          account and cannot be changed here.
-                        </p>
-                        <form className="account-form" onSubmit={saveProfile}>
-                          <label>
-                            Display name
-                            <input name="name" defaultValue={sessionProfile.name} required />
-                          </label>
-                          <label>
-                            Phone
-                            <input name="phone" type="tel" defaultValue={sessionProfile.phone} />
-                          </label>
-                          <label>
-                            Account email
-                            <input value={sessionAccount?.email ?? ""} disabled />
-                          </label>
-                          <Button type="submit">Save profile</Button>
-                        </form>
-                      </section>
-                    )}
+                          <p className="local-data-note">
+                            Profile changes stay in this browser. Your email address identifies the
+                            account and cannot be changed here.
+                          </p>
+                          <form className="account-form" onSubmit={saveProfile}>
+                            <label>
+                              Display name
+                              <input name="name" defaultValue={sessionProfile.name} required />
+                            </label>
+                            <label>
+                              Phone
+                              <input name="phone" type="tel" defaultValue={sessionProfile.phone} />
+                            </label>
+                            <label>
+                              Account email
+                              <input value={sessionAccount?.email ?? ""} disabled />
+                            </label>
+                            <Button type="submit">Save profile</Button>
+                          </form>
+                        </section>
+                      )}
 
-                    {settingsTab === "notifications" && (
-                      <section className="account-dashboard-card">
-                        <p className="account-intro">
-                          Choose what SupreCart should tell you about. These preferences are saved
-                          in this browser.
-                        </p>
-                        <div className="account-toggle-list">
-                          {(
-                            [
-                              ["orderUpdates", "Order updates", "Delivery and fulfilment progress"],
+                      {settingsTab === "notifications" && (
+                        <section className="account-dashboard-card">
+                          <p className="account-intro">
+                            Choose what SupreCart should tell you about. These preferences are saved
+                            in this browser.
+                          </p>
+                          <div className="account-toggle-list">
+                            {(
                               [
-                                "promotions",
-                                "Deals & promotions",
-                                "Sale alerts from sellers you follow",
-                              ],
-                              ["newsletter", "Newsletter", "Occasional marketplace news"],
-                              ["securityAlerts", "Security alerts", "Sign-ins and account changes"],
-                            ] as const
-                          ).map(([key, title, text]) => (
-                            <label key={key} className="account-toggle-row">
+                                [
+                                  "orderUpdates",
+                                  "Order updates",
+                                  "Delivery and fulfilment progress",
+                                ],
+                                [
+                                  "promotions",
+                                  "Deals & promotions",
+                                  "Sale alerts from sellers you follow",
+                                ],
+                                ["newsletter", "Newsletter", "Occasional marketplace news"],
+                                [
+                                  "securityAlerts",
+                                  "Security alerts",
+                                  "Sign-ins and account changes",
+                                ],
+                              ] as const
+                            ).map(([key, title, text]) => (
+                              <label key={key} className="account-toggle-row">
+                                <span>
+                                  <strong>{title}</strong>
+                                  <small>{text}</small>
+                                </span>
+                                <input
+                                  type="checkbox"
+                                  checked={preferences.notifications[key]}
+                                  onChange={(event) => setNotification(key, event.target.checked)}
+                                />
+                              </label>
+                            ))}
+                          </div>
+                          <p className="account-field-hint">
+                            SupreCart does not send real messages yet; toggles are remembered
+                            locally.
+                          </p>
+                        </section>
+                      )}
+
+                      {settingsTab === "region" && (
+                        <section className="account-dashboard-card">
+                          <p className="account-intro">
+                            Set how prices and dates are shown to you across the marketplace.
+                          </p>
+                          <div className="account-form">
+                            <div className="field-pair">
+                              <label>
+                                Currency
+                                <select
+                                  value={preferences.region.currency}
+                                  onChange={(event) => setRegion({ currency: event.target.value })}
+                                >
+                                  {currencyOptions.map((option) => (
+                                    <option key={option}>{option}</option>
+                                  ))}
+                                </select>
+                              </label>
+                              <label>
+                                Language
+                                <select
+                                  value={preferences.region.language}
+                                  onChange={(event) => setRegion({ language: event.target.value })}
+                                >
+                                  {languageOptions.map((option) => (
+                                    <option key={option}>{option}</option>
+                                  ))}
+                                </select>
+                              </label>
+                            </div>
+                            <label>
+                              Time zone
+                              <select
+                                value={preferences.region.timezone}
+                                onChange={(event) => setRegion({ timezone: event.target.value })}
+                              >
+                                {timezoneOptions.map((option) => (
+                                  <option key={option}>{option}</option>
+                                ))}
+                              </select>
+                            </label>
+                          </div>
+                          <p className="account-field-hint">
+                            Currency conversion and translations are not connected yet, so these are
+                            display preferences only.
+                          </p>
+                        </section>
+                      )}
+
+                      {settingsTab === "payments" && (
+                        <section className="account-dashboard-card">
+                          <p className="account-intro">
+                            Payment methods for checkout. SupreCart never stores a full card number
+                            and no payments are collected.
+                          </p>
+                          {preferences.paymentMethods.length ? (
+                            <div className="account-payment-list">
+                              {preferences.paymentMethods.map((method) => (
+                                <article key={method.id} className="account-payment-card">
+                                  <span className="account-payment-brand">
+                                    <CreditCard size={17} />
+                                    <strong>{method.brand}</strong>
+                                  </span>
+                                  <span>•••• {method.last4}</span>
+                                  <span>Expires {method.expiry}</span>
+                                  {method.isDefault ? (
+                                    <span className="account-payment-default">
+                                      <Check size={12} /> Default
+                                    </span>
+                                  ) : (
+                                    <button
+                                      type="button"
+                                      className="account-inline-link"
+                                      onClick={() => setDefaultPaymentMethod(method.id)}
+                                    >
+                                      Make default
+                                    </button>
+                                  )}
+                                  <button
+                                    type="button"
+                                    className="account-danger-link"
+                                    onClick={() => removePaymentMethod(method.id)}
+                                  >
+                                    Remove
+                                  </button>
+                                </article>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="account-intro">No payment methods saved yet.</p>
+                          )}
+                          <form
+                            className="account-form account-payment-form"
+                            onSubmit={addPaymentMethod}
+                          >
+                            <h3>Add a payment method</h3>
+                            <div className="field-pair">
+                              <label>
+                                Brand
+                                <select name="brand" defaultValue="Visa">
+                                  {["Visa", "Mastercard", "Verve", "Virtual wallet"].map(
+                                    (brand) => (
+                                      <option key={brand}>{brand}</option>
+                                    ),
+                                  )}
+                                </select>
+                              </label>
+                              <label>
+                                Last 4 digits
+                                <input
+                                  name="last4"
+                                  inputMode="numeric"
+                                  maxLength={4}
+                                  placeholder="4242"
+                                  required
+                                />
+                              </label>
+                            </div>
+                            <label>
+                              Expiry (MM/YY)
+                              <input name="expiry" placeholder="09/29" required />
+                            </label>
+                            <Button type="submit" variant="outline">
+                              <Plus size={15} /> Add payment method
+                            </Button>
+                          </form>
+                        </section>
+                      )}
+
+                      {settingsTab === "security" && (
+                        <section className="account-dashboard-card">
+                          <div className="account-toggle-list">
+                            <label className="account-toggle-row">
                               <span>
-                                <strong>{title}</strong>
-                                <small>{text}</small>
+                                <strong>Two-factor authentication</strong>
+                                <small>
+                                  Extra protection for sign-in has not been connected yet.
+                                </small>
                               </span>
                               <input
                                 type="checkbox"
-                                checked={preferences.notifications[key]}
-                                onChange={(event) => setNotification(key, event.target.checked)}
-                              />
-                            </label>
-                          ))}
-                        </div>
-                        <p className="account-field-hint">
-                          SupreCart does not send real messages yet; toggles are remembered locally.
-                        </p>
-                      </section>
-                    )}
-
-                    {settingsTab === "region" && (
-                      <section className="account-dashboard-card">
-                        <p className="account-intro">
-                          Set how prices and dates are shown to you across the marketplace.
-                        </p>
-                        <div className="account-form">
-                          <div className="field-pair">
-                            <label>
-                              Currency
-                              <select
-                                value={preferences.region.currency}
-                                onChange={(event) => setRegion({ currency: event.target.value })}
-                              >
-                                {currencyOptions.map((option) => (
-                                  <option key={option}>{option}</option>
-                                ))}
-                              </select>
-                            </label>
-                            <label>
-                              Language
-                              <select
-                                value={preferences.region.language}
-                                onChange={(event) => setRegion({ language: event.target.value })}
-                              >
-                                {languageOptions.map((option) => (
-                                  <option key={option}>{option}</option>
-                                ))}
-                              </select>
-                            </label>
-                          </div>
-                          <label>
-                            Time zone
-                            <select
-                              value={preferences.region.timezone}
-                              onChange={(event) => setRegion({ timezone: event.target.value })}
-                            >
-                              {timezoneOptions.map((option) => (
-                                <option key={option}>{option}</option>
-                              ))}
-                            </select>
-                          </label>
-                        </div>
-                        <p className="account-field-hint">
-                          Currency conversion and translations are not connected yet, so these are
-                          display preferences only.
-                        </p>
-                      </section>
-                    )}
-
-                    {settingsTab === "payments" && (
-                      <section className="account-dashboard-card">
-                        <p className="account-intro">
-                          Payment methods for checkout. SupreCart never stores a full card number
-                          and no payments are collected.
-                        </p>
-                        {preferences.paymentMethods.length ? (
-                          <div className="account-payment-list">
-                            {preferences.paymentMethods.map((method) => (
-                              <article key={method.id} className="account-payment-card">
-                                <span className="account-payment-brand">
-                                  <CreditCard size={17} />
-                                  <strong>{method.brand}</strong>
-                                </span>
-                                <span>•••• {method.last4}</span>
-                                <span>Expires {method.expiry}</span>
-                                {method.isDefault ? (
-                                  <span className="account-payment-default">
-                                    <Check size={12} /> Default
-                                  </span>
-                                ) : (
-                                  <button
-                                    type="button"
-                                    className="account-inline-link"
-                                    onClick={() => setDefaultPaymentMethod(method.id)}
-                                  >
-                                    Make default
-                                  </button>
-                                )}
-                                <button
-                                  type="button"
-                                  className="account-danger-link"
-                                  onClick={() => removePaymentMethod(method.id)}
-                                >
-                                  Remove
-                                </button>
-                              </article>
-                            ))}
-                          </div>
-                        ) : (
-                          <p className="account-intro">No payment methods saved yet.</p>
-                        )}
-                        <form
-                          className="account-form account-payment-form"
-                          onSubmit={addPaymentMethod}
-                        >
-                          <h3>Add a payment method</h3>
-                          <div className="field-pair">
-                            <label>
-                              Brand
-                              <select name="brand" defaultValue="Visa">
-                                {["Visa", "Mastercard", "Verve", "Virtual wallet"].map((brand) => (
-                                  <option key={brand}>{brand}</option>
-                                ))}
-                              </select>
-                            </label>
-                            <label>
-                              Last 4 digits
-                              <input
-                                name="last4"
-                                inputMode="numeric"
-                                maxLength={4}
-                                placeholder="4242"
-                                required
+                                checked={preferences.twoFactorEnabled}
+                                onChange={(event) =>
+                                  updatePreferences({
+                                    ...preferences,
+                                    twoFactorEnabled: event.target.checked,
+                                  })
+                                }
                               />
                             </label>
                           </div>
-                          <label>
-                            Expiry (MM/YY)
-                            <input name="expiry" placeholder="09/29" required />
-                          </label>
-                          <Button type="submit" variant="outline">
-                            <Plus size={15} /> Add payment method
-                          </Button>
-                        </form>
-                      </section>
-                    )}
-
-                    {settingsTab === "security" && (
-                      <section className="account-dashboard-card">
-                        <div className="account-toggle-list">
-                          <label className="account-toggle-row">
-                            <span>
-                              <strong>Two-factor authentication</strong>
+                          <div className="account-security-actions">
+                            <div>
+                              <strong>Password</strong>
                               <small>
-                                Extra protection for sign-in has not been connected yet.
+                                Reset your password from the{" "}
+                                <Link to="/forgot-password">sign-in page</Link>.
                               </small>
-                            </span>
-                            <input
-                              type="checkbox"
-                              checked={preferences.twoFactorEnabled}
-                              onChange={(event) =>
-                                updatePreferences({
-                                  ...preferences,
-                                  twoFactorEnabled: event.target.checked,
-                                })
-                              }
-                            />
-                          </label>
-                        </div>
-                        <div className="account-security-actions">
-                          <div>
-                            <strong>Password</strong>
-                            <small>
-                              Reset your password from the{" "}
-                              <Link to="/forgot-password">sign-in page</Link>.
-                            </small>
-                          </div>
-                          <div>
-                            <strong>Other sessions</strong>
-                            <small>Sign out every other device signed in to this account.</small>
-                          </div>
-                          <Button
-                            type="button"
-                            variant="outline"
-
-                            onClick={() => void signOutOtherSessions()}
-                          >
-                            <Smartphone size={15} /> Sign out other sessions
-                          </Button>
-                        </div>
-                        <p className="account-field-hint">
-                          Two-factor authentication is a placeholder; it never blocks sign-in.
-                        </p>
-                      </section>
-                    )}
-
-                    {settingsTab === "danger" && (
-                      <section className="account-dashboard-card account-danger-zone">
-                        <p className="account-intro">
-                          {sessionAccount
-                            ? "Permanently delete this local account, its profile, orders, messages, seller application and saved preferences from this browser."
-                            : "Closing a real SupreCart account is handled by our team."}
-                        </p>
-                        {sessionAccount ? (
-                          confirmDelete ? (
-                            <div className="account-confirm">
-                              <p>
-                                This permanently deletes every local record for this account. It
-                                cannot be undone. Continue?
-                              </p>
-                              <div className="account-confirm-actions">
-                                <Button
-                                  type="button"
-                                  variant="destructive"
-                                  onClick={() => void removeAccount()}
-                                >
-                                  <Trash2 size={15} /> Delete account
-                                </Button>
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  onClick={() => setConfirmDelete(false)}
-                                >
-                                  Cancel
-                                </Button>
-                              </div>
                             </div>
+                            <div>
+                              <strong>Other sessions</strong>
+                              <small>Sign out every other device signed in to this account.</small>
+                            </div>
+                            <Button
+                              type="button"
+                              variant="outline"
+
+                              onClick={() => void signOutOtherSessions()}
+                            >
+                              <Smartphone size={15} /> Sign out other sessions
+                            </Button>
+                          </div>
+                          <p className="account-field-hint">
+                            Two-factor authentication is a placeholder; it never blocks sign-in.
+                          </p>
+                        </section>
+                      )}
+
+                      {settingsTab === "danger" && (
+                        <section className="account-dashboard-card account-danger-zone">
+                          <p className="account-intro">
+                            {sessionAccount
+                              ? "Permanently delete this local account, its profile, orders, messages, seller application and saved preferences from this browser."
+                              : "Closing a real SupreCart account is handled by our team."}
+                          </p>
+                          {sessionAccount ? (
+                            confirmDelete ? (
+                              <div className="account-confirm">
+                                <p>
+                                  This permanently deletes every local record for this account. It
+                                  cannot be undone. Continue?
+                                </p>
+                                <div className="account-confirm-actions">
+                                  <Button
+                                    type="button"
+                                    variant="destructive"
+                                    onClick={() => void removeAccount()}
+                                  >
+                                    <Trash2 size={15} /> Delete account
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    onClick={() => setConfirmDelete(false)}
+                                  >
+                                    Cancel
+                                  </Button>
+                                </div>
+                              </div>
+                            ) : (
+                              <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => setConfirmDelete(true)}
+                              >
+                                <Trash2 size={15} /> Delete account
+                              </Button>
+                            )
                           ) : (
                             <Button
                               type="button"
                               variant="outline"
-                              onClick={() => setConfirmDelete(true)}
+                              onClick={() => void removeAccount()}
                             >
-                              <Trash2 size={15} /> Delete account
+                              <Trash2 size={15} /> Request account deletion
                             </Button>
-                          )
-                        ) : (
-                          <Button
-                            type="button"
-                            variant="outline"
-                            onClick={() => void removeAccount()}
-                          >
-                            <Trash2 size={15} /> Request account deletion
-                          </Button>
-                        )}
-                      </section>
-                    )}
-                  </>
-                )}
-              </div>
+                          )}
+                        </section>
+                      )}
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         )}
