@@ -44,10 +44,13 @@ import {
 import { deleteAccountData } from "@/lib/account-cleanup";
 import {
   canCancelOrder,
+  canConfirmOrderDelivery,
   cancelOrder,
+  confirmOrderDelivery,
   getOrders,
   getProfile,
   saveProfile as saveStoredProfile,
+  summarizeOrderFunds,
   type Order,
 } from "@/lib/orders";
 import {
@@ -213,6 +216,7 @@ function BuyerAccount() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [cancellingOrderId, setCancellingOrderId] = useState("");
+  const [confirmingDeliveryId, setConfirmingDeliveryId] = useState("");
   const [orderError, setOrderError] = useState("");
   const [orderNotice, setOrderNotice] = useState("");
 
@@ -518,6 +522,29 @@ function BuyerAccount() {
         cause instanceof Error
           ? cause.message
           : "Could not request cancellation for this order in this browser.",
+      );
+    }
+  }
+
+  function releaseEscrowForOrder(orderId: string) {
+    if (!sessionAccount) return;
+    try {
+      const updated = confirmOrderDelivery(sessionAccount.email, orderId);
+      const confirmed = updated.find((order) => order.id === orderId);
+      const funds = confirmed ? summarizeOrderFunds(confirmed) : null;
+      setOrders(updated);
+      setConfirmingDeliveryId("");
+      setOrderError("");
+      setOrderNotice(
+        funds
+          ? `Delivery confirmed for order ${orderId}. The escrow record now shows ${nairaFormatter.format(funds.sellerNet)} for the seller after ${nairaFormatter.format(funds.commission)} commission. No real funds moved.`
+          : `Delivery confirmed for order ${orderId}. No real funds moved.`,
+      );
+    } catch (cause) {
+      setOrderError(
+        cause instanceof Error
+          ? cause.message
+          : "Could not confirm delivery for this order in this browser.",
       );
     }
   }
@@ -1145,6 +1172,8 @@ function BuyerAccount() {
                         {filteredOrders.map((order) => {
                           const images = orderProducts(order.items);
                           const progressStep = orderProgressStep(order.status);
+                          const funds = summarizeOrderFunds(order);
+                          const fundsReleased = funds.status === "released";
                           const trackable =
                             order.status === "Processing" ||
                             order.status === "In transit" ||
@@ -1232,6 +1261,18 @@ function BuyerAccount() {
                                   )}
                                 </div>
                                 <div className="buyer-hub-order-actions">
+                                  {canConfirmOrderDelivery(order) && (
+                                    <Button
+                                      size="sm"
+                                      onClick={() => {
+                                        setConfirmingDeliveryId(order.id);
+                                        setOrderError("");
+                                        setOrderNotice("");
+                                      }}
+                                    >
+                                      <Check size={14} /> Confirm package received
+                                    </Button>
+                                  )}
                                   <Button size="sm" onClick={() => buyAgain(order)}>
                                     <ShoppingBag size={14} /> Buy again
                                   </Button>
@@ -1253,6 +1294,69 @@ function BuyerAccount() {
                                   )}
                                 </div>
                               </div>
+
+                              {funds.status !== "none" && (
+                                <div
+                                  className={`buyer-hub-order-escrow ${fundsReleased ? "is-released" : ""}`}
+                                >
+                                  <span className="buyer-hub-escrow-icon">
+                                    <ShieldCheck size={17} />
+                                  </span>
+                                  <div className="buyer-hub-escrow-copy">
+                                    <strong>
+                                      {fundsReleased
+                                        ? "Escrow released to the seller"
+                                        : `${nairaFormatter.format(funds.heldGross)} held in escrow`}
+                                    </strong>
+                                    <span>
+                                      {fundsReleased
+                                        ? "Delivery was confirmed by the buyer in this browser. SupreCart commission has been deducted from the seller payout."
+                                        : "SupreCart holds the item funds until you confirm the package arrived. Commission is deducted from the seller net before release."}
+                                    </span>
+                                  </div>
+                                  <dl className="buyer-hub-escrow-amounts">
+                                    <div>
+                                      <dt>Seller net</dt>
+                                      <dd>
+                                        {nairaFormatter.format(
+                                          fundsReleased ? funds.released : funds.sellerNet,
+                                        )}
+                                      </dd>
+                                    </div>
+                                    <div>
+                                      <dt>SupreCart share</dt>
+                                      <dd>{nairaFormatter.format(funds.commission)}</dd>
+                                    </div>
+                                  </dl>
+                                </div>
+                              )}
+
+                              {confirmingDeliveryId === order.id && (
+                                <div className="buyer-hub-order-confirm-delivery">
+                                  <p>
+                                    <strong>Confirm package received?</strong> This marks the order
+                                    delivered and releases the simulated escrow to the seller after
+                                    commission. No real money moves in this demo.
+                                  </p>
+                                  <div className="account-confirm-actions">
+                                    <Button
+                                      size="sm"
+                                      type="button"
+                                      onClick={() => releaseEscrowForOrder(order.id)}
+                                    >
+                                      <Check size={14} /> Confirm delivery
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      type="button"
+                                      onClick={() => setConfirmingDeliveryId("")}
+                                    >
+                                      Not yet
+                                    </Button>
+                                  </div>
+                                </div>
+                              )}
 
                               {order.status === "Cancellation requested" ? (
                                 <div className="account-order-refund">

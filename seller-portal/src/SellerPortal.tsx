@@ -118,7 +118,7 @@ type SellerProduct = {
 type Rating = { product_id: string; review_count: number; average_rating: number };
 
 type SellerStats = {
-  orders: { id: string; status: string; created_at: string }[];
+  orders: { id: string; status: string; created_at: string; buyer_confirmed?: boolean }[];
   items: { quantity: number; seller_net: number; product_id: string; order_id: string }[];
   products: SellerProduct[];
   ratings: Rating[];
@@ -207,10 +207,10 @@ function buildSeededSellerStats(email: string): SellerStats {
       created_at: createdAt(45 - index * 9),
     }));
   const orders: SellerStats["orders"] = [
-    { id: "SC-1048", status: "delivered", created_at: createdAt(3) },
+    { id: "SC-1048", status: "delivered", created_at: createdAt(3), buyer_confirmed: true },
     { id: "SC-1031", status: "processing", created_at: createdAt(1) },
     { id: "SC-0996", status: "in_transit", created_at: createdAt(6) },
-    { id: "SC-0942", status: "delivered", created_at: createdAt(12) },
+    { id: "SC-0942", status: "delivered", created_at: createdAt(12), buyer_confirmed: true },
   ];
   const sellerNet = (index: number, quantity = 1) => {
     const product = products[index];
@@ -649,14 +649,14 @@ export default function SellerPortal({ standalone = false }: { standalone?: bool
     }
     return { ...base, products: merged };
   }, [sessionAccount, localProducts]);
-  const seededDeliveredItems =
+  const seededConfirmedItems =
     seededStats?.items.filter((item) =>
       seededStats.orders.some(
-        (order) => order.id === item.order_id && order.status === "delivered",
+        (order) => order.id === item.order_id && order.buyer_confirmed === true,
       ),
     ) ?? [];
-  const seededEarnings = seededDeliveredItems.reduce((sum, item) => sum + item.seller_net, 0);
-  const seededSoldCount = seededDeliveredItems.reduce((sum, item) => sum + item.quantity, 0);
+  const seededEarnings = seededConfirmedItems.reduce((sum, item) => sum + item.seller_net, 0);
+  const seededSoldCount = seededConfirmedItems.reduce((sum, item) => sum + item.quantity, 0);
   const seededWalletEntries = sessionAccount ? fundEntries(sessionAccount.email) : [];
   const seededBalance =
     seededEarnings + seededWalletEntries.reduce((sum, entry) => sum + entry.amount, 0);
@@ -1574,11 +1574,13 @@ function SellerDashboard({
   const average = ratings.length
     ? ratings.reduce((sum, rating) => sum + Number(rating.average_rating), 0) / ratings.length
     : 0;
-  const heldStatuses = ["paid", "shipped", "processing", "in_transit"];
   const heldFunds = (stats?.items ?? [])
     .filter((item) =>
       (stats?.orders ?? []).some(
-        (order) => order.id === item.order_id && heldStatuses.includes(order.status),
+        (order) =>
+          order.id === item.order_id &&
+          order.buyer_confirmed !== true &&
+          !["cancelled", "refunded"].includes(order.status),
       ),
     )
     .reduce((sum, item) => sum + Number(item.seller_net), 0);
@@ -1661,19 +1663,19 @@ function SellerDashboard({
             <article className="seller-metric-card seller-metric-balance">
               <span>{seededMode ? "AVAILABLE FUNDS" : "AVAILABLE TO REQUEST"}</span>
               <strong>{formatMoney(balance)}</strong>
-              <small>For orders marked delivered</small>
+              <small>For buyer-confirmed deliveries</small>
               <CircleDollarSign size={20} />
             </article>
             <article className="seller-metric-card seller-metric-held">
               <span>HELD BY SUPRECART</span>
               <strong>{formatMoney(heldFunds)}</strong>
-              <small>In escrow until the order is delivered</small>
+              <small>Held until the buyer confirms delivery</small>
               <ShieldCheck size={19} />
             </article>
             <article className="seller-metric-card">
               <span>{seededMode ? "NET EARNINGS" : "TOTAL EARNED"}</span>
               <strong>{formatMoney(earnings)}</strong>
-              <small>Your net from delivered orders</small>
+              <small>Your net from confirmed deliveries</small>
               <ArrowDownToLine size={19} />
             </article>
             <article className="seller-metric-card">
@@ -1942,8 +1944,8 @@ function SellerDashboard({
               <CircleDollarSign size={23} />
               <strong>Withdraw your available balance</strong>
               <span>
-                Delivered-order earnings, less applicable fees. Withdrawals are reviewed before any
-                payment is made.
+                Buyer-confirmed earnings, less applicable commission. Withdrawals are reviewed
+                before any payment is made.
               </span>
             </div>
             {!seededMode && (
@@ -1981,8 +1983,9 @@ function SellerDashboard({
           </p>
           <p className="seller-finance-note">
             <Clock3 size={14} />
-            {formatMoney(heldFunds)} is held by SupreCart until those orders are delivered. If a
-            sale does not complete, the held amount is never credited to your available balance.
+            {formatMoney(heldFunds)} is held by SupreCart until buyers confirm delivery. SupreCart
+            deducts its commission, then releases the seller net. If a sale does not complete, the
+            held amount is never credited to your available balance.
           </p>
           {seededMode && fundEntries.length > 0 && (
             <div className="seller-fund-ledger">
@@ -2326,11 +2329,11 @@ function SellerDashboard({
             <div className="seller-settings-card">
               <div>
                 <strong>SupreCart commission &amp; fees</strong>
-                <span>What SupreCart deducts from each delivered sale.</span>
+                <span>What SupreCart deducts before releasing each sale.</span>
               </div>
               <p className="seller-settings-note">
-                Commission is charged on the selling price when an order is delivered. There is no
-                listing or subscription fee.
+                Commission is charged on the selling price when the buyer confirms delivery. The
+                seller net is released after the deduction. There is no listing or subscription fee.
               </p>
               <div className="seller-commission-tiers">
                 {commissionTiers.map((tier) => (

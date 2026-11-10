@@ -3,14 +3,22 @@ import {
   ArrowRight,
   ArrowUpRight,
   Eye,
+  ShieldCheck,
   ShoppingBag,
   Sparkles,
   Store,
+  Trophy,
   UserPlus,
   UserRound,
   Users,
 } from "lucide-react";
 import { useAdminWorkspace } from "@/lib/admin-workspace";
+
+const nairaFormatter = new Intl.NumberFormat("en-NG", {
+  style: "currency",
+  currency: "NGN",
+  maximumFractionDigits: 0,
+});
 
 export const Route = createFileRoute("/admin/")({
   head: () => ({
@@ -42,8 +50,8 @@ function AdminOverview() {
       <div className="admin-data-banner">
         <Sparkles size={15} />
         <span>
-          These are illustrative figures. Connect your analytics and finance services to see
-          live data.
+          These are illustrative figures. Connect your analytics and finance services to see live
+          data.
         </span>
         <span className="admin-banner-tag">ILLUSTRATIVE</span>
       </div>
@@ -68,6 +76,83 @@ function AdminOverview() {
             </article>
           );
         })}
+      </section>
+      <section className="admin-leaderboard-grid" aria-label="Seller leaderboard and escrow">
+        <article className="admin-panel admin-leaderboard-panel">
+          <div className="admin-panel-heading">
+            <div className="admin-leaderboard-title">
+              <span className="admin-leaderboard-icon">
+                <Trophy size={15} />
+              </span>
+              <div>
+                <span className="admin-panel-overline">SELLER LEADERBOARD</span>
+                <h2>Top sellers this month.</h2>
+              </div>
+            </div>
+            <Link to="/admin/sellers" className="admin-panel-link">
+              All sellers <ArrowRight size={13} />
+            </Link>
+          </div>
+          <p className="admin-leaderboard-caption">
+            Ranked by gross sales. Escrow is released after the buyer confirms delivery, less
+            SupreCart commission.
+          </p>
+          <div className="admin-leaderboard-list">
+            {dashboard.sellerLeaderboard.map((seller, index) => (
+              <div className="admin-leaderboard-row" key={seller.seller}>
+                <span
+                  className={`admin-leaderboard-rank ${index < 3 ? "is-top" : ""}`}
+                  aria-label={`Rank ${index + 1}`}
+                >
+                  {index + 1}
+                </span>
+                <div className="admin-leaderboard-seller">
+                  <strong>{seller.seller}</strong>
+                  <small>
+                    {seller.owner} / {seller.orders} orders / {seller.rating} rating
+                  </small>
+                </div>
+                <div className="admin-leaderboard-sales">
+                  <strong>{nairaFormatter.format(seller.grossSales)}</strong>
+                  <small>{seller.trend}</small>
+                </div>
+                <div className="admin-leaderboard-funds">
+                  <span>{nairaFormatter.format(seller.heldFunds)} held</span>
+                  <span>{nairaFormatter.format(seller.releasedFunds)} released</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </article>
+        <article className="admin-panel admin-escrow-panel">
+          <div className="admin-panel-heading">
+            <div>
+              <span className="admin-panel-overline">BUYER FUNDS</span>
+              <h2>Escrow overview.</h2>
+            </div>
+            <span className="admin-banner-tag">ESCROW</span>
+          </div>
+          <div className="admin-escrow-primary">
+            <ShieldCheck size={17} />
+            <span>HELD UNTIL BUYER CONFIRMATION</span>
+            <strong>{nairaFormatter.format(dashboard.escrow.heldFunds)}</strong>
+            <small>{dashboard.escrow.awaitingConfirmation} orders awaiting confirmation</small>
+          </div>
+          <div className="admin-escrow-split">
+            <div>
+              <span>Released to sellers</span>
+              <strong>{nairaFormatter.format(dashboard.escrow.releasedFunds)}</strong>
+            </div>
+            <div>
+              <span>SupreCart commission</span>
+              <strong>{nairaFormatter.format(dashboard.escrow.platformCommission)}</strong>
+            </div>
+          </div>
+          <p className="admin-escrow-note">
+            <ShieldCheck size={13} /> SupreCart holds buyer funds, deducts its share, then releases
+            the seller net after delivery is confirmed. Figures are illustrative.
+          </p>
+        </article>
       </section>
       <section className="admin-panel-grid">
         <article className="admin-panel admin-visits-panel">

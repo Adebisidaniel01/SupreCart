@@ -1,7 +1,30 @@
 import { isAccountDeleted, updateAccountName } from "./accounts";
+import { calculateCommission } from "./commission";
 
 export type OrderStatus =
   "Delivered" | "In transit" | "Processing" | "Cancellation requested" | "Cancelled";
+
+export type OrderSettlementStatus = "held" | "released";
+
+export type OrderSettlement = {
+  seller: string;
+  gross: number;
+  commission: number;
+  sellerNet: number;
+  status: OrderSettlementStatus;
+  releasedAt?: string;
+};
+
+export type OrderFundsSummary = {
+  gross: number;
+  commission: number;
+  sellerNet: number;
+  held: number;
+  released: number;
+  heldGross: number;
+  releasedGross: number;
+  status: "held" | "released" | "partial" | "none";
+};
 
 export type Order = {
   id: string;
@@ -14,18 +37,134 @@ export type Order = {
   cancelled_at?: string;
   cancellation_requested_at?: string;
   cancellation_reason?: string;
+  delivery_confirmed_at?: string;
+  funds_released_at?: string;
+  settlements?: OrderSettlement[];
+};
+
+export type SettlementInputLine = {
+  product: { seller: string; price: number };
+  quantity: number;
+  subtotal?: number;
 };
 
 export const cancellationWindowMs = 24 * 60 * 60 * 1000;
 
 const orderStatusKey = "suprecart-order-status";
 const checkoutOrdersKey = "suprecart-checkout-orders";
+const orderStatuses: OrderStatus[] = [
+  "Delivered",
+  "In transit",
+  "Processing",
+  "Cancellation requested",
+  "Cancelled",
+];
 
 type StoredOrderStatus = {
-  status: "Cancellation requested" | "Cancelled";
-  requestedAt: string;
-  reason: string;
+  status?: OrderStatus;
+  requestedAt?: string;
+  reason?: string;
+  deliveryConfirmedAt?: string;
+  fundsReleasedAt?: string;
 };
+
+function roundMoney(value: number) {
+  return Math.round(value * 100) / 100;
+}
+
+export function settlementForSeller(
+  seller: string,
+  gross: number,
+  status: OrderSettlementStatus = "held",
+  releasedAt?: string,
+): OrderSettlement {
+  const safeGross = Number.isFinite(gross) && gross > 0 ? roundMoney(gross) : 0;
+  const breakdown = calculateCommission(safeGross);
+  return {
+    seller,
+    gross: safeGross,
+    commission: breakdown.commission,
+    sellerNet: breakdown.sellerNet,
+    status,
+    ...(releasedAt ? { releasedAt } : {}),
+  };
+}
+
+export function createOrderSettlements(lines: SettlementInputLine[]): OrderSettlement[] {
+  const grouped = new Map<string, { gross: number; commission: number; sellerNet: number }>();
+  for (const line of lines) {
+    const seller = line.product.seller.trim();
+    if (!seller) continue;
+    const quantity = Number.isFinite(line.quantity) && line.quantity > 0 ? line.quantity : 1;
+    const unitPrice =
+      Number.isFinite(line.product.price) && line.product.price > 0 ? line.product.price : 0;
+    const gross =
+      typeof line.subtotal === "number" && Number.isFinite(line.subtotal)
+        ? line.subtotal
+        : unitPrice * quantity;
+    const breakdown = calculateCommission(unitPrice);
+    const current = grouped.get(seller) ?? { gross: 0, commission: 0, sellerNet: 0 };
+    current.gross += gross;
+    current.commission += breakdown.commission * quantity;
+    current.sellerNet += breakdown.sellerNet * quantity;
+    grouped.set(seller, current);
+  }
+  return [...grouped.entries()].map(([seller, value]) => ({
+    seller,
+    gross: roundMoney(value.gross),
+    commission: roundMoney(value.commission),
+    sellerNet: roundMoney(value.sellerNet),
+    status: "held" as const,
+  }));
+}
+
+export function summarizeOrderFunds(order: Order): OrderFundsSummary {
+  const settlements = order.settlements ?? [];
+  const summary = settlements.reduce(
+    (totals, settlement) => {
+      const gross = Number.isFinite(settlement.gross) ? settlement.gross : 0;
+      const commission = Number.isFinite(settlement.commission) ? settlement.commission : 0;
+      const sellerNet = Number.isFinite(settlement.sellerNet) ? settlement.sellerNet : 0;
+      totals.gross += gross;
+      totals.commission += commission;
+      totals.sellerNet += sellerNet;
+      if (settlement.status === "released") {
+        totals.released += sellerNet;
+        totals.releasedGross += gross;
+      } else {
+        totals.held += sellerNet;
+        totals.heldGross += gross;
+      }
+      return totals;
+    },
+    {
+      gross: 0,
+      commission: 0,
+      sellerNet: 0,
+      held: 0,
+      released: 0,
+      heldGross: 0,
+      releasedGross: 0,
+    },
+  );
+  const status: OrderFundsSummary["status"] = !settlements.length
+    ? "none"
+    : summary.released > 0 && summary.held > 0
+      ? "partial"
+      : summary.released > 0
+        ? "released"
+        : "held";
+  return {
+    gross: roundMoney(summary.gross),
+    commission: roundMoney(summary.commission),
+    sellerNet: roundMoney(summary.sellerNet),
+    held: roundMoney(summary.held),
+    released: roundMoney(summary.released),
+    heldGross: roundMoney(summary.heldGross),
+    releasedGross: roundMoney(summary.releasedGross),
+    status,
+  };
+}
 
 const day = (daysAgo: number) => {
   const date = new Date();
@@ -48,6 +187,7 @@ const seededOrders: Record<string, Order[]> = {
       total: 185000,
       items: "Nike Air Force 1 '07 · Size 10",
       delivery: "Tanke, Ilorin South",
+      settlements: [settlementForSeller("The Sole House", 185000)],
     },
     {
       id: "SC-2026-09816",
@@ -56,6 +196,7 @@ const seededOrders: Record<string, Order[]> = {
       total: 52000,
       items: "Dorm Bedding Set · 1 item",
       delivery: "Tanke, Ilorin South",
+      settlements: [settlementForSeller("Dorm Depot", 52000)],
     },
     {
       id: "SC-2026-08327",
@@ -64,6 +205,7 @@ const seededOrders: Record<string, Order[]> = {
       total: 89500,
       items: "Sonora Pocket Speaker · 1 item",
       delivery: "Fate, Ilorin East",
+      settlements: [settlementForSeller("Sound House Lagos", 89500)],
     },
   ],
   "vickybabs@gmail.com": [
@@ -74,6 +216,7 @@ const seededOrders: Record<string, Order[]> = {
       total: 71500,
       items: "Everyday Sunscreen SPF 50 + Serein Daily Hydration",
       delivery: "GRA, Ilorin West",
+      settlements: [settlementForSeller("Serein Beauty", 71500)],
     },
     {
       id: "SC-2026-09144",
@@ -82,6 +225,7 @@ const seededOrders: Record<string, Order[]> = {
       total: 68000,
       items: "North Campus Backpack · 1 item",
       delivery: "GRA, Ilorin West",
+      settlements: [settlementForSeller("The Study Store", 68000)],
     },
   ],
   "izzy@gmail.com": [
@@ -92,6 +236,7 @@ const seededOrders: Record<string, Order[]> = {
       total: 320000,
       items: "Air Jordan 4 Retro · Size 9",
       delivery: "Oke-Oyi, Ilorin East",
+      settlements: [settlementForSeller("Lace & Legacy", 320000)],
     },
     {
       id: "SC-2026-08720",
@@ -100,6 +245,7 @@ const seededOrders: Record<string, Order[]> = {
       total: 42000,
       items: "Oversized Study Tee · Size L",
       delivery: "Oke-Oyi, Ilorin East",
+      settlements: [settlementForSeller("UniWear Lagos", 42000)],
     },
   ],
   "olowe@gmail.com": [
@@ -110,6 +256,10 @@ const seededOrders: Record<string, Order[]> = {
       total: 88500,
       items: "LED Study Desk Lamp + A5 Study Notebook Set",
       delivery: "Adewole, Ilorin West",
+      settlements: [
+        settlementForSeller("Dorm Depot", 22500),
+        settlementForSeller("The Study Store", 66000),
+      ],
     },
     {
       id: "SC-2026-07652",
@@ -118,6 +268,7 @@ const seededOrders: Record<string, Order[]> = {
       total: 46500,
       items: "Ribbed Cotton Knit · Size M",
       delivery: "Adewole, Ilorin West",
+      settlements: [settlementForSeller("North & Loom", 46500)],
     },
   ],
 };
@@ -133,21 +284,24 @@ function readOrderStatusOverrides(): Record<string, StoredOrderStatus> {
     for (const [orderId, value] of Object.entries(parsed as Record<string, unknown>)) {
       if (typeof value !== "object" || value === null) continue;
       const entry = value as Partial<StoredOrderStatus> & { cancelledAt?: unknown };
-      const status =
-        entry.status === "Cancellation requested" || entry.status === "Cancelled"
-          ? entry.status
-          : null;
+      const status = orderStatuses.find((candidate) => candidate === entry.status);
       const requestedAt =
         typeof entry.requestedAt === "string"
           ? entry.requestedAt
           : typeof entry.cancelledAt === "string"
             ? entry.cancelledAt
             : "";
-      if (!status || !requestedAt) continue;
+      const deliveryConfirmedAt =
+        typeof entry.deliveryConfirmedAt === "string" ? entry.deliveryConfirmedAt : "";
+      const fundsReleasedAt =
+        typeof entry.fundsReleasedAt === "string" ? entry.fundsReleasedAt : "";
+      if (!status && !deliveryConfirmedAt && !fundsReleasedAt) continue;
       overrides[orderId] = {
-        status,
-        requestedAt,
+        ...(status ? { status } : {}),
+        ...(requestedAt ? { requestedAt } : {}),
         reason: typeof entry.reason === "string" ? entry.reason : "",
+        ...(deliveryConfirmedAt ? { deliveryConfirmedAt } : {}),
+        ...(fundsReleasedAt ? { fundsReleasedAt } : {}),
       };
     }
     return overrides;
@@ -181,6 +335,56 @@ function checkoutOrderItems(lines: unknown) {
   return parts.length ? parts.join(", ") : "Checkout order";
 }
 
+function readSettlements(value: unknown): OrderSettlement[] {
+  if (!Array.isArray(value)) return [];
+  const settlements: OrderSettlement[] = [];
+  for (const item of value) {
+    if (typeof item !== "object" || item === null) continue;
+    const entry = item as Partial<OrderSettlement>;
+    if (typeof entry.seller !== "string" || !entry.seller.trim()) continue;
+    if (
+      typeof entry.gross !== "number" ||
+      typeof entry.commission !== "number" ||
+      typeof entry.sellerNet !== "number"
+    ) {
+      continue;
+    }
+    const status: OrderSettlementStatus = entry.status === "released" ? "released" : "held";
+    settlements.push({
+      seller: entry.seller.trim(),
+      gross: entry.gross,
+      commission: entry.commission,
+      sellerNet: entry.sellerNet,
+      status,
+      ...(typeof entry.releasedAt === "string" ? { releasedAt: entry.releasedAt } : {}),
+    });
+  }
+  return settlements;
+}
+
+function checkoutOrderSettlements(lines: unknown, stored: unknown) {
+  const saved = readSettlements(stored);
+  if (saved.length) return saved;
+  if (!Array.isArray(lines)) return [];
+  const settlementLines: SettlementInputLine[] = [];
+  for (const value of lines) {
+    if (typeof value !== "object" || value === null) continue;
+    const entry = value as {
+      product?: { seller?: unknown; price?: unknown };
+      quantity?: unknown;
+      subtotal?: unknown;
+    };
+    if (typeof entry.product?.seller !== "string") continue;
+    if (typeof entry.product.price !== "number") continue;
+    settlementLines.push({
+      product: { seller: entry.product.seller, price: entry.product.price },
+      quantity: typeof entry.quantity === "number" ? entry.quantity : 1,
+      ...(typeof entry.subtotal === "number" ? { subtotal: entry.subtotal } : {}),
+    });
+  }
+  return createOrderSettlements(settlementLines);
+}
+
 function readCheckoutOrders(email: string): Order[] {
   if (typeof window === "undefined") return [];
   const normalized = email.trim().toLowerCase();
@@ -208,6 +412,7 @@ function readCheckoutOrders(email: string): Order[] {
             ? entry["deliveryDestination"]
             : "Checkout",
         source: "checkout",
+        settlements: checkoutOrderSettlements(entry["lines"], entry["settlements"]),
       });
     }
     return orders;
@@ -229,12 +434,27 @@ export function getOrders(email: string) {
     .map((order) => {
       const override = overrides[order.id];
       if (!override) return order;
+      const fundsReleasedAt = override.fundsReleasedAt;
+      const settlements = fundsReleasedAt
+        ? order.settlements?.map((settlement) => ({
+            ...settlement,
+            status: "released" as const,
+            releasedAt: fundsReleasedAt,
+          }))
+        : order.settlements;
       return {
         ...order,
-        status: override.status,
-        cancellation_requested_at: override.requestedAt,
-        cancellation_reason: override.reason,
-        ...(override.status === "Cancelled" ? { cancelled_at: override.requestedAt } : {}),
+        ...(override.status ? { status: override.status } : {}),
+        ...(override.requestedAt ? { cancellation_requested_at: override.requestedAt } : {}),
+        ...(override.reason ? { cancellation_reason: override.reason } : {}),
+        ...(override.status === "Cancelled" && override.requestedAt
+          ? { cancelled_at: override.requestedAt }
+          : {}),
+        ...(override.deliveryConfirmedAt
+          ? { delivery_confirmed_at: override.deliveryConfirmedAt }
+          : {}),
+        ...(fundsReleasedAt ? { funds_released_at: fundsReleasedAt } : {}),
+        ...(settlements ? { settlements } : {}),
       };
     })
     .sort((a, b) => {
@@ -273,6 +493,35 @@ export function cancelOrder(email: string, orderId: string, reason: string) {
     status: "Cancellation requested",
     requestedAt: new Date().toISOString(),
     reason: trimmedReason,
+  };
+  writeOrderStatusOverrides(overrides);
+  return getOrders(email);
+}
+
+export function canConfirmOrderDelivery(order: Order) {
+  if (order.funds_released_at) return false;
+  return order.status === "In transit" || order.status === "Delivered";
+}
+
+export function confirmOrderDelivery(email: string, orderId: string) {
+  const order = getOrders(email).find((entry) => entry.id === orderId);
+  if (!order) throw new Error("That order could not be found in this browser.");
+  if (order.funds_released_at) {
+    throw new Error("Delivery is already confirmed and this escrow record is released.");
+  }
+  if (order.status === "Cancelled" || order.status === "Cancellation requested") {
+    throw new Error("A cancelled order cannot be confirmed as received.");
+  }
+  if (!canConfirmOrderDelivery(order)) {
+    throw new Error("You can confirm receipt once the package is in transit or delivered.");
+  }
+  const now = new Date().toISOString();
+  const overrides = readOrderStatusOverrides();
+  overrides[orderId] = {
+    ...overrides[orderId],
+    status: "Delivered",
+    deliveryConfirmedAt: now,
+    fundsReleasedAt: now,
   };
   writeOrderStatusOverrides(overrides);
   return getOrders(email);

@@ -17,6 +17,7 @@ import { useActiveAccount } from "@/hooks/use-active-account";
 import { money, type Product } from "@/lib/catalog";
 import { trackAddShippingInfo, trackBeginCheckout, trackCheckoutOrder } from "@/lib/analytics";
 import { cleanEmail, cleanMultiline, cleanPhone, cleanText } from "@/lib/input";
+import { createOrderSettlements, type OrderSettlement } from "@/lib/orders";
 
 type DeliveryMethod = "doorstep" | "pickup";
 type PaymentMethod = "paystack" | "bank-transfer" | "pay-on-delivery";
@@ -57,6 +58,7 @@ type CheckoutOrder = {
   paymentMethod: PaymentMethod;
   deliveryDestination: string;
   shipments: { seller: string; trackingNumber: string }[];
+  settlements: OrderSettlement[];
 };
 
 const VAT_RATE = 0.075;
@@ -239,6 +241,7 @@ function Checkout() {
           vat: Math.round(subtotal * VAT_RATE),
         };
       });
+      const settlements = createOrderSettlements(lines);
       const newOrder: CheckoutOrder = {
         batchNumber: createReference("CC-BATCH"),
         createdAt: new Date().toISOString(),
@@ -259,6 +262,7 @@ function Checkout() {
           seller,
           trackingNumber: createReference("CC-TRACK"),
         })),
+        settlements,
       };
       const savedOrders = localStorage.getItem("suprecart-checkout-orders");
       const orders = savedOrders ? (JSON.parse(savedOrders) as CheckoutOrder[]) : [];
@@ -588,6 +592,11 @@ function Checkout() {
                 </p>
               )}
               <p className="payment-note">
+                <ShieldCheck size={14} /> Escrow model: SupreCart would hold the item funds, deduct
+                its commission after delivery is confirmed, then release the seller net. This
+                receipt does not move money or create a real escrow record.
+              </p>
+              <p className="payment-note">
                 Payment selection is stored in this browser. No payment will be initiated or
                 collected. Live Paystack checkout requires a secured server integration and verified
                 payment callbacks.
@@ -640,6 +649,35 @@ function Checkout() {
                   <strong>{shipment.trackingNumber}</strong>
                 </div>
               ))}
+              <div className="checkout-escrow-summary">
+                <div className="checkout-escrow-heading">
+                  <ShieldCheck size={17} />
+                  <div>
+                    <strong>
+                      {money(
+                        order.settlements.reduce((sum, settlement) => sum + settlement.gross, 0),
+                      )}{" "}
+                      held in escrow until you confirm delivery
+                    </strong>
+                    <span>
+                      SupreCart deducts its seller commission, then releases the net amount to the
+                      seller. This is a local demonstration, not a real payout.
+                    </span>
+                  </div>
+                </div>
+                {order.settlements.map((settlement) => (
+                  <div className="checkout-escrow-row" key={settlement.seller}>
+                    <span>
+                      <strong>{settlement.seller}</strong>
+                      <small>
+                        {money(settlement.gross)} item value / {money(settlement.commission)}{" "}
+                        commission
+                      </small>
+                    </span>
+                    <b>{money(settlement.sellerNet)} seller net</b>
+                  </div>
+                ))}
+              </div>
               <ReceiptBreakdown
                 subtotal={order.subtotal}
                 vat={order.vat}
