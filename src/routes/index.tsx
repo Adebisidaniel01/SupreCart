@@ -1,10 +1,12 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ArrowRight, ArrowUpRight, BadgeCheck, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { ProductCard, Wordmark } from "@/components/storefront";
+import { ProductCard, Wordmark, useStore } from "@/components/storefront";
 import { accountFirstName, useActiveAccount } from "@/hooks/use-active-account";
 import { products, categories, money, type Product } from "@/lib/catalog";
+import { getOrders } from "@/lib/orders";
+import { recommendProducts, type RecommendationOrder } from "@/lib/recommendations";
 
 const editProducts = [1, 6, 7, 8]
   .map((id) => products.find((product) => product.id === id))
@@ -64,8 +66,41 @@ export const Route = createFileRoute("/")({
 
 function Index() {
   const { account } = useActiveAccount();
+  const { favorites, cart } = useStore();
+  const [recommendationOrders, setRecommendationOrders] = useState<RecommendationOrder[]>([]);
   const firstName = accountFirstName(account);
   const isSeller = account?.role === "seller";
+
+  useEffect(() => {
+    if (!account) {
+      setRecommendationOrders([]);
+      return;
+    }
+    setRecommendationOrders(
+      getOrders(account.email).map((order) => ({
+        items: order.items,
+        status: order.status,
+      })),
+    );
+  }, [account]);
+
+  const recommendations = useMemo(
+    () =>
+      recommendProducts({
+        favorites,
+        cart,
+        orders: recommendationOrders,
+        limit: 4,
+      }),
+    [favorites, cart, recommendationOrders],
+  );
+
+  const recommendationCards: Array<{ product: Product; note: string }> = recommendations.length
+    ? recommendations.map((recommendation) => ({
+        product: recommendation.product,
+        note: recommendation.reason,
+      }))
+    : editProducts.map((product) => ({ product, note: "" }));
 
   return (
     <main
@@ -284,16 +319,24 @@ function Index() {
         <section className="bestsellers home-edit">
           <div className="section-heading">
             <div>
-              <p className="eyebrow">{account ? "PICKED FOR YOU" : "THE SUPRECART EDIT"}</p>
-              <h2>{account ? `Finds for ${firstName}` : "Finds worth a closer look"}</h2>
+              <p className="eyebrow">{account ? "PICKED FOR YOU" : "COMMUNITY FAVOURITES"}</p>
+              <h2>
+                {account
+                  ? `Finds for ${firstName}`
+                  : "What shoppers with similar taste are finding"}
+              </h2>
+              <p className="recommendation-explainer">
+                Blended from content similarity and patterns across seeded shopper baskets, saved
+                finds, bags and order history.
+              </p>
             </div>
             <Link to="/shop" search={{ filter: "All", query: "" }} className="view-all">
               Shop everything <ArrowRight size={14} />
             </Link>
           </div>
           <div className="product-grid home-product-grid">
-            {editProducts.map((product) => (
-              <ProductCard key={product.id} product={product} />
+            {recommendationCards.map(({ product, note }) => (
+              <ProductCard key={product.id} product={product} note={note} />
             ))}
           </div>
         </section>

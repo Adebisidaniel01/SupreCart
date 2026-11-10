@@ -11288,6 +11288,9 @@ a.skip-link:focus-visible {
   padding: 20px 0 72px;
   color: #1e2a22;
 }
+.buyer-hub-mobile-account {
+  display: none;
+}
 .buyer-hub-breadcrumb {
   display: flex;
   align-items: center;
@@ -12945,5 +12948,501 @@ a.skip-link:focus-visible {
   }
   .buyer-hub-breadcrumb {
     margin-bottom: 10px;
+  }
+}
+
+@media (max-width: 680px) {
+  .buyer-hub-page.buyer-hub-overview {
+    width: 100%;
+    padding: 0 0 28px;
+    background: #f3f5f0;
+  }
+  .buyer-hub-overview .buyer-hub-breadcrumb,
+  .buyer-hub-overview .buyer-hub-header,
+  .buyer-hub-overview .buyer-hub-local-note,
+  .buyer-hub-overview .buyer-hub-mobile-nav,
+  .buyer-hub-overview .buyer-hub-welcome,
+  .buyer-hub-overview .buyer-hub-quick-grid,
+  .buyer-hub-overview .buyer-hub-overview-columns {
+    display: none;
+  }
+  .buyer-hub-overview .buyer-hub-shell {
+    gap: 0;
+  }
+  .buyer-hub-overview .buyer-hub-layout {
+    display: block;
+  }
+  .buyer-hub-overview .buyer-hub-main {
+    gap: 10px;
+  }
+  .buyer-hub-overview .buyer-hub-notices {
+    padding: 0 12px;
+  }
+  .buyer-hub-mobile-account {
+    display: grid;
+    gap: 10px;
+    padding-bottom: 2px;
+  }
+  .buyer-hub-mobile-profile {
+    padding: 18px 16px 15px;
+    border-radius: 0 0 18px 18px;
+    background:
+      radial-gradient(circle at 84% 14%, rgb(190 219 196 / 28%), transparent 42%),
+      linear-gradient(125deg, #193c2b, #2b6245);
+    color: #fff;
+  }
+  .buyer-hub-mobile-profile-row {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    gap: 12px;
+  }
+  .buyer-hub-mobile-avatar {
+    width: 56px;
+    height: 56px;
+    border: 2px solid rgb(255 255 255 / 65%);
+    background: #e8f0e4;
+    color: #28583d;
+    box-shadow: none;
+  }
+  .buyer-hub-mobile-identity {
+    min-width: 0;
+    flex: 1;
+  }
+  .buyer-hub-mobile-overline {
+    display: block;
+    margin: 0 0 3px;
+    color: #b9d3bf;
+    font-size: 8px;
+    font-weight: 750;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+  }
+  .buyer-hub-mobile-identity h1 {
+    margin: 0;
+    color: #fff;
+    font-size: 22px;
+    line-height: 1.1;
+    letter-spacing: -0.025em;
+  }
+  .buyer-hub-mobile-identity p {
+    overflow: hidden;
+    margin: 4px 0 0;
+    color: #c9dbce;
+    font-size: 10px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .buyer-hub-mobile-edit {
+    display: grid;
+    flex: 0 0 auto;
+    width: 38px;
+    height: 38px;
+    place-items: center;
+    border: 1px solid rgb(255 255 255 / 25%);
+    border-radius: 50%;
+    background: rgb(255 255 255 / 10%);
+    color: #fff;
+  }
+  .buyer-hub-mobile-local-note {
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+    margin: 14px 0 0;
+    padding-top: 12px;
+    border-top: 1px solid rgb(255 255 255 / 13%);
+    color: #bfd2c4;
+    font-size: 8.5px;
+    line-height: 1.5;
+  }
+  .buyer-hub-mobile-local-note svg {
+    flex: 0 0 auto;
+    margin-top: 1px;
+    color: #a9c7b1;
+  }
+  .buyer-hub-mobile-card {
+    margin: 0 12px;
+    padding: 15px 14px;
+    border: 1px solid #e3e7de;
+    border-radius: 14px;
+    background: #fff;
+    box-shadow: 0 2px 8px rgb(28 46 34 / 3%);
+  }
+  .buyer-hub-mobile-section-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 13px;
+  }
+  .buyer-hub-mobile-section-head h2 {
+    margin: 0;
+    color: #1f3025;
+    font-size: 16px;
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+  }
+  .buyer-hub-mobile-section-head > button {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    gap: 2px;
+    padding: 4px 0;
+    border: 0;
+    background: transparent;
+    color: #356b4c;
+    font: inherit;
+    font-size: 10px;
+    font-weight: 700;
+  }
+  .buyer-hub-mobile-status-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 3px;
+  }
+  .buyer-hub-mobile-status-grid button {
+    display: grid;
+    justify-items: center;
+    gap: 6px;
+    padding: 4px 2px;
+    border: 0;
+    border-radius: 10px;
+    background: transparent;
+    color: #4e5b51;
+    font: inherit;
+    font-size: 9px;
+    font-weight: 650;
+    line-height: 1.25;
+    text-align: center;
+  }
+  .buyer-hub-mobile-status-grid button:hover {
+    background: #f5f8f2;
+  }
+  .buyer-hub-mobile-status-icon {
+    position: relative;
+    display: grid;
+    width: 42px;
+    height: 42px;
+    place-items: center;
+    border-radius: 50%;
+    background: #eef4eb;
+    color: #2f6246;
+  }
+  .buyer-hub-mobile-status-icon b {
+    position: absolute;
+    top: -3px;
+    right: -1px;
+    min-width: 17px;
+    height: 17px;
+    padding: 0 4px;
+    border: 2px solid #fff;
+    border-radius: 999px;
+    background: #2d6748;
+    color: #fff;
+    font-size: 8px;
+    font-weight: 750;
+    line-height: 13px;
+    text-align: center;
+  }
+  .buyer-hub-mobile-recent-list {
+    display: grid;
+  }
+  .buyer-hub-mobile-recent-order {
+    display: flex;
+    width: 100%;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 0;
+    border: 0;
+    border-top: 1px solid #eef0e9;
+    background: transparent;
+    color: #4d5a50;
+    font: inherit;
+    text-align: left;
+  }
+  .buyer-hub-mobile-recent-order:first-child {
+    padding-top: 0;
+    border-top: 0;
+  }
+  .buyer-hub-mobile-recent-order > svg {
+    flex: 0 0 auto;
+    color: #9aa49a;
+  }
+  .buyer-hub-mobile-recent-thumbs {
+    display: flex;
+    flex: 0 0 auto;
+    gap: 3px;
+  }
+  .buyer-hub-mobile-recent-thumbs img,
+  .buyer-hub-mobile-recent-thumbs > span {
+    width: 44px;
+    height: 44px;
+    border-radius: 8px;
+    background: #f3f4ee;
+    object-fit: cover;
+  }
+  .buyer-hub-mobile-recent-thumbs > span {
+    display: grid;
+    place-items: center;
+    color: #7e8d82;
+  }
+  .buyer-hub-mobile-recent-copy {
+    display: grid;
+    min-width: 0;
+    flex: 1;
+    gap: 2px;
+  }
+  .buyer-hub-mobile-recent-copy .buyer-hub-status {
+    justify-self: start;
+    font-size: 8px;
+  }
+  .buyer-hub-mobile-recent-copy strong {
+    overflow: hidden;
+    color: #2c3b31;
+    font-size: 10.5px;
+    line-height: 1.3;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .buyer-hub-mobile-recent-copy small {
+    color: #8a938a;
+    font-size: 8.5px;
+  }
+  .buyer-hub-mobile-empty {
+    display: grid;
+    justify-items: center;
+    gap: 8px;
+    padding: 10px 4px 4px;
+    color: #8a938a;
+    text-align: center;
+  }
+  .buyer-hub-mobile-empty svg {
+    color: #809785;
+  }
+  .buyer-hub-mobile-empty p {
+    margin: 0;
+    font-size: 10px;
+    line-height: 1.5;
+  }
+  .buyer-hub-mobile-empty button {
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: #2f6a4a;
+    font: inherit;
+    font-size: 10.5px;
+    font-weight: 700;
+  }
+  .buyer-hub-mobile-menu {
+    padding-bottom: 4px;
+  }
+  .buyer-hub-mobile-menu-list {
+    display: grid;
+  }
+  .buyer-hub-mobile-menu-row {
+    display: flex;
+    width: 100%;
+    min-height: 54px;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 0;
+    border: 0;
+    border-top: 1px solid #eef0e9;
+    background: transparent;
+    color: #3d4d42;
+    font: inherit;
+    text-align: left;
+  }
+  .buyer-hub-mobile-menu-row:first-child {
+    border-top: 0;
+  }
+  .buyer-hub-mobile-menu-row > svg {
+    flex: 0 0 auto;
+    color: #a0aaa0;
+  }
+  .buyer-hub-mobile-menu-icon {
+    display: grid;
+    flex: 0 0 auto;
+    width: 34px;
+    height: 34px;
+    place-items: center;
+    border-radius: 10px;
+    background: #f0f5ed;
+    color: #3b6f50;
+  }
+  .buyer-hub-mobile-menu-row > span:nth-child(2) {
+    display: grid;
+    min-width: 0;
+    flex: 1;
+    gap: 2px;
+  }
+  .buyer-hub-mobile-menu-row strong {
+    color: #293a2f;
+    font-size: 11.5px;
+    line-height: 1.3;
+  }
+  .buyer-hub-mobile-menu-row small {
+    overflow: hidden;
+    color: #8b948b;
+    font-size: 9px;
+    line-height: 1.3;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .buyer-hub-mobile-signout {
+    display: flex;
+    width: calc(100% - 24px);
+    min-height: 48px;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin: 2px 12px 0;
+    border: 1px solid #ecd9d2;
+    border-radius: 13px;
+    background: #fffaf7;
+    color: #a04f37;
+    font: inherit;
+    font-size: 11px;
+    font-weight: 700;
+  }
+  .buyer-hub-overview .buyer-hub-recommendations {
+    margin: 2px 12px 0;
+    padding: 15px 14px;
+    border: 1px solid #e3e7de;
+    border-radius: 14px;
+    background: #fff;
+  }
+  .buyer-hub-overview .buyer-hub-product-grid {
+    display: flex;
+    overflow-x: auto;
+    gap: 10px;
+    margin: 12px -2px 0;
+    padding: 0 2px 4px;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+  }
+  .buyer-hub-overview .buyer-hub-product-grid::-webkit-scrollbar {
+    display: none;
+  }
+  .buyer-hub-overview .buyer-hub-product-card {
+    flex: 0 0 148px;
+    scroll-snap-align: start;
+  }
+}
+
+/* Recommendation surfaces */
+.recommendation-explainer {
+  max-width: 58ch;
+  margin: 8px 0 0;
+  color: #74796e;
+  font-size: 10px;
+  line-height: 1.65;
+}
+.product-recommendation-note {
+  margin: -2px 0 10px;
+  color: #6f7d55;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 10px;
+  font-style: italic;
+  line-height: 1.5;
+}
+.product-recommendations {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+.product-recommendations-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 12px;
+}
+.product-recommendations-heading .eyebrow {
+  margin: 0 0 3px;
+  color: #879268;
+  font-size: 8px;
+  letter-spacing: 0.15em;
+}
+.product-recommendations-heading strong {
+  display: block;
+  color: #25372d;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 17px;
+  font-weight: 500;
+  letter-spacing: -0.03em;
+}
+.product-recommendations-heading > span {
+  color: #7a8174;
+  font-size: 9px;
+  white-space: nowrap;
+}
+.product-recommendations-grid {
+  display: grid;
+  gap: 8px;
+}
+.product-recommendation {
+  display: grid;
+  grid-template-columns: 58px minmax(0, 1fr);
+  gap: 10px;
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #e6e9df;
+  border-radius: 7px;
+  background: #fbfbf7;
+  text-align: left;
+  transition:
+    border-color 160ms ease,
+    background 160ms ease,
+    transform 160ms ease;
+}
+.product-recommendation:hover {
+  border-color: #b9c49d;
+  background: #ffffff;
+  transform: translateY(-1px);
+}
+.product-recommendation img {
+  width: 58px;
+  height: 58px;
+  border-radius: 5px;
+  object-fit: cover;
+  background: #f0efe9;
+}
+.product-recommendation > span {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+  justify-content: center;
+}
+.product-recommendation strong {
+  overflow: hidden;
+  color: #293a30;
+  font-size: 11px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.product-recommendation small {
+  color: #5d6755;
+  font-size: 10px;
+}
+.product-recommendation em {
+  overflow: hidden;
+  color: #7b8471;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 9px;
+  font-style: italic;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+@media (max-width: 640px) {
+  .product-recommendations-heading {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .product-recommendations-heading > span {
+    white-space: normal;
   }
 }

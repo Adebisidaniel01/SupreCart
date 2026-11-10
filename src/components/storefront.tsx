@@ -63,6 +63,8 @@ import {
   trackViewCart,
   trackViewItem,
 } from "@/lib/analytics";
+import { getOrders } from "@/lib/orders";
+import { recommendProducts, type RecommendationOrder } from "@/lib/recommendations";
 
 function productSellerVerified(product: Product): boolean {
   return product.sellerVerified ?? sellerIsVerified(product.seller);
@@ -225,6 +227,39 @@ export function Storefront({ children }: { children: ReactNode }) {
     : [];
   const sellerListings =
     selected && products.filter((product) => product.seller === selected.seller).length;
+  const [productRecommendationOrders, setProductRecommendationOrders] = useState<
+    RecommendationOrder[]
+  >([]);
+
+  useEffect(() => {
+    if (!selected) {
+      setProductRecommendationOrders([]);
+      return;
+    }
+    setProductRecommendationOrders(
+      account
+        ? getOrders(account.email).map((order) => ({
+            items: order.items,
+            status: order.status,
+          }))
+        : [],
+    );
+  }, [selected, account]);
+
+  const similarProducts = useMemo(
+    () =>
+      selected
+        ? recommendProducts({
+            focusProductId: selected.id,
+            favorites,
+            cart,
+            orders: productRecommendationOrders,
+            limit: 3,
+          })
+        : [],
+    [selected, favorites, cart, productRecommendationOrders],
+  );
+
   const store = useMemo(
     () => ({
       favorites,
@@ -925,6 +960,37 @@ export function Storefront({ children }: { children: ReactNode }) {
                 </Button>
               )}
               <p className="local-note">Orders and payments are not processed.</p>
+              {similarProducts.length > 0 && (
+                <section
+                  className="product-recommendations"
+                  aria-label="Hybrid product recommendations"
+                >
+                  <div className="product-recommendations-heading">
+                    <div>
+                      <p className="eyebrow">HYBRID RECOMMENDATIONS</p>
+                      <strong>More like this</strong>
+                    </div>
+                    <span>Content + shopper signals</span>
+                  </div>
+                  <div className="product-recommendations-grid">
+                    {similarProducts.map(({ product, reason }) => (
+                      <button
+                        key={product.id}
+                        type="button"
+                        className="product-recommendation"
+                        onClick={() => openProduct(product)}
+                      >
+                        <img src={product.image} alt="" width={72} height={72} loading="lazy" />
+                        <span>
+                          <strong>{product.name}</strong>
+                          <small>{money(product.price)}</small>
+                          <em>{reason}</em>
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </section>
+              )}
             </div>
           )}
           {panel === "cart" && (
@@ -1203,7 +1269,7 @@ export function Storefront({ children }: { children: ReactNode }) {
   );
 }
 
-export function ProductCard({ product }: { product: Product }) {
+export function ProductCard({ product, note }: { product: Product; note?: string }) {
   const { favorites, toggleFavorite, openProduct, setCart, openPanel } = useStore();
   const saved = favorites.includes(product.id);
   const needsSize = product.category === "Footwear";
@@ -1287,6 +1353,7 @@ export function ProductCard({ product }: { product: Product }) {
           {product.rating} <small>({product.reviews})</small>
         </span>
       </div>
+      {note && <p className="product-recommendation-note">{note}</p>}
       <Button
         className="product-add-button"
         variant="outline"

@@ -151,6 +151,13 @@ const orderFilters = [
   ["Cancelled", "Cancelled"],
 ] as const;
 
+const mobileOrderShortcuts = [
+  ["Processing", "Processing", Clock3],
+  ["In transit", "In transit", Truck],
+  ["Delivered", "Delivered", Check],
+  ["Cancelled", "Cancelled", AlertTriangle],
+] as const;
+
 function orderStatusClass(status: BuyerOrder["status"]) {
   if (status === "Processing") return "is-processing";
   if (status === "In transit") return "is-transit";
@@ -560,6 +567,11 @@ function BuyerAccount() {
     setAccountMenuOpen(false);
   }
 
+  function openOrders(filter: OrderFilter = "all") {
+    setOrderFilter(filter);
+    openSection("orders");
+  }
+
   function openSettings(next: SettingsTab) {
     setSection("settings");
     setSettingsTab(next);
@@ -597,7 +609,7 @@ function BuyerAccount() {
     : "Not applied";
 
   return (
-    <main id="main-content" tabIndex={-1} className="buyer-hub-page">
+    <main id="main-content" tabIndex={-1} className={`buyer-hub-page buyer-hub-${section}`}>
       <nav className="buyer-hub-breadcrumb" aria-label="Breadcrumb">
         <Link to="/">Home</Link>
         <ChevronRight size={12} aria-hidden="true" />
@@ -765,6 +777,286 @@ function BuyerAccount() {
               </div>
               {section === "overview" && (
                 <>
+                  <div className="buyer-hub-mobile-account">
+                    <section className="buyer-hub-mobile-profile">
+                      <div className="buyer-hub-mobile-profile-row">
+                        <span className="account-avatar buyer-hub-mobile-avatar">
+                          {preferences.avatarDataUrl ? (
+                            <img src={preferences.avatarDataUrl} alt="" />
+                          ) : (
+                            <UserRound size={28} />
+                          )}
+                        </span>
+                        <div className="buyer-hub-mobile-identity">
+                          <span className="buyer-hub-mobile-overline">MY ACCOUNT</span>
+                          <h1>Hi, {firstName}</h1>
+                          <p>{sessionAccount?.email}</p>
+                        </div>
+                        <button
+                          type="button"
+                          className="buyer-hub-mobile-edit"
+                          aria-label="Edit profile"
+                          onClick={() => openSettings("profile")}
+                        >
+                          <Settings size={18} />
+                        </button>
+                      </div>
+                      <p className="buyer-hub-mobile-local-note">
+                        <ShieldCheck size={13} />
+                        Demo account. Orders, profile edits and saved details stay in this browser.
+                      </p>
+                    </section>
+
+                    <section className="buyer-hub-mobile-card buyer-hub-mobile-orders">
+                      <div className="buyer-hub-mobile-section-head">
+                        <div>
+                          <span className="buyer-hub-mobile-overline">MY ORDERS</span>
+                          <h2>Orders</h2>
+                        </div>
+                        <button type="button" onClick={() => openOrders("all")}>
+                          See all <ChevronRight size={14} />
+                        </button>
+                      </div>
+                      <div className="buyer-hub-mobile-status-grid">
+                        {mobileOrderShortcuts.map(([status, label, Icon]) => {
+                          const count = orders.filter((order) => order.status === status).length;
+                          return (
+                            <button
+                              type="button"
+                              key={status}
+                              onClick={() => openOrders(status)}
+                              aria-label={`View ${label.toLowerCase()} orders`}
+                            >
+                              <span className="buyer-hub-mobile-status-icon">
+                                <Icon size={20} />
+                                {count > 0 && <b>{count}</b>}
+                              </span>
+                              <span>{label}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </section>
+
+                    <section className="buyer-hub-mobile-card buyer-hub-mobile-recent">
+                      <div className="buyer-hub-mobile-section-head">
+                        <div>
+                          <span className="buyer-hub-mobile-overline">RECENT PURCHASES</span>
+                          <h2>Recent orders</h2>
+                        </div>
+                        <button type="button" onClick={() => openOrders("all")}>
+                          See all <ChevronRight size={14} />
+                        </button>
+                      </div>
+                      {orders.length ? (
+                        <div className="buyer-hub-mobile-recent-list">
+                          {orders.slice(0, 2).map((order) => {
+                            const images = orderProducts(order.items);
+                            return (
+                              <button
+                                type="button"
+                                key={order.id}
+                                className="buyer-hub-mobile-recent-order"
+                                onClick={() => openOrders("all")}
+                              >
+                                <span className="buyer-hub-mobile-recent-thumbs">
+                                  {images.length ? (
+                                    images
+                                      .slice(0, 2)
+                                      .map((product) => (
+                                        <img
+                                          key={product.id}
+                                          src={product.image}
+                                          alt=""
+                                          loading="lazy"
+                                        />
+                                      ))
+                                  ) : (
+                                    <span>
+                                      <Package size={18} />
+                                    </span>
+                                  )}
+                                </span>
+                                <span className="buyer-hub-mobile-recent-copy">
+                                  <span
+                                    className={`buyer-hub-status ${orderStatusClass(order.status)}`}
+                                  >
+                                    {order.status}
+                                  </span>
+                                  <strong>{order.items}</strong>
+                                  <small>
+                                    {nairaFormatter.format(order.total)} ·{" "}
+                                    {new Date(order.created_at).toLocaleDateString("en-NG", {
+                                      day: "numeric",
+                                      month: "short",
+                                    })}
+                                  </small>
+                                </span>
+                                <ChevronRight size={16} />
+                              </button>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <div className="buyer-hub-mobile-empty">
+                          <Package size={22} />
+                          <p>No orders yet. Your next good find will show up here.</p>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              navigate({ to: "/shop", search: { filter: "All", query: "" } })
+                            }
+                          >
+                            Start shopping
+                          </button>
+                        </div>
+                      )}
+                    </section>
+
+                    <section className="buyer-hub-mobile-card buyer-hub-mobile-menu">
+                      <div className="buyer-hub-mobile-section-head">
+                        <div>
+                          <span className="buyer-hub-mobile-overline">ACCOUNT</span>
+                          <h2>Manage your account</h2>
+                        </div>
+                      </div>
+                      <div className="buyer-hub-mobile-menu-list">
+                        <button
+                          type="button"
+                          className="buyer-hub-mobile-menu-row"
+                          onClick={() => openSettings("profile")}
+                        >
+                          <span className="buyer-hub-mobile-menu-icon">
+                            <UserRound size={18} />
+                          </span>
+                          <span>
+                            <strong>Profile</strong>
+                            <small>{fullName || "Update your name and phone"}</small>
+                          </span>
+                          <ChevronRight size={15} />
+                        </button>
+                        <button
+                          type="button"
+                          className="buyer-hub-mobile-menu-row"
+                          onClick={() => openSection("addresses")}
+                        >
+                          <span className="buyer-hub-mobile-menu-icon">
+                            <MapPin size={18} />
+                          </span>
+                          <span>
+                            <strong>Addresses</strong>
+                            <small>
+                              {addresses.length
+                                ? `${addresses.length} saved ${addresses.length === 1 ? "address" : "addresses"}`
+                                : "Add a delivery address"}
+                            </small>
+                          </span>
+                          <ChevronRight size={15} />
+                        </button>
+                        <button
+                          type="button"
+                          className="buyer-hub-mobile-menu-row"
+                          onClick={() => openSettings("payments")}
+                        >
+                          <span className="buyer-hub-mobile-menu-icon">
+                            <CreditCard size={18} />
+                          </span>
+                          <span>
+                            <strong>Payment options</strong>
+                            <small>
+                              {preferences.paymentMethods.length
+                                ? `${preferences.paymentMethods.length} saved`
+                                : "No payment method saved"}
+                            </small>
+                          </span>
+                          <ChevronRight size={15} />
+                        </button>
+                        <button
+                          type="button"
+                          className="buyer-hub-mobile-menu-row"
+                          onClick={() => openSettings("notifications")}
+                        >
+                          <span className="buyer-hub-mobile-menu-icon">
+                            <Bell size={18} />
+                          </span>
+                          <span>
+                            <strong>Notifications</strong>
+                            <small>{activeNotifications} preferences active</small>
+                          </span>
+                          <ChevronRight size={15} />
+                        </button>
+                        <button
+                          type="button"
+                          className="buyer-hub-mobile-menu-row"
+                          onClick={() => openSettings("security")}
+                        >
+                          <span className="buyer-hub-mobile-menu-icon">
+                            <Lock size={18} />
+                          </span>
+                          <span>
+                            <strong>Login &amp; security</strong>
+                            <small>
+                              {preferences.twoFactorEnabled
+                                ? "Extra protection on"
+                                : "Review sign-in settings"}
+                            </small>
+                          </span>
+                          <ChevronRight size={15} />
+                        </button>
+                        <button
+                          type="button"
+                          className="buyer-hub-mobile-menu-row"
+                          onClick={() =>
+                            sellerApplication?.status === "approved"
+                              ? void openSellerStudio()
+                              : openSection("seller")
+                          }
+                        >
+                          <span className="buyer-hub-mobile-menu-icon">
+                            <Store size={18} />
+                          </span>
+                          <span>
+                            <strong>Sell on SupreCart</strong>
+                            <small>{sellerStatus}</small>
+                          </span>
+                          <ChevronRight size={15} />
+                        </button>
+                        <Link
+                          to="/messages"
+                          search={{ productId: undefined }}
+                          className="buyer-hub-mobile-menu-row"
+                        >
+                          <span className="buyer-hub-mobile-menu-icon">
+                            <MessageCircle size={18} />
+                          </span>
+                          <span>
+                            <strong>Messages</strong>
+                            <small>Chat with sellers</small>
+                          </span>
+                          <ChevronRight size={15} />
+                        </Link>
+                        <Link to="/support" className="buyer-hub-mobile-menu-row">
+                          <span className="buyer-hub-mobile-menu-icon">
+                            <Headphones size={18} />
+                          </span>
+                          <span>
+                            <strong>Help &amp; support</strong>
+                            <small>Orders, returns and account help</small>
+                          </span>
+                          <ChevronRight size={15} />
+                        </Link>
+                      </div>
+                    </section>
+
+                    <button
+                      type="button"
+                      className="buyer-hub-mobile-signout"
+                      onClick={() => void signOut()}
+                    >
+                      <LogOut size={17} /> Sign out
+                    </button>
+                  </div>
+
                   <section className="buyer-hub-welcome">
                     <div>
                       <span className="buyer-hub-welcome-kicker">
@@ -799,7 +1091,7 @@ function BuyerAccount() {
                     <button
                       type="button"
                       className="buyer-hub-quick-card"
-                      onClick={() => openSection("orders")}
+                      onClick={() => openOrders("all")}
                     >
                       <span className="buyer-hub-quick-icon">
                         <Package size={20} />
@@ -905,7 +1197,7 @@ function BuyerAccount() {
                           <span className="buyer-hub-overline">RECENT PURCHASES</span>
                           <h3>Recent orders</h3>
                         </div>
-                        <button type="button" onClick={() => openSection("orders")}>
+                        <button type="button" onClick={() => openOrders("all")}>
                           See all orders <ArrowRight size={14} />
                         </button>
                       </div>
@@ -953,7 +1245,7 @@ function BuyerAccount() {
                                   <strong>{nairaFormatter.format(order.total)}</strong>
                                   <button
                                     type="button"
-                                    onClick={() => openSection("orders")}
+                                    onClick={() => openOrders("all")}
                                     className="buyer-hub-text-link"
                                   >
                                     View <ChevronRight size={13} />
