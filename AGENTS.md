@@ -9,6 +9,9 @@
 > the editor, so keep the branch in a working state.
 <!-- LOVABLE:END -->
 
+## Collaboration
+- Address the user as BlackRose.
+
 ## Application rules
 - Use TanStack Start React routes with Tailwind v4; the hosted environment does not support a Python web server.
 - Keep seeded catalog data in a shared browser-safe module and share storefront controls across home and shop routes so shopping state stays consistent.

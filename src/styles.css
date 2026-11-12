@@ -1884,22 +1884,28 @@ body {
   font-size: 9px;
 }
 .product-seller-name {
-  display: inline-flex;
+  display: flex;
+  flex: 1 1 auto;
   align-items: center;
   gap: 5px;
+  min-width: 0;
+  color: inherit;
+  text-decoration: none;
+}
+.product-seller-label {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  color: inherit;
-  text-decoration: none;
 }
 .product-seller-name:hover {
   color: #2e4735;
   text-decoration: underline;
 }
-.product-seller > span:last-child {
+.product-seller > span:last-child,
+.product-seller-rating {
   display: inline-flex;
+  flex: 0 0 auto;
   align-items: center;
   gap: 3px;
   white-space: nowrap;
@@ -1909,6 +1915,7 @@ body {
 }
 .seller-verified-mark {
   display: inline-flex;
+  flex: 0 0 auto;
   align-items: center;
   gap: 3px;
   padding: 1px 6px;
@@ -4610,6 +4617,10 @@ body {
   .bestsellers .product-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 16px 10px;
+  }
+  .product-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px 10px;
   }
   .product-card {
     padding: 6px 6px 9px;
@@ -12090,7 +12101,8 @@ a.skip-link:focus-visible {
 }
 .buyer-hub-order-actions {
   display: grid;
-  width: 142px;
+  width: auto;
+  min-width: 142px;
   gap: 7px;
 }
 .buyer-hub-order-actions .button {
@@ -13246,5 +13258,14 @@ a.skip-link:focus-visible {
   }
   .product-recommendations-heading > span {
     white-space: normal;
+  }
+  .product-card .product-seller {
+    font-size: 9px;
+  }
+  .seller-verified-mark {
+    padding-inline: 3px;
+  }
+  .seller-verified-label {
+    display: none;
   }
 }

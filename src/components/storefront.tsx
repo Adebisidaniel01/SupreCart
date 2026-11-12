@@ -1258,14 +1258,14 @@ export function ProductCard({ product, note }: { product: Product; note?: string
           search={{ filter: "All", query: product.seller }}
           title={`All products from ${product.seller}`}
         >
-          {product.seller}
+          <span className="product-seller-label">{product.seller}</span>
           {productSellerVerified(product) && (
             <span className="seller-verified-mark" title="Verified seller">
-              <BadgeCheck size={12} /> Verified
+              <BadgeCheck size={12} /> <span className="seller-verified-label">Verified</span>
             </span>
           )}
         </Link>
-        <span>
+        <span className="product-seller-rating">
           <Star size={11} fill="currentColor" /> {product.sellerRating}
         </span>
       </div>
