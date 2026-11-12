@@ -3,7 +3,7 @@
 The seller studio is available inside the main app at `/sellers` and as a standalone site. Run it from the repository root:
 
 ```sh
-npm run dev:sellers   # standalone dev server on port 8082
+npm run dev:sellers   # standalone dev server on port 5181
 npm run build:sellers # standalone production build
 ```
 
@@ -26,7 +26,7 @@ Set `VITE_MARKETPLACE_URL` to the buyer storefront URL when deploying the seller
 
 ## Seller data
 
-Seller preferences use the same local account preference store as the buyer app. Store profile, fulfilment, bank details, notifications, region, payment methods, avatar, and security controls are saved in this browser only. No marketplace record is created or updated.
+Seller preferences use the same local account preference store as the buyer app. Store profile, fulfilment, notifications, avatar, and security controls are saved in this browser only. No marketplace record is created or updated.
 
 ## Commission
 

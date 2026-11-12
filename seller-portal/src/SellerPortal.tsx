@@ -7,19 +7,14 @@ import {
   BadgeCheck,
   Bell,
   Box,
-  Check,
   ChevronDown,
   CircleDollarSign,
   Clock3,
-  CreditCard,
-  Globe,
-  Landmark,
   LogOut,
   Menu,
   MessageCircle,
   PackagePlus,
   Percent,
-  Plus,
   ShieldCheck,
   Settings,
   Smartphone,
@@ -65,20 +60,14 @@ import {
 import {
   accountAvatar,
   accountPreferenceScope,
-  createPaymentMethod,
-  currencyOptions,
   defaultAccountPreferences,
-  languageOptions,
-  nigerianBanks,
   processingTimeOptions,
   readAccountPreferences,
   saveAccountPreferences,
   shippingOptionsCatalog,
   subscribeAccountPreferences,
-  timezoneOptions,
   type AccountPreferences,
   type NotificationPreferences,
-  type RegionPreferences,
 } from "../../src/lib/account-preferences";
 import {
   AVATAR_ACCEPT,
@@ -128,26 +117,14 @@ type SellerStats = {
 type FundEntry = { id: string; description: string; amount: number; date: string };
 
 type SellerSettingsTab =
-  | "account"
-  | "store"
-  | "fulfilment"
-  | "bank"
-  | "commission"
-  | "notifications"
-  | "region"
-  | "payments"
-  | "security"
-  | "danger";
+  "account" | "store" | "fulfilment" | "commission" | "notifications" | "security" | "danger";
 
 const sellerSettingsTabs = [
   ["account", "Account", Settings],
   ["store", "Store profile", Store],
   ["fulfilment", "Fulfilment", Truck],
-  ["bank", "Payout & bank", Landmark],
   ["commission", "Commission & fees", Percent],
   ["notifications", "Notifications", Bell],
-  ["region", "Region & language", Globe],
-  ["payments", "Payment methods", CreditCard],
   ["security", "Security", ShieldCheck],
   ["danger", "Danger zone", AlertTriangle],
 ] as const;
@@ -422,8 +399,6 @@ export default function SellerPortal({ standalone = false }: { standalone?: bool
         lastName: cleanText(form.get("lastName"), 80),
         email,
         description: cleanMultiline(form.get("description"), 1000),
-        bankName: cleanText(form.get("bankName"), 120),
-        accountNumber: cleanText(form.get("accountNumber"), 20).replace(/\D/g, ""),
       };
       const account = await createLocalAccount({
         email,
@@ -438,8 +413,6 @@ export default function SellerPortal({ standalone = false }: { standalone?: bool
         storeName: `${draft.firstName}'s shop`,
         phone: "",
         productDescription: draft.description,
-        bankName: draft.bankName,
-        bankAccountNumber: draft.accountNumber,
       });
       trackSignUp("seller");
       setSessionAccount(account);
@@ -1109,35 +1082,6 @@ function ApplicationForm({
               required
             />
           </label>
-          <label>
-            Bank name
-            <select name="bankName" autoComplete="off" required defaultValue="">
-              <option value="" disabled>
-                Select your bank…
-              </option>
-              {nigerianBanks.map((bank) => (
-                <option key={bank} value={bank}>
-                  {bank}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            Bank account number
-            <input
-              name="accountNumber"
-              inputMode="numeric"
-              pattern="[0-9]{10}"
-              minLength={10}
-              maxLength={10}
-              autoComplete="off"
-              aria-describedby="seller-bank-help"
-              required
-            />
-            <small id="seller-bank-help">
-              10-digit account number. Visible only to you and authorized SupreCart staff.
-            </small>
-          </label>
           <label className="seller-field-full">
             Product / business attachments <span className="seller-optional">(optional)</span>
             <span className="seller-upload-box">
@@ -1416,10 +1360,6 @@ function SellerDashboard({
     });
   }
 
-  function setRegion(patch: Partial<RegionPreferences>) {
-    updatePreferences({ ...preferences, region: { ...preferences.region, ...patch } });
-  }
-
   function toggleShippingOption(option: string) {
     const current = preferences.fulfilment.shippingOptions;
     updatePreferences({
@@ -1494,64 +1434,6 @@ function SellerDashboard({
   function removeAvatar() {
     updatePreferences({ ...preferences, avatarDataUrl: "" });
     setSettingsNotice("Profile photo removed from this browser.");
-  }
-
-  function saveBankDetails(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const form = new FormData(event.currentTarget);
-    const accountNumber = cleanText(form.get("accountNumber"), 20).replace(/\D/g, "");
-    if (!/^\d{10}$/.test(accountNumber)) {
-      setSettingsError("Enter a valid 10-digit account number.");
-      return;
-    }
-    updatePreferences({
-      ...preferences,
-      bank: { bankName: cleanText(form.get("bankName"), 120), accountNumber },
-    });
-    setSettingsError("");
-    setSettingsNotice(
-      "Bank details saved as a request in this browser. SupreCart support confirms real payout changes before any transfer.",
-    );
-  }
-
-  function addPaymentMethod(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const formElement = event.currentTarget;
-    const form = new FormData(formElement);
-    const last4 = cleanText(form.get("last4"), 10).replace(/\D/g, "");
-    const expiry = cleanText(form.get("expiry"), 5);
-    if (last4.length < 4 || !/^\d{2}\/\d{2}$/.test(expiry)) {
-      setSettingsError("Enter the last 4 digits and an expiry in MM/YY format.");
-      return;
-    }
-    const method = createPaymentMethod({
-      brand: cleanText(form.get("brand"), 40),
-      last4,
-      expiry,
-    });
-    method.isDefault = preferences.paymentMethods.length === 0;
-    updatePreferences({ ...preferences, paymentMethods: [...preferences.paymentMethods, method] });
-    formElement.reset();
-    setSettingsError("");
-    setSettingsNotice("Payout method saved in this browser. No real account is stored.");
-  }
-
-  function removePaymentMethod(id: string) {
-    const remaining = preferences.paymentMethods.filter((method) => method.id !== id);
-    if (remaining.length && !remaining.some((method) => method.isDefault)) {
-      remaining[0] = { ...remaining[0]!, isDefault: true };
-    }
-    updatePreferences({ ...preferences, paymentMethods: remaining });
-  }
-
-  function setDefaultPaymentMethod(id: string) {
-    updatePreferences({
-      ...preferences,
-      paymentMethods: preferences.paymentMethods.map((method) => ({
-        ...method,
-        isDefault: method.id === id,
-      })),
-    });
   }
 
   async function signOutOtherSessions() {
@@ -1974,7 +1856,7 @@ function SellerDashboard({
             <ShieldCheck size={14} />
             {seededMode
               ? "Balances shown here cannot be withdrawn."
-              : "A payout request does not transfer funds. SupreCart reviews requests and pays to your verified bank account."}
+              : "A payout request does not transfer funds. SupreCart reviews requests before any payout is arranged."}
           </p>
           <p className="seller-finance-note">
             <Percent size={14} />
@@ -2272,59 +2154,6 @@ function SellerDashboard({
             </div>
           )}
 
-          {settingsTab === "bank" && (
-            <div className="seller-settings-card">
-              <div>
-                <strong>Payout &amp; bank details</strong>
-                <span>
-                  {seededMode
-                    ? "No payout account is connected yet."
-                    : "Where SupreCart would pay approved withdrawals."}
-                </span>
-              </div>
-              <form className="seller-settings-form" onSubmit={saveBankDetails}>
-                <label>
-                  Bank name
-                  <select name="bankName" defaultValue={preferences.bank.bankName} required>
-                    <option value="" disabled>
-                      Select your bank…
-                    </option>
-                    {preferences.bank.bankName &&
-                      !nigerianBanks.includes(preferences.bank.bankName) && (
-                        <option value={preferences.bank.bankName}>
-                          {preferences.bank.bankName} (saved)
-                        </option>
-                      )}
-                    {nigerianBanks.map((bank) => (
-                      <option key={bank} value={bank}>
-                        {bank}
-                      </option>
-                    ))}
-                  </select>
-                  <small>Nigerian banks, licensed microfinance banks, and payment providers.</small>
-                </label>
-                <label>
-                  Account number
-                  <input
-                    name="accountNumber"
-                    inputMode="numeric"
-                    pattern="[0-9]{10}"
-                    maxLength={10}
-                    defaultValue={preferences.bank.accountNumber}
-                  />
-                  <small>10 digits. Never shared publicly.</small>
-                </label>
-                <p className="seller-settings-note">
-                  Changing payout details is a request only. SupreCart support verifies bank changes
-                  before any real transfer.
-                </p>
-                <button className="seller-primary-button" type="submit">
-                  Save payout details
-                </button>
-              </form>
-            </div>
-          )}
-
           {settingsTab === "commission" && (
             <div className="seller-settings-card">
               <div>
@@ -2398,127 +2227,6 @@ function SellerDashboard({
                 Messaging is not connected yet. {enabledNotifications} of 4 alerts are on and
                 remembered in this browser.
               </p>
-            </div>
-          )}
-
-          {settingsTab === "region" && (
-            <div className="seller-settings-card">
-              <div>
-                <strong>Region &amp; language</strong>
-                <span>How prices and dates appear in your studio.</span>
-              </div>
-              <div className="seller-settings-form">
-                <label>
-                  Currency
-                  <select
-                    value={preferences.region.currency}
-                    onChange={(event) => setRegion({ currency: event.target.value })}
-                  >
-                    {currencyOptions.map((option) => (
-                      <option key={option}>{option}</option>
-                    ))}
-                  </select>
-                </label>
-                <label>
-                  Language
-                  <select
-                    value={preferences.region.language}
-                    onChange={(event) => setRegion({ language: event.target.value })}
-                  >
-                    {languageOptions.map((option) => (
-                      <option key={option}>{option}</option>
-                    ))}
-                  </select>
-                </label>
-                <label>
-                  Time zone
-                  <select
-                    value={preferences.region.timezone}
-                    onChange={(event) => setRegion({ timezone: event.target.value })}
-                  >
-                    {timezoneOptions.map((option) => (
-                      <option key={option}>{option}</option>
-                    ))}
-                  </select>
-                </label>
-                <p className="seller-settings-note">
-                  Currency conversion and translations are not connected yet.
-                </p>
-              </div>
-            </div>
-          )}
-
-          {settingsTab === "payments" && (
-            <div className="seller-settings-card">
-              <div>
-                <strong>Payment methods</strong>
-                <span>Payout methods saved in this browser. No real account is stored.</span>
-              </div>
-              {preferences.paymentMethods.length ? (
-                <div className="seller-payment-list">
-                  {preferences.paymentMethods.map((method) => (
-                    <article key={method.id} className="seller-payment-card">
-                      <span className="seller-payment-brand">
-                        <CreditCard size={16} />
-                        <strong>{method.brand}</strong>
-                      </span>
-                      <span>•••• {method.last4}</span>
-                      <span>Expires {method.expiry}</span>
-                      {method.isDefault ? (
-                        <span className="seller-payment-default">
-                          <Check size={12} /> Default
-                        </span>
-                      ) : (
-                        <button
-                          type="button"
-                          className="seller-inline-link"
-                          onClick={() => setDefaultPaymentMethod(method.id)}
-                        >
-                          Make default
-                        </button>
-                      )}
-                      <button
-                        type="button"
-                        className="seller-danger-link"
-                        onClick={() => removePaymentMethod(method.id)}
-                      >
-                        Remove
-                      </button>
-                    </article>
-                  ))}
-                </div>
-              ) : (
-                <p className="seller-settings-note">No payout methods saved yet.</p>
-              )}
-              <form className="seller-settings-form" onSubmit={addPaymentMethod}>
-                <div className="seller-field-pair">
-                  <label>
-                    Brand
-                    <select name="brand" defaultValue="Visa">
-                      {["Visa", "Mastercard", "Verve", "Bank transfer"].map((brand) => (
-                        <option key={brand}>{brand}</option>
-                      ))}
-                    </select>
-                  </label>
-                  <label>
-                    Last 4 digits
-                    <input
-                      name="last4"
-                      inputMode="numeric"
-                      maxLength={4}
-                      placeholder="4242"
-                      required
-                    />
-                  </label>
-                </div>
-                <label>
-                  Expiry (MM/YY)
-                  <input name="expiry" placeholder="09/29" required />
-                </label>
-                <button className="seller-primary-button" type="submit">
-                  <Plus size={15} /> Add payment method
-                </button>
-              </form>
             </div>
           )}
 

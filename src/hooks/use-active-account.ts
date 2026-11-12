@@ -1,12 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { accountAvatar, subscribeAccountPreferences } from "@/lib/account-preferences";
-import {
-  clearAccount,
-  readActiveAccount,
-  subscribeAccount,
-  type Account,
-} from "@/lib/accounts";
+import { clearAccount, readActiveAccount, subscribeAccount, type Account } from "@/lib/accounts";
 
 export function useActiveAccount() {
   const [account, setAccount] = useState<Account | null>(null);

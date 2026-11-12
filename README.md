@@ -34,11 +34,10 @@ npm run build:sellers # standalone seller build
 
 ## Dependency audit
 
-`npm audit --omit=dev` reports **0 production vulnerabilities**. `npm audit` also reports 14 moderate advisories from the development lint tooling (`minimatch` ReDoS via ESLint, `@typescript-eslint`, and related packages).
+`npm audit` reports **0 vulnerabilities**. The previous `minimatch` advisory was resolved by overriding the nested `minimatch` dependency of `@typescript-eslint/typescript-estree` to `^11.0.1` in `package.json`.
 
+- The override is scoped to `@typescript-eslint/typescript-estree`; do not add a global `minimatch` override.
 - These packages are development-only and are not included in the built application.
-- npm reports **"No fix available"** for this advisory chain, so `npm audit fix --force` will not clear it.
-- Do not force `minimatch@11` through `overrides`; that can break ESLint.
 - Recheck after ESLint/minimatch publish a patched dependency chain.
 
 ## Built-in accounts
@@ -139,6 +138,7 @@ The storefront and standalone seller portal show a cookie banner. The essential 
 - **Vite** — development server and bundling.
 - **React + TanStack Router + TanStack Start** — application structure and routing.
 - **Tailwind CSS** — styling.
+- **Google Fonts** — typefaces requested from `fonts.googleapis.com` by the storefront and seller portal.
 - **Google Analytics 4** — optional, consent-gated usage analytics.
 - **GitHub** — repository hosting.
 

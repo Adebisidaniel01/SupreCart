@@ -20,7 +20,6 @@ import { cleanEmail, cleanMultiline, cleanPhone, cleanText } from "@/lib/input";
 import { createOrderSettlements, type OrderSettlement } from "@/lib/orders";
 
 type DeliveryMethod = "doorstep" | "pickup";
-type PaymentMethod = "paystack" | "bank-transfer" | "pay-on-delivery";
 type ShippingDetails = {
   firstName: string;
   lastName: string;
@@ -55,7 +54,6 @@ type CheckoutOrder = {
   total: number;
   deliveryState: string;
   deliveryMethod: DeliveryMethod;
-  paymentMethod: PaymentMethod;
   deliveryDestination: string;
   shipments: { seller: string; trackingNumber: string }[];
   settlements: OrderSettlement[];
@@ -102,26 +100,6 @@ const KWARA_LGAS = [
   "Pategi",
 ];
 
-type BagDetails = { recipient: string; phone: string; city: string; note: string };
-
-function readBagDetails(): BagDetails | null {
-  if (typeof window === "undefined") return null;
-  try {
-    const raw = window.localStorage.getItem("suprecart-bag-details");
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as Partial<BagDetails>;
-    if (typeof parsed !== "object" || parsed === null) return null;
-    return {
-      recipient: typeof parsed.recipient === "string" ? parsed.recipient : "",
-      phone: typeof parsed.phone === "string" ? parsed.phone : "",
-      city: typeof parsed.city === "string" ? parsed.city : "",
-      note: typeof parsed.note === "string" ? parsed.note : "",
-    };
-  } catch {
-    return null;
-  }
-}
-
 function createReference(prefix: string) {
   const token = globalThis.crypto?.randomUUID?.().replaceAll("-", "").slice(0, 12).toUpperCase();
   if (!token) throw new Error("Secure order references are not available in this browser.");
@@ -150,11 +128,6 @@ function Checkout() {
   const [order, setOrder] = useState<CheckoutOrder | null>(null);
   const [orderError, setOrderError] = useState("");
   const [deliveryMethod, setDeliveryMethod] = useState<DeliveryMethod>("doorstep");
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("paystack");
-  const [bagDetails] = useState(readBagDetails);
-  const bagNameParts = (bagDetails?.recipient ?? "").trim().split(/\s+/).filter(Boolean);
-  const bagFirstName = bagNameParts[0] ?? "";
-  const bagLastName = bagNameParts.slice(1).join(" ");
   const doorstepFee = DOORSTEP_FEE;
   const pickupStations = PICKUP_STATIONS;
 
@@ -253,7 +226,6 @@ function Checkout() {
         total,
         deliveryState: "Kwara",
         deliveryMethod: details.method,
-        paymentMethod,
         deliveryDestination:
           details.method === "pickup"
             ? `${details.pickupStationName} — ${details.pickupStationAddress}`
@@ -273,7 +245,7 @@ function Checkout() {
         value: total,
         tax: vat,
         shipping: deliveryFee,
-        paymentType: paymentMethod,
+        paymentType: "paystack",
         deliveryMethod: details.method,
       });
       setOrder(newOrder);
@@ -372,21 +344,11 @@ function Checkout() {
               <div className="field-pair">
                 <label>
                   First name
-                  <input
-                    name="firstName"
-                    autoComplete="given-name"
-                    defaultValue={bagFirstName}
-                    required
-                  />
+                  <input name="firstName" autoComplete="given-name" required />
                 </label>
                 <label>
                   Last name
-                  <input
-                    name="lastName"
-                    autoComplete="family-name"
-                    defaultValue={bagLastName}
-                    required
-                  />
+                  <input name="lastName" autoComplete="family-name" required />
                 </label>
               </div>
               <div className="field-pair">
@@ -402,14 +364,7 @@ function Checkout() {
                 </label>
                 <label>
                   Phone number
-                  <input
-                    type="tel"
-                    name="phone"
-                    autoComplete="tel"
-                    placeholder="+234"
-                    defaultValue={bagDetails?.phone ?? ""}
-                    required
-                  />
+                  <input type="tel" name="phone" autoComplete="tel" placeholder="+234" required />
                 </label>
               </div>
               {deliveryMethod === "doorstep" ? (
@@ -428,12 +383,7 @@ function Checkout() {
                     </label>
                     <label>
                       Community / area
-                      <input
-                        name="community"
-                        autoComplete="address-level2"
-                        defaultValue={bagDetails?.city ?? ""}
-                        required
-                      />
+                      <input name="community" autoComplete="address-level2" required />
                     </label>
                   </div>
                   <label>
@@ -469,7 +419,6 @@ function Checkout() {
                 <textarea
                   name="note"
                   rows={3}
-                  defaultValue={bagDetails?.note ?? ""}
                   placeholder="Anything the delivery person should know?"
                 />
               </label>
@@ -536,48 +485,10 @@ function Checkout() {
                   ? "Pickup selected. No doorstep delivery fee is included."
                   : `Doorstep delivery in Kwara is charged per seller shipment (${sellers.length} ${sellers.length === 1 ? "seller" : "sellers"}).`}
               </p>
-              <fieldset className="payment-method-options">
-                <legend>Choose a payment option</legend>
-                <label>
-                  <input
-                    type="radio"
-                    name="paymentMethod"
-                    value="paystack"
-                    checked={paymentMethod === "paystack"}
-                    onChange={() => setPaymentMethod("paystack")}
-                  />
-                  <span>
-                    <strong>Paystack</strong>
-                    <small>Card, bank, and supported Paystack channels</small>
-                  </span>
-                </label>
-                <label>
-                  <input
-                    type="radio"
-                    name="paymentMethod"
-                    value="bank-transfer"
-                    checked={paymentMethod === "bank-transfer"}
-                    onChange={() => setPaymentMethod("bank-transfer")}
-                  />
-                  <span>
-                    <strong>Bank transfer</strong>
-                    <small>Transfer instructions would be provided at live checkout</small>
-                  </span>
-                </label>
-                <label>
-                  <input
-                    type="radio"
-                    name="paymentMethod"
-                    value="pay-on-delivery"
-                    checked={paymentMethod === "pay-on-delivery"}
-                    onChange={() => setPaymentMethod("pay-on-delivery")}
-                  />
-                  <span>
-                    <strong>Pay on delivery / collection</strong>
-                    <small>Shown for planning only; availability is not yet confirmed</small>
-                  </span>
-                </label>
-              </fieldset>
+              <p className="payment-note">
+                <ShieldCheck size={14} /> Paystack is the only payment option. No payment is
+                initiated or collected in this demo.
+              </p>
               <div className="checkout-actions">
                 <Button variant="outline" onClick={() => setStep("delivery")}>
                   <ArrowLeft size={16} /> Edit delivery
@@ -597,9 +508,8 @@ function Checkout() {
                 receipt does not move money or create a real escrow record.
               </p>
               <p className="payment-note">
-                Payment selection is stored in this browser. No payment will be initiated or
-                collected. Live Paystack checkout requires a secured server integration and verified
-                payment callbacks.
+                Live Paystack checkout requires a secured server integration and verified payment
+                callbacks.
               </p>
             </div>
           )}
@@ -628,14 +538,8 @@ function Checkout() {
                 <strong>{order.batchNumber}</strong>
               </div>
               <div className="reference-card">
-                <span>Selected payment option</span>
-                <strong>
-                  {order.paymentMethod === "paystack"
-                    ? "Paystack"
-                    : order.paymentMethod === "bank-transfer"
-                      ? "Bank transfer"
-                      : "Pay on delivery / collection"}
-                </strong>
+                <span>Payment option</span>
+                <strong>Paystack</strong>
               </div>
               <p className="order-created-at">
                 Created {new Date(order.createdAt).toLocaleString("en-NG")}

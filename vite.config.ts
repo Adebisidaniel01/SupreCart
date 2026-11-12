@@ -5,7 +5,21 @@
 //     React/TanStack dedupe, error logger plugins, and sandbox detection (port/host/strictPort).
 // You can pass additional config via defineConfig({ vite: { ... }, etc... }) if needed.
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
-import { loadEnv } from "vite";
+import { createLogger, loadEnv } from "vite";
+
+const logger = createLogger();
+const isTsconfigPathsWarning = (message: unknown) =>
+  typeof message === "string" && message.includes("vite-tsconfig-paths");
+
+const warn = logger.warn.bind(logger);
+logger.warn = (message, options) => {
+  if (!isTsconfigPathsWarning(message)) warn(message, options);
+};
+
+const warnOnce = logger.warnOnce.bind(logger);
+logger.warnOnce = (message, options) => {
+  if (!isTsconfigPathsWarning(message)) warnOnce(message, options);
+};
 
 export default defineConfig({
   plugins: [
@@ -32,12 +46,10 @@ export default defineConfig({
     server: { entry: "server" },
   },
   vite: {
-    resolve: {
-      tsconfigPaths: true,
-    },
+    customLogger: logger,
     // Override the Lovable default dev server (host "::", port 8080) so local
-    // development uses Vite's standard port. `host: true` binds all network
-    // interfaces so the dev server is reachable from other devices on the LAN.
+    // development uses Vite's standard port. The dev server binds 127.0.0.1
+    // so it is only reachable from this machine.
     // Ignored inside the Lovable sandbox, which always binds 8080.
     server: {
       host: "127.0.0.1",

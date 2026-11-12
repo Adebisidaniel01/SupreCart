@@ -1395,64 +1395,6 @@
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
-.seller-payment-list {
-  display: grid;
-  max-width: 680px;
-  gap: 10px;
-}
-.seller-payment-card {
-  display: grid;
-  grid-template-columns: minmax(120px, 1fr) auto auto auto auto;
-  align-items: center;
-  gap: 14px;
-  padding: 13px 15px;
-  border: 1px solid #e7ece7;
-  border-radius: 8px;
-  background: #fbfcfa;
-  color: #5d6b60;
-  font-size: 11px;
-}
-.seller-payment-brand {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  color: #26382d;
-}
-.seller-payment-brand svg {
-  color: #167b67;
-}
-.seller-payment-default {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 4px 8px;
-  border-radius: 20px;
-  background: #e9f4ef;
-  color: #1c6a54;
-  font-size: 9px;
-  font-weight: 700;
-}
-.seller-inline-link {
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: #197a66;
-  font: inherit;
-  font-size: 10px;
-  font-weight: 700;
-  cursor: pointer;
-}
-.seller-danger-link {
-  justify-self: start;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: #b0443b;
-  font: inherit;
-  font-size: 10px;
-  font-weight: 700;
-  cursor: pointer;
-}
 .seller-settings-actions {
   display: grid;
   gap: 14px;
@@ -1918,9 +1860,6 @@
   }
   .seller-settings-form .seller-primary-button {
     width: 100%;
-  }
-  .seller-payment-card {
-    grid-template-columns: 1fr auto;
   }
   .seller-field-pair {
     grid-template-columns: 1fr;

@@ -2,6 +2,9 @@
   "include": [
     "src/**/*.ts",
     "src/**/*.tsx",
+    "seller-portal/src/**/*.ts",
+    "seller-portal/src/**/*.tsx",
+    "seller-portal/vite.config.ts",
     "vite.config.ts",
     "vitest.config.ts",
     "eslint.config.js"

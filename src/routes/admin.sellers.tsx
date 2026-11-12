@@ -59,9 +59,6 @@ function AdminSellers() {
                   <small>{application.productDescription}</small>
                   <div className="admin-seller-meta">
                     <span>
-                      {application.bankName} · {application.bankAccountNumber}
-                    </span>
-                    <span>
                       Submitted{" "}
                       {new Date(application.submittedAt).toLocaleDateString(undefined, {
                         day: "numeric",

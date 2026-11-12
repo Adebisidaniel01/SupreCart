@@ -9,9 +9,7 @@ import {
   ChevronDown,
   ChevronRight,
   CircleHelp,
-  CreditCard,
   Clock3,
-  Globe,
   Headphones,
   House,
   Lock,
@@ -65,17 +63,11 @@ import { products } from "@/lib/catalog";
 import { cleanEmail, cleanMultiline, cleanPhone, cleanText } from "@/lib/input";
 import {
   accountPreferenceScope,
-  createPaymentMethod,
-  currencyOptions,
   defaultAccountPreferences,
-  languageOptions,
-  nigerianBanks,
   readAccountPreferences,
   saveAccountPreferences,
-  timezoneOptions,
   type AccountPreferences,
   type NotificationPreferences,
-  type RegionPreferences,
 } from "@/lib/account-preferences";
 
 type BuyerOrder = Order;
@@ -123,7 +115,7 @@ function writeLocalAddresses(email: string, addresses: BuyerAddress[]) {
 
 type AccountSection = "overview" | "orders" | "addresses" | "seller" | "settings";
 
-type SettingsTab = "profile" | "notifications" | "region" | "payments" | "security" | "danger";
+type SettingsTab = "profile" | "notifications" | "security" | "danger";
 
 const cancellationReasons = [
   "Changed my mind",
@@ -181,8 +173,6 @@ function orderProducts(items: string) {
 const settingsTabs = [
   ["profile", "Profile", UserRound],
   ["notifications", "Notifications", Bell],
-  ["region", "Region & language", Globe],
-  ["payments", "Payment methods", CreditCard],
   ["security", "Security", Lock],
   ["danger", "Danger zone", AlertTriangle],
 ] as const;
@@ -317,10 +307,6 @@ function BuyerAccount() {
     });
   }
 
-  function setRegion(patch: Partial<RegionPreferences>) {
-    updatePreferences({ ...preferences, region: { ...preferences.region, ...patch } });
-  }
-
   function submitSellerApplication(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!sessionAccount) {
@@ -334,8 +320,6 @@ function BuyerAccount() {
       storeName: cleanText(form.get("storeName"), 120),
       phone: cleanPhone(form.get("phone")),
       productDescription: cleanMultiline(form.get("productDescription"), 1000),
-      bankName: cleanText(form.get("bankName"), 120),
-      bankAccountNumber: cleanText(form.get("bankAccountNumber"), 20).replace(/\D/g, ""),
     });
     setSellerApplication(application);
     setError("");
@@ -361,43 +345,6 @@ function BuyerAccount() {
   function removeAvatar() {
     updatePreferences({ ...preferences, avatarDataUrl: "" });
     setNotice("Profile photo removed from this browser.");
-  }
-
-  function addPaymentMethod(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const formElement = event.currentTarget;
-    const form = new FormData(formElement);
-    const brand = cleanText(form.get("brand"), 40);
-    const last4 = cleanText(form.get("last4"), 10).replace(/\D/g, "");
-    const expiry = cleanText(form.get("expiry"), 5);
-    if (last4.length < 4 || !/^\d{2}\/\d{2}$/.test(expiry)) {
-      setError("Enter the last 4 digits and an expiry in MM/YY format.");
-      return;
-    }
-    const method = createPaymentMethod({ brand, last4, expiry });
-    method.isDefault = preferences.paymentMethods.length === 0;
-    updatePreferences({ ...preferences, paymentMethods: [...preferences.paymentMethods, method] });
-    formElement.reset();
-    setError("");
-    setNotice("Payment method saved in this browser. No real card is stored or charged.");
-  }
-
-  function removePaymentMethod(id: string) {
-    const remaining = preferences.paymentMethods.filter((method) => method.id !== id);
-    if (remaining.length && !remaining.some((method) => method.isDefault)) {
-      remaining[0] = { ...remaining[0]!, isDefault: true };
-    }
-    updatePreferences({ ...preferences, paymentMethods: remaining });
-  }
-
-  function setDefaultPaymentMethod(id: string) {
-    updatePreferences({
-      ...preferences,
-      paymentMethods: preferences.paymentMethods.map((method) => ({
-        ...method,
-        isDefault: method.id === id,
-      })),
-    });
   }
 
   function signOutOtherSessions() {
@@ -595,8 +542,6 @@ function BuyerAccount() {
   const [addressFirstName = "", ...addressLastNameParts] = fullName.split(/\s+/);
   const addressLastName = addressLastNameParts.join(" ");
   const defaultAddress = addresses.find((address) => address.is_default) ?? addresses[0];
-  const defaultPayment =
-    preferences.paymentMethods.find((method) => method.isDefault) ?? preferences.paymentMethods[0];
   const activeNotifications = Object.values(preferences.notifications).filter(Boolean).length;
   const filteredOrders =
     orderFilter === "all" ? orders : orders.filter((order) => order.status === orderFilter);
@@ -956,24 +901,6 @@ function BuyerAccount() {
                         <button
                           type="button"
                           className="buyer-hub-mobile-menu-row"
-                          onClick={() => openSettings("payments")}
-                        >
-                          <span className="buyer-hub-mobile-menu-icon">
-                            <CreditCard size={18} />
-                          </span>
-                          <span>
-                            <strong>Payment options</strong>
-                            <small>
-                              {preferences.paymentMethods.length
-                                ? `${preferences.paymentMethods.length} saved`
-                                : "No payment method saved"}
-                            </small>
-                          </span>
-                          <ChevronRight size={15} />
-                        </button>
-                        <button
-                          type="button"
-                          className="buyer-hub-mobile-menu-row"
                           onClick={() => openSettings("notifications")}
                         >
                           <span className="buyer-hub-mobile-menu-icon">
@@ -1118,24 +1045,6 @@ function BuyerAccount() {
                           {addresses.length
                             ? `${addresses.length} saved ${addresses.length === 1 ? "address" : "addresses"}`
                             : "Add a delivery address"}
-                        </small>
-                      </span>
-                      <ChevronRight size={16} />
-                    </button>
-                    <button
-                      type="button"
-                      className="buyer-hub-quick-card"
-                      onClick={() => openSettings("payments")}
-                    >
-                      <span className="buyer-hub-quick-icon">
-                        <CreditCard size={20} />
-                      </span>
-                      <span>
-                        <strong>Payment Options</strong>
-                        <small>
-                          {preferences.paymentMethods.length
-                            ? `${preferences.paymentMethods.length} saved`
-                            : "No payment method saved"}
                         </small>
                       </span>
                       <ChevronRight size={16} />
@@ -1333,42 +1242,6 @@ function BuyerAccount() {
                               onClick={() => openSection("addresses")}
                             >
                               Add an address <ArrowRight size={13} />
-                            </button>
-                          </div>
-                        )}
-                      </section>
-
-                      <section className="buyer-hub-panel">
-                        <div className="buyer-hub-panel-title">
-                          <h3>Payment options</h3>
-                          <button
-                            type="button"
-                            className="buyer-hub-text-link"
-                            onClick={() => openSettings("payments")}
-                          >
-                            Manage
-                          </button>
-                        </div>
-                        {defaultPayment ? (
-                          <div className="buyer-hub-payment-summary">
-                            <CreditCard size={17} />
-                            <p>
-                              <strong>{defaultPayment.brand}</strong>
-                              Card ending {defaultPayment.last4} · Expires {defaultPayment.expiry}
-                            </p>
-                            {defaultPayment.isDefault && (
-                              <span className="buyer-hub-default-badge">DEFAULT</span>
-                            )}
-                          </div>
-                        ) : (
-                          <div className="buyer-hub-mini-empty">
-                            <p>No payment method saved.</p>
-                            <button
-                              type="button"
-                              className="buyer-hub-text-link"
-                              onClick={() => openSettings("payments")}
-                            >
-                              Add a method <ArrowRight size={13} />
                             </button>
                           </div>
                         )}
@@ -2098,44 +1971,6 @@ function BuyerAccount() {
                           required
                         />
                       </label>
-                      <div className="field-pair">
-                        <label>
-                          Bank name
-                          <select
-                            name="bankName"
-                            defaultValue={sellerApplication?.bankName ?? ""}
-                            required
-                          >
-                            <option value="" disabled>
-                              Select your bank…
-                            </option>
-                            {sellerApplication?.bankName &&
-                              !nigerianBanks.includes(sellerApplication.bankName) && (
-                                <option value={sellerApplication.bankName}>
-                                  {sellerApplication.bankName} (saved)
-                                </option>
-                              )}
-                            {nigerianBanks.map((bank) => (
-                              <option key={bank} value={bank}>
-                                {bank}
-                              </option>
-                            ))}
-                          </select>
-                        </label>
-                        <label>
-                          Account number
-                          <input
-                            name="bankAccountNumber"
-                            inputMode="numeric"
-                            defaultValue={sellerApplication?.bankAccountNumber ?? ""}
-                            required
-                          />
-                        </label>
-                      </div>
-                      <p className="account-field-hint">
-                        Payout details are stored in this browser and are never sent to a bank. You
-                        can update them before any real payout is connected.
-                      </p>
                       <Button type="submit">
                         {sellerApplication?.status === "rejected"
                           ? "Resubmit for review"
@@ -2296,135 +2131,6 @@ function BuyerAccount() {
                             SupreCart does not send real messages yet; toggles are remembered
                             locally.
                           </p>
-                        </section>
-                      )}
-
-                      {settingsTab === "region" && (
-                        <section className="account-dashboard-card">
-                          <p className="account-intro">
-                            Set how prices and dates are shown to you across the marketplace.
-                          </p>
-                          <div className="account-form">
-                            <div className="field-pair">
-                              <label>
-                                Currency
-                                <select
-                                  value={preferences.region.currency}
-                                  onChange={(event) => setRegion({ currency: event.target.value })}
-                                >
-                                  {currencyOptions.map((option) => (
-                                    <option key={option}>{option}</option>
-                                  ))}
-                                </select>
-                              </label>
-                              <label>
-                                Language
-                                <select
-                                  value={preferences.region.language}
-                                  onChange={(event) => setRegion({ language: event.target.value })}
-                                >
-                                  {languageOptions.map((option) => (
-                                    <option key={option}>{option}</option>
-                                  ))}
-                                </select>
-                              </label>
-                            </div>
-                            <label>
-                              Time zone
-                              <select
-                                value={preferences.region.timezone}
-                                onChange={(event) => setRegion({ timezone: event.target.value })}
-                              >
-                                {timezoneOptions.map((option) => (
-                                  <option key={option}>{option}</option>
-                                ))}
-                              </select>
-                            </label>
-                          </div>
-                          <p className="account-field-hint">
-                            Currency conversion and translations are not connected yet, so these are
-                            display preferences only.
-                          </p>
-                        </section>
-                      )}
-
-                      {settingsTab === "payments" && (
-                        <section className="account-dashboard-card">
-                          <p className="account-intro">
-                            Payment methods for checkout. SupreCart never stores a full card number
-                            and no payments are collected.
-                          </p>
-                          {preferences.paymentMethods.length ? (
-                            <div className="account-payment-list">
-                              {preferences.paymentMethods.map((method) => (
-                                <article key={method.id} className="account-payment-card">
-                                  <span className="account-payment-brand">
-                                    <CreditCard size={17} />
-                                    <strong>{method.brand}</strong>
-                                  </span>
-                                  <span>•••• {method.last4}</span>
-                                  <span>Expires {method.expiry}</span>
-                                  {method.isDefault ? (
-                                    <span className="account-payment-default">
-                                      <Check size={12} /> Default
-                                    </span>
-                                  ) : (
-                                    <button
-                                      type="button"
-                                      className="account-inline-link"
-                                      onClick={() => setDefaultPaymentMethod(method.id)}
-                                    >
-                                      Make default
-                                    </button>
-                                  )}
-                                  <button
-                                    type="button"
-                                    className="account-danger-link"
-                                    onClick={() => removePaymentMethod(method.id)}
-                                  >
-                                    Remove
-                                  </button>
-                                </article>
-                              ))}
-                            </div>
-                          ) : (
-                            <p className="account-intro">No payment methods saved yet.</p>
-                          )}
-                          <form
-                            className="account-form account-payment-form"
-                            onSubmit={addPaymentMethod}
-                          >
-                            <h3>Add a payment method</h3>
-                            <div className="field-pair">
-                              <label>
-                                Brand
-                                <select name="brand" defaultValue="Visa">
-                                  {["Visa", "Mastercard", "Verve", "Virtual wallet"].map(
-                                    (brand) => (
-                                      <option key={brand}>{brand}</option>
-                                    ),
-                                  )}
-                                </select>
-                              </label>
-                              <label>
-                                Last 4 digits
-                                <input
-                                  name="last4"
-                                  inputMode="numeric"
-                                  maxLength={4}
-                                  placeholder="4242"
-                                  required
-                                />
-                              </label>
-                            </div>
-                            <label>
-                              Expiry (MM/YY)
-                              <input name="expiry" placeholder="09/29" required />
-                            </label>
-                            <Button type="submit" variant="outline">
-                              <Plus size={15} /> Add payment method
-                            </Button>
-                          </form>
                         </section>
                       )}
 

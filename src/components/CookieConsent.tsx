@@ -1,11 +1,6 @@
 import { useEffect, useState } from "react";
 
-import {
-  essentialOnly,
-  readConsent,
-  saveConsent,
-  type ConsentPreferences,
-} from "@/lib/consent";
+import { essentialOnly, readConsent, saveConsent, type ConsentPreferences } from "@/lib/consent";
 
 export type { ConsentPreferences } from "@/lib/consent";
 
@@ -35,8 +30,8 @@ export function CookieConsent({
       <div>
         <strong>Cookies on SupreCart</strong>
         <p>
-          We use one essential cookie to remember your choice. Google Analytics cookies are only
-          set if you allow analytics. Marketing cookies are not installed.
+          We use one essential cookie to remember your choice. Google Analytics cookies are only set
+          if you allow analytics. Marketing cookies are not installed.
           {policyHref && (
             <>
               {" "}

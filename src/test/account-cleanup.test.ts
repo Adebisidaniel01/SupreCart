@@ -1,12 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
 import { deleteAccountData } from "@/lib/account-cleanup";
-import {
-  findAccount,
-  getAccounts,
-  isAccountDeleted,
-  saveAccount,
-} from "@/lib/accounts";
+import { findAccount, getAccounts, isAccountDeleted, saveAccount } from "@/lib/accounts";
 import { getChatConversations } from "@/lib/messages";
 import { getOrders, getProfile, saveProfile } from "@/lib/orders";
 import { getSellerApplication } from "@/lib/seller-applications";
@@ -17,9 +12,7 @@ beforeEach(() => {
 
 describe("account cleanup", () => {
   it("renames the preset buyer account to blackrose", () => {
-    expect(getAccounts("buyer").map((account) => account.email)).toContain(
-      "blackrose@gmail.com",
-    );
+    expect(getAccounts("buyer").map((account) => account.email)).toContain("blackrose@gmail.com");
     expect(getAccounts("buyer").map((account) => account.email)).not.toContain(
       "adebisidan01@gmail.com",
     );

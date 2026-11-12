@@ -30,7 +30,6 @@ function saveCheckoutOrder(overrides: Record<string, unknown> = {}) {
     total: 3575,
     deliveryState: "Kwara",
     deliveryMethod: "doorstep",
-    paymentMethod: "paystack",
     deliveryDestination: "12 Test Street, GRA, Ilorin West, Kwara",
     shipments: [],
     ...overrides,

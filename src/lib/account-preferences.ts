@@ -5,20 +5,6 @@ export type NotificationPreferences = {
   securityAlerts: boolean;
 };
 
-export type RegionPreferences = {
-  currency: string;
-  language: string;
-  timezone: string;
-};
-
-export type PaymentMethod = {
-  id: string;
-  brand: string;
-  last4: string;
-  expiry: string;
-  isDefault: boolean;
-};
-
 export type StoreProfilePreferences = {
   storeName: string;
   tagline: string;
@@ -32,31 +18,14 @@ export type FulfilmentPreferences = {
   openingHours: string;
 };
 
-export type BankPreferences = {
-  bankName: string;
-  accountNumber: string;
-};
-
 export type AccountPreferences = {
   avatarDataUrl: string;
   notifications: NotificationPreferences;
-  region: RegionPreferences;
-  paymentMethods: PaymentMethod[];
   twoFactorEnabled: boolean;
   store: StoreProfilePreferences;
   fulfilment: FulfilmentPreferences;
-  bank: BankPreferences;
 };
 
-export const currencyOptions = ["NGN", "USD", "GBP", "EUR"] as const;
-export const languageOptions = ["English", "Yoruba", "Hausa", "Igbo", "French"] as const;
-export const timezoneOptions = [
-  "Africa/Lagos",
-  "Africa/Accra",
-  "Europe/London",
-  "America/New_York",
-  "UTC",
-] as const;
 export const processingTimeOptions = [
   "1–2 business days",
   "3–5 business days",
@@ -119,43 +88,6 @@ export const shippingOptionChoices: readonly string[] = shippingOptionsCatalog.m
 export const shippingOptionDescription = (label: string) =>
   shippingOptionsCatalog.find((option) => option.label === label)?.description ?? "";
 
-export const nigerianBanks: readonly string[] = [
-  "Access Bank",
-  "Citibank Nigeria",
-  "Ecobank Nigeria",
-  "Fidelity Bank",
-  "First Bank of Nigeria",
-  "First City Monument Bank (FCMB)",
-  "Globus Bank",
-  "Guaranty Trust Bank (GTBank)",
-  "Heritage Bank",
-  "Jaiz Bank",
-  "Keystone Bank",
-  "Kuda Microfinance Bank",
-  "Lotus Bank",
-  "Moniepoint Microfinance Bank",
-  "OPay",
-  "PalmPay",
-  "Parallex Bank",
-  "Polaris Bank",
-  "Premium Trust Bank",
-  "Providus Bank",
-  "Signature Bank",
-  "Sparkle Microfinance Bank",
-  "Stanbic IBTC Bank",
-  "Standard Chartered Bank",
-  "Sterling Bank",
-  "Suntrust Bank",
-  "TAJBank",
-  "Titan Trust Bank",
-  "Union Bank of Nigeria",
-  "United Bank for Africa (UBA)",
-  "Unity Bank",
-  "VFD Microfinance Bank",
-  "Wema Bank",
-  "Zenith Bank",
-];
-
 export function defaultAccountPreferences(): AccountPreferences {
   return {
     avatarDataUrl: "",
@@ -165,12 +97,6 @@ export function defaultAccountPreferences(): AccountPreferences {
       newsletter: false,
       securityAlerts: true,
     },
-    region: {
-      currency: "NGN",
-      language: "English",
-      timezone: "Africa/Lagos",
-    },
-    paymentMethods: [],
     twoFactorEnabled: false,
     store: {
       storeName: "",
@@ -182,10 +108,6 @@ export function defaultAccountPreferences(): AccountPreferences {
       processingTime: "1–2 business days",
       shippingOptions: ["Doorstep delivery"],
       openingHours: "",
-    },
-    bank: {
-      bankName: "",
-      accountNumber: "",
     },
   };
 }
@@ -209,8 +131,6 @@ export function readAccountPreferences(scope: string): AccountPreferences {
     return {
       avatarDataUrl: typeof parsed.avatarDataUrl === "string" ? parsed.avatarDataUrl : "",
       notifications: { ...preferences.notifications, ...(parsed.notifications ?? {}) },
-      region: { ...preferences.region, ...(parsed.region ?? {}) },
-      paymentMethods: Array.isArray(parsed.paymentMethods) ? parsed.paymentMethods : [],
       twoFactorEnabled: Boolean(parsed.twoFactorEnabled),
       store: { ...preferences.store, ...(parsed.store ?? {}) },
       fulfilment: {
@@ -220,7 +140,6 @@ export function readAccountPreferences(scope: string): AccountPreferences {
           ? parsed.fulfilment.shippingOptions
           : preferences.fulfilment.shippingOptions,
       },
-      bank: { ...preferences.bank, ...(parsed.bank ?? {}) },
     };
   } catch (cause) {
     console.error("Could not read the saved SupreCart account preferences.", cause);
@@ -262,22 +181,4 @@ export function subscribeAccountPreferences(listener: () => void) {
 
 export function accountAvatar(account: { email: string; role: "buyer" | "seller" }) {
   return readAccountPreferences(accountPreferenceScope(account.role, account.email)).avatarDataUrl;
-}
-
-export function createPaymentMethod(input: {
-  brand: string;
-  last4: string;
-  expiry: string;
-}): PaymentMethod {
-  const suffix =
-    typeof crypto !== "undefined" && "randomUUID" in crypto
-      ? crypto.randomUUID()
-      : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-  return {
-    id: suffix,
-    brand: input.brand,
-    last4: input.last4.replace(/\D/g, "").slice(-4),
-    expiry: input.expiry,
-    isDefault: false,
-  };
 }

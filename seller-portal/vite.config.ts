@@ -9,6 +9,9 @@ export default defineConfig({
   root: portalDirectory,
   envDir: resolve(portalDirectory, ".."),
   plugins: [react()],
+  resolve: {
+    alias: { "@": resolve(portalDirectory, "../src") },
+  },
   publicDir: resolve(portalDirectory, "../public"),
   server: { host: "127.0.0.1", port: 5181 },
   build: { outDir: "dist", emptyOutDir: true },

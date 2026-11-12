@@ -8,8 +8,6 @@ export type SellerApplication = {
   storeName: string;
   phone: string;
   productDescription: string;
-  bankName: string;
-  bankAccountNumber: string;
   status: SellerApplicationStatus;
   submittedAt: string;
   reviewedAt?: string;
@@ -18,7 +16,7 @@ export type SellerApplication = {
 
 export type SellerApplicationDraft = Pick<
   SellerApplication,
-  "email" | "name" | "storeName" | "phone" | "productDescription" | "bankName" | "bankAccountNumber"
+  "email" | "name" | "storeName" | "phone" | "productDescription"
 >;
 
 const storageKey = "suprecart-seller-applications";
@@ -32,8 +30,6 @@ const seededApplications: SellerApplication[] = [
     phone: "+234 803 000 0000",
     productDescription:
       "Considered footwear and everyday accessories, sourced and styled in small batches.",
-    bankName: "Zenith Bank",
-    bankAccountNumber: "0000000000",
     status: "approved",
     submittedAt: "2026-08-28T09:30:00.000Z",
     reviewedAt: "2026-08-30T11:15:00.000Z",
@@ -58,8 +54,6 @@ function isSellerApplication(value: unknown): value is SellerApplication {
     typeof entry.storeName === "string" &&
     typeof entry.phone === "string" &&
     typeof entry.productDescription === "string" &&
-    typeof entry.bankName === "string" &&
-    typeof entry.bankAccountNumber === "string" &&
     ["pending", "approved", "rejected"].includes(entry.status ?? "") &&
     typeof entry.submittedAt === "string"
   );
@@ -147,8 +141,6 @@ export function reviewSellerApplication(
       storeName: entry.storeName,
       phone: entry.phone,
       productDescription: entry.productDescription,
-      bankName: entry.bankName,
-      bankAccountNumber: entry.bankAccountNumber,
       status,
       submittedAt: entry.submittedAt,
       reviewedAt: new Date().toISOString(),

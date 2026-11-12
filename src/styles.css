@@ -2245,80 +2245,6 @@ body {
 .cart-total {
   border-top: 1px solid var(--border);
 }
-.bag-extras {
-  display: grid;
-  gap: 11px;
-  margin: 4px 0;
-  padding: 14px;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  background: #faf9f4;
-}
-.bag-extras-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-}
-.bag-extras-head strong {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  color: var(--foreground);
-  font-size: 11px;
-}
-.bag-extras-head svg {
-  color: #4a7d5f;
-}
-.bag-extras-head span {
-  color: var(--muted-foreground);
-  font-size: 9px;
-}
-.bag-extras-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
-}
-.bag-extras-grid label {
-  display: grid;
-  gap: 5px;
-  color: #4d584c;
-  font-size: 9px;
-  font-weight: 650;
-}
-.bag-extras-grid input,
-.bag-extras-grid textarea {
-  width: 100%;
-  min-height: 36px;
-  padding: 8px 9px;
-  border: 1px solid #dedfd6;
-  border-radius: 6px;
-  background: #fff;
-  color: #27332a;
-  font: inherit;
-  font-size: 11px;
-}
-.bag-extras-grid textarea {
-  min-height: 60px;
-  resize: vertical;
-}
-.bag-extras-grid input:focus,
-.bag-extras-grid textarea:focus {
-  border-color: #7aa98e;
-  outline: 0;
-  box-shadow: 0 0 0 3px rgb(68 122 94 / 12%);
-}
-.bag-extras-full {
-  grid-column: 1 / -1;
-}
-@media (max-width: 520px) {
-  .bag-extras-grid {
-    grid-template-columns: minmax(0, 1fr);
-  }
-  .bag-extras-full {
-    grid-column: auto;
-  }
-}
 .search-result span {
   display: flex;
   flex-direction: column;
@@ -2823,64 +2749,6 @@ body {
 .account-toggle-row input:checked::after {
   transform: translateX(18px);
 }
-.account-payment-list {
-  display: grid;
-  gap: 10px;
-}
-.account-payment-card {
-  display: grid;
-  grid-template-columns: minmax(130px, 1fr) auto auto auto auto;
-  align-items: center;
-  gap: 14px;
-  padding: 14px;
-  border: 1px solid #e8e9e2;
-  border-radius: 8px;
-  background: #fff;
-  color: #4f5a50;
-  font-size: 11px;
-}
-.account-payment-brand {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  color: #29342b;
-}
-.account-payment-brand svg {
-  color: #4f7a5b;
-}
-.account-payment-default {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 4px 8px;
-  border-radius: 20px;
-  background: #edf3e9;
-  color: #476345;
-  font-size: 9px;
-  font-weight: 700;
-}
-.account-inline-link {
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: #466149;
-  font: inherit;
-  font-size: 10px;
-  font-weight: 650;
-  cursor: pointer;
-}
-.account-payment-form {
-  margin-top: 18px;
-  padding-top: 18px;
-  border-top: 1px solid #eceee7;
-}
-.account-payment-form h3 {
-  margin: 0;
-  font-size: 12px;
-}
-.account-payment-form .button {
-  justify-self: start;
-}
 .account-security-actions {
   display: grid;
   gap: 14px;
@@ -2923,11 +2791,6 @@ body {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-}
-@media (max-width: 640px) {
-  .account-payment-card {
-    grid-template-columns: 1fr auto;
-  }
 }
 .account-dashboard > .button {
   gap: 8px;
@@ -3898,47 +3761,6 @@ body {
   color: #77683e;
   font-size: 10px;
   line-height: 1.6;
-}
-.payment-method-options {
-  display: grid;
-  gap: 9px;
-  margin: 18px 0 0;
-  padding: 0;
-  border: 0;
-}
-.payment-method-options legend {
-  margin-bottom: 9px;
-  color: #29342b;
-  font-size: 12px;
-  font-weight: 750;
-}
-.payment-method-options label {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  padding: 12px;
-  border: 1px solid #e4e5dc;
-  border-radius: 7px;
-  background: #fffefa;
-  cursor: pointer;
-}
-.payment-method-options input {
-  flex: 0 0 auto;
-  margin: 2px 0 0;
-  accent-color: #344a37;
-}
-.payment-method-options label > span {
-  display: grid;
-  gap: 4px;
-}
-.payment-method-options strong {
-  color: #29342b;
-  font-size: 11px;
-}
-.payment-method-options small {
-  color: #777d72;
-  font-size: 10px;
-  line-height: 1.5;
 }
 .checkout-actions {
   display: flex;
@@ -7399,8 +7221,7 @@ body {
 }
 .account-dashboard-card,
 .account-summary-card,
-.account-address-card,
-.account-payment-card {
+.account-address-card {
   min-width: 0;
 }
 .account-dashboard-card {
@@ -7418,9 +7239,6 @@ body {
 }
 .account-toggle-row > span {
   min-width: 0;
-}
-.account-payment-card {
-  grid-template-columns: minmax(120px, 1fr) auto auto auto auto;
 }
 .account-form .field-pair {
   min-width: 0;
@@ -7696,13 +7514,6 @@ body {
   .account-dashboard-card dl > div {
     grid-template-columns: 1fr;
     gap: 3px;
-  }
-  .account-payment-card {
-    grid-template-columns: 1fr auto;
-    gap: 9px;
-  }
-  .account-payment-card > :nth-child(3) {
-    grid-column: 1 / -1;
   }
   .shop-heading {
     align-items: flex-start;
@@ -10236,8 +10047,6 @@ a.skip-link:focus-visible {
   .checkout-card input,
   .checkout-card select,
   .checkout-card textarea,
-  .bag-extras-grid input,
-  .bag-extras-grid textarea,
   .message-composer input,
   .admin-login input,
   .admin-shell input,
@@ -11702,7 +11511,7 @@ a.skip-link:focus-visible {
 }
 .buyer-hub-quick-grid {
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 10px;
 }
 .buyer-hub-quick-card {
@@ -11968,8 +11777,7 @@ a.skip-link:focus-visible {
   color: #465048;
   font-size: 10.5px;
 }
-.buyer-hub-address-summary,
-.buyer-hub-payment-summary {
+.buyer-hub-address-summary {
   display: flex;
   align-items: flex-start;
   gap: 9px;
@@ -11979,14 +11787,12 @@ a.skip-link:focus-visible {
   border-radius: 10px;
   background: #fafbf7;
 }
-.buyer-hub-address-summary > svg,
-.buyer-hub-payment-summary > svg {
+.buyer-hub-address-summary > svg {
   flex: 0 0 auto;
   margin-top: 1px;
   color: #50745e;
 }
-.buyer-hub-address-summary p,
-.buyer-hub-payment-summary p {
+.buyer-hub-address-summary p {
   display: grid;
   min-width: 0;
   gap: 2px;
@@ -11995,13 +11801,9 @@ a.skip-link:focus-visible {
   font-size: 9.5px;
   line-height: 1.5;
 }
-.buyer-hub-address-summary strong,
-.buyer-hub-payment-summary strong {
+.buyer-hub-address-summary strong {
   color: #35433a;
   font-size: 10.5px;
-}
-.buyer-hub-payment-summary .buyer-hub-default-badge {
-  margin-left: auto;
 }
 .buyer-hub-mini-empty {
   display: flex;
@@ -12717,7 +12519,7 @@ a.skip-link:focus-visible {
     grid-template-columns: minmax(0, 1fr);
   }
   .buyer-hub-side-stack {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 @media (max-width: 1020px) {
