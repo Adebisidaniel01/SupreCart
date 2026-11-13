@@ -2272,3 +2272,172 @@
     padding-inline: 14px;
   }
 }
+
+/* ---------- Seller studio theme ---------- */
+.seller-theme-toggle {
+  width: 38px;
+  height: 38px;
+}
+
+.seller-logo-dark {
+  display: none;
+}
+
+html[data-theme="dark"] .seller-logo-default {
+  display: none;
+}
+
+html[data-theme="dark"] .seller-logo-dark {
+  display: block;
+}
+
+html[data-theme="dark"] .seller-site {
+  --seller-ink: #eef3ed;
+  --seller-muted: #97a39b;
+  --seller-green: #2e9e86;
+  --seller-line: #2a352f;
+  background: #0f1513;
+  color: var(--seller-ink);
+}
+
+html[data-theme="dark"] .seller-site :is(h1, h2, h3, h4, strong) {
+  color: var(--seller-ink);
+}
+
+html[data-theme="dark"] .seller-site :is(p, small, span, dt, dd, time) {
+  color: var(--seller-muted);
+}
+
+html[data-theme="dark"] .seller-site :is(
+  .seller-header,
+  .seller-mobile-toggle,
+  .seller-account-trigger,
+  .seller-account-dropdown,
+  .seller-settings-trigger,
+  .seller-settings-dropdown,
+  .seller-settings-dropdown::before,
+  .seller-mobile-dropdown,
+  .seller-mobile-dropdown::before,
+  .seller-sidebar,
+  .seller-form-card,
+  .seller-status-page,
+  .seller-metric-card,
+  .seller-dashboard-section,
+  .seller-order-list article,
+  .seller-settings-card,
+  .seller-settings-tabs,
+  .seller-settings-tabs > button.active,
+  .seller-shipping-card,
+  .seller-fund-ledger,
+  .seller-payout-panel,
+  .seller-commission-result > div,
+  .seller-confirm,
+  .seller-avatar,
+  .seller-product-row > img
+) {
+  border-color: var(--seller-line);
+  background: #18211e;
+  color: var(--seller-ink);
+}
+
+html[data-theme="dark"] .seller-site :is(
+  .seller-site input:not([type="file"]),
+  .seller-site textarea,
+  .seller-site select,
+  .seller-settings-form input,
+  .seller-settings-form select,
+  .seller-commission-estimator input,
+  .seller-toggle-row,
+  .seller-shipping-options,
+  .seller-payout-form,
+  .seller-upload-box,
+  .seller-product-form select,
+  .seller-product-form input[type="file"]
+) {
+  border-color: var(--seller-line);
+  background: #1e2925;
+  color: var(--seller-ink);
+}
+
+html[data-theme="dark"] .seller-site :is(
+  .seller-side-link.active,
+  .seller-settings-dropdown button.active,
+  .seller-mobile-dropdown button.active,
+  .seller-settings-tabs > button.active,
+  .seller-shipping-card.enabled,
+  .seller-verify-banner.verified,
+  .seller-product-state.published,
+  .seller-status-badge,
+  .seller-step-pill,
+  .seller-hero-label
+) {
+  border-color: var(--seller-line);
+  background: rgb(46 158 134 / 14%);
+  color: var(--seller-green);
+}
+
+html[data-theme="dark"] .seller-site :is(
+  .seller-form-warning,
+  .seller-verify-banner,
+  .seller-metric-held
+) {
+  border-color: #4a3d1f;
+  background: rgb(242 170 0 / 12%);
+  color: #e5bd64;
+}
+
+html[data-theme="dark"] .seller-site :is(
+  .seller-form-error,
+  .seller-listing-error,
+  .seller-danger-zone,
+  .seller-confirm
+) {
+  border-color: rgb(255 122 102 / 30%);
+  background: rgb(255 122 102 / 10%);
+}
+
+html[data-theme="dark"] .seller-site .seller-status-badge.rejected {
+  background: rgb(255 122 102 / 12%);
+  color: #ff9f8e;
+}
+
+html[data-theme="dark"] .seller-site .seller-outline-button {
+  border-color: var(--seller-line);
+  background: #18211e;
+  color: var(--seller-ink);
+}
+
+html[data-theme="dark"] .seller-site .seller-outline-button:hover {
+  background: #1e2925;
+}
+
+html[data-theme="dark"] .seller-site :is(.seller-account-dropdown a:hover, .seller-settings-dropdown button:hover, .seller-mobile-dropdown button:hover, .seller-side-link:hover) {
+  background: #1e2925;
+}
+
+html[data-theme="dark"] .seller-site .seller-metric-balance {
+  background: linear-gradient(135deg, #1e2925, #18211e);
+}
+
+html[data-theme="dark"] .seller-site :is(.seller-auth-icon, .seller-status-icon, .seller-product-state, .seller-order-status) {
+  background: #1e2925;
+  color: var(--seller-muted);
+}
+
+@media (max-width: 420px) {
+  .seller-header {
+    gap: 8px;
+  }
+
+  .seller-logo-link,
+  .seller-logo-link img {
+    width: 112px;
+  }
+
+  .seller-theme-toggle,
+  .seller-mobile-toggle,
+  .seller-settings-trigger {
+    width: 34px;
+    height: 34px;
+  }
+}

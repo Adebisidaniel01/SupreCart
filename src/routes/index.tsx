@@ -1,12 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { ArrowRight, ArrowUpRight, BadgeCheck, ShieldCheck, Truck } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { ProductCard, Wordmark, useStore } from "@/components/storefront";
+import { ProductCard, Wordmark } from "@/components/storefront";
 import { accountFirstName, useActiveAccount } from "@/hooks/use-active-account";
 import { products, categories, type Product } from "@/lib/catalog";
-import { getOrders } from "@/lib/orders";
-import { recommendProducts, type RecommendationOrder } from "@/lib/recommendations";
 
 function pickProducts(ids: number[]): Product[] {
   return ids
@@ -14,10 +12,8 @@ function pickProducts(ids: number[]): Product[] {
     .filter((product): product is Product => product !== undefined);
 }
 
-const topProducts = pickProducts([1, 7, 8, 13]);
-const mostViewed = pickProducts([3, 1, 5, 10]);
-const communityPicks = pickProducts([1, 6, 7, 8]);
-const freshProducts = pickProducts([11, 12, 13, 15]);
+const topProducts = pickProducts([1, 7, 8]);
+const freshProducts = pickProducts([11, 13, 15]);
 
 const averageRating = (
   products.reduce((total, product) => total + Number(product.rating), 0) / products.length
@@ -96,41 +92,8 @@ export const Route = createFileRoute("/")({
 
 function Index() {
   const { account } = useActiveAccount();
-  const { favorites, cart } = useStore();
-  const [recommendationOrders, setRecommendationOrders] = useState<RecommendationOrder[]>([]);
   const firstName = accountFirstName(account);
   const isSeller = account?.role === "seller";
-
-  useEffect(() => {
-    if (!account) {
-      setRecommendationOrders([]);
-      return;
-    }
-    setRecommendationOrders(
-      getOrders(account.email).map((order) => ({
-        items: order.items,
-        status: order.status,
-      })),
-    );
-  }, [account]);
-
-  const recommendations = useMemo(
-    () =>
-      recommendProducts({
-        favorites,
-        cart,
-        orders: recommendationOrders,
-        limit: 4,
-      }),
-    [favorites, cart, recommendationOrders],
-  );
-
-  const recommendationCards: Array<{ product: Product; note: string }> = recommendations.length
-    ? recommendations.map((recommendation) => ({
-        product: recommendation.product,
-        note: recommendation.reason,
-      }))
-    : communityPicks.map((product) => ({ product, note: "" }));
 
   return (
     <main id="main-content" tabIndex={-1} className="app-home">
@@ -227,21 +190,7 @@ function Index() {
           items={topProducts.map((product) => ({ product }))}
         />
 
-        <AppProductSection
-          kicker="Popular this week"
-          title="Most viewed"
-          note="Most opened finds across the marketplace right now."
-          items={mostViewed.map((product) => ({ product }))}
-        />
-
-        {account ? (
-          <AppProductSection
-            kicker="Picked for you"
-            title={`More finds for ${firstName}`}
-            note="Blended from what you save, add to your bag and order."
-            items={recommendationCards}
-          />
-        ) : (
+        {!account && (
           <section className="app-seller-banner">
             <div>
               <p className="app-kicker">For independent sellers</p>
@@ -257,15 +206,6 @@ function Index() {
               </Link>
             </Button>
           </section>
-        )}
-
-        {!account && (
-          <AppProductSection
-            kicker="Community favourites"
-            title="Finds shoppers keep coming back to"
-            note="A considered mix of pieces worth making room for."
-            items={communityPicks.map((product) => ({ product }))}
-          />
         )}
 
         <AppProductSection

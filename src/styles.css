@@ -544,7 +544,7 @@ button {
 }
 .footer-main {
   display: grid;
-  grid-template-columns: 1.28fr 1fr 1.05fr 1.08fr 1.45fr;
+  grid-template-columns: 1.5fr 1fr 1fr;
   gap: 45px;
   padding-block: 43px 39px;
 }
@@ -2068,7 +2068,7 @@ body {
   color: #728064;
 }
 .footer-main {
-  grid-template-columns: 1.35fr 0.9fr 1fr 1fr 1.35fr;
+  grid-template-columns: 1.5fr 1fr 1fr;
   gap: 35px;
 }
 .footer .wordmark {
@@ -3969,7 +3969,7 @@ body {
     font-size: 10px;
   }
   .footer-main {
-    grid-template-columns: 1.2fr 0.8fr 1fr 1fr 1.15fr;
+    grid-template-columns: 1.4fr 1fr 1fr;
     gap: 20px;
   }
   .category-card {
@@ -7341,11 +7341,8 @@ body {
     gap: 11px;
   }
   .footer-main {
-    grid-template-columns: 1.2fr 0.9fr 1fr 1fr;
+    grid-template-columns: 1.4fr 1fr 1fr;
     gap: 26px;
-  }
-  .footer-main > div:last-child {
-    grid-column: 1 / -1;
   }
 }
 
@@ -7671,7 +7668,7 @@ body {
     gap: 12px;
   }
   .footer-main {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 18px 12px;
     padding-block: 22px;
   }

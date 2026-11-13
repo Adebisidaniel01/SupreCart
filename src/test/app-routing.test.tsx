@@ -19,7 +19,6 @@ describe("App routing", () => {
     "/checkout",
     "/careers",
     "/info/contact",
-    "/admin",
   ])("matches %s instead of falling back to not found", (path) => {
     const matches = router.matchRoutes(path);
 

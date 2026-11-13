@@ -63,7 +63,6 @@ import {
   trackAddToCart,
   trackAddToWishlist,
   trackContactSeller,
-  trackNewsletterSignup,
   trackRemoveFromCart,
   trackRemoveFromWishlist,
   trackViewCart,
@@ -130,8 +129,6 @@ export function Storefront({ children }: { children: ReactNode }) {
   const [query, setQuery] = useState("");
   const [mobileNav, setMobileNav] = useState(false);
   const [categoriesOpen, setCategoriesOpen] = useState(false);
-  const [email, setEmail] = useState("");
-  const [newsletterNote, setNewsletterNote] = useState("");
   const [notice, setNotice] = useState("");
   const navigate = useNavigate();
   const { account, avatar, signOut } = useActiveAccount();
@@ -797,29 +794,12 @@ export function Storefront({ children }: { children: ReactNode }) {
             </div>
           </div>
           <div className="footer-column">
-            <h3>DISCOVER</h3>
-            {["All finds", "Clothing", "Footwear", "Home", "Electronics", "Beauty"].map(
-              (label, index) => (
-                <Link
-                  key={label}
-                  to="/shop"
-                  search={{ filter: index === 0 ? "All" : label, query: "" }}
-                >
-                  {label}
-                </Link>
-              ),
-            )}
-          </div>
-          <div className="footer-column">
             <h3>HELP & SUPPORT</h3>
             <Link to="/support">Customer care</Link>
             {(
               [
                 ["Contact us", "contact"],
-                ["Shipping", "shipping"],
-                ["Returns", "returns"],
                 ["FAQs", "faq"],
-                ["Size guide", "size"],
               ] as const
             ).map(([label, slug]) => (
               <Link key={slug} to="/info/$slug" params={{ slug }}>
@@ -829,75 +809,12 @@ export function Storefront({ children }: { children: ReactNode }) {
           </div>
           <div className="footer-column">
             <h3>ABOUT SUPRECART</h3>
-            {(
-              [
-                ["Our story", "about"],
-                ["Sell with us", "sellers"],
-                ["Careers", "careers"],
-                ["Privacy", "privacy"],
-                ["Terms", "terms"],
-              ] as const
-            ).map(([label, slug]) =>
-              slug === "sellers" ? (
-                <Link key={slug} to="/sellers">
-                  {label}
-                </Link>
-              ) : slug === "careers" ? (
-                <Link key={slug} to="/careers">
-                  {label}
-                </Link>
-              ) : (
-                <Link key={slug} to="/info/$slug" params={{ slug }}>
-                  {label}
-                </Link>
-              ),
-            )}
-          </div>
-          <div className="newsletter">
-            <h3>A NOTE FROM US</h3>
-            <p>New finds and marketplace news, when we’re ready.</p>
-            <form
-              onSubmit={(event) => {
-                event.preventDefault();
-                const value = email.trim();
-                if (!value) return;
-                try {
-                  const stored = JSON.parse(
-                    localStorage.getItem("suprecart-newsletter") ?? "[]",
-                  ) as unknown;
-                  const list = Array.isArray(stored) ? (stored as string[]) : [];
-                  if (!list.includes(value)) list.push(value);
-                  localStorage.setItem("suprecart-newsletter", JSON.stringify(list));
-                  setNewsletterNote(
-                    "Saved on this device. Newsletter delivery is not connected yet.",
-                  );
-                  trackNewsletterSignup();
-                  setEmail("");
-                } catch (error) {
-                  console.error("Could not save the SupreCart newsletter interest.", error);
-                  setNewsletterNote(
-                    "Your browser could not save this address. Newsletter delivery is not connected yet.",
-                  );
-                }
-              }}
-            >
-              <input
-                type="email"
-                required
-                placeholder="Your email address"
-                aria-label="Newsletter email"
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-              />
-              <Button variant="ghost" size="icon" aria-label="Sign up for newsletter">
-                <ArrowRight />
-              </Button>
-            </form>
-            {newsletterNote && (
-              <p role="status" className="newsletter-note">
-                {newsletterNote}
-              </p>
-            )}
+            <Link to="/info/$slug" params={{ slug: "about" }}>
+              Our story
+            </Link>
+            <Link to="/info/$slug" params={{ slug: "privacy-terms" }}>
+              Privacy &amp; terms
+            </Link>
           </div>
         </div>
         <div className="footer-bottom page-width">
@@ -908,11 +825,8 @@ export function Storefront({ children }: { children: ReactNode }) {
             </span>
           </p>
           <div>
-            <Link to="/info/$slug" params={{ slug: "terms" }}>
-              Terms & conditions
-            </Link>
-            <Link to="/info/$slug" params={{ slug: "privacy" }}>
-              Privacy policy
+            <Link to="/info/$slug" params={{ slug: "privacy-terms" }}>
+              Privacy & terms
             </Link>
             <Link to="/info/$slug" params={{ slug: "cookies" }}>
               Cookie policy

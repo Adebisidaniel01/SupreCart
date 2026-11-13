@@ -48,6 +48,7 @@ import {
 } from "../../src/lib/seller-applications";
 import { Analytics } from "../../src/components/Analytics";
 import { CookieConsent } from "../../src/components/CookieConsent";
+import { ThemeToggle } from "../../src/components/theme";
 import { trackEvent, trackLogin, trackSignUp } from "../../src/lib/analytics";
 import { calculateCommission, commissionTiers } from "../../src/lib/commission";
 import {
@@ -643,10 +644,17 @@ export default function SellerPortal({ standalone = false }: { standalone?: bool
     <main id="main-content" tabIndex={-1} className="seller-site">
       <header className="seller-header">
         <a href={marketplaceUrl} aria-label="SupreCart home" className="seller-logo-link">
-          <img src="/suprecart-logo.png" alt="SupreCart" />
+          <img className="seller-logo-default" src="/suprecart-logo.png" alt="SupreCart" />
+          <img
+            className="seller-logo-dark"
+            src="/suprecart-logo-light.png"
+            alt=""
+            aria-hidden="true"
+          />
         </a>
         <span className="seller-header-note">SELLER STUDIO</span>
         <div className="seller-header-actions">
+          <ThemeToggle className="seller-theme-toggle" />
           {sessionAccount && showDashboard && (
             <div className="seller-settings-menu">
               <button

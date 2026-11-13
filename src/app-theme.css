@@ -552,7 +552,7 @@ html[data-theme] .account-menu [role="menuitem"]:hover {
 
 @media (min-width: 1024px) {
   .app-product-grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 
@@ -2211,4 +2211,197 @@ html[data-theme] .cookie-toggle small {
   html[data-theme] .cookie-consent-actions button {
     flex: 1;
   }
+}
+
+/* ---------- Legacy page theme bridge ---------- */
+html[data-theme] :is(.support-page, .messages-page, .buyer-hub-page, .info-page, .careers-page) {
+  color: var(--app-text);
+}
+
+html[data-theme] :is(.support-page, .messages-page, .buyer-hub-page, .info-page, .careers-page) :is(h1, h2, h3, h4, strong, dt, dd) {
+  color: var(--app-text);
+}
+
+html[data-theme] :is(.support-page, .messages-page, .buyer-hub-page, .info-page, .careers-page) :is(p, small, li, time) {
+  color: var(--app-muted);
+}
+
+html[data-theme] .careers-page,
+html[data-theme] .buyer-hub-page.buyer-hub-overview {
+  background: var(--app-bg);
+}
+
+html[data-theme] .buyer-hub-welcome {
+  color: #f2f7f3;
+}
+
+html[data-theme] .buyer-hub-welcome :is(h1, h2, h3, strong) {
+  color: #ffffff;
+}
+
+html[data-theme] .buyer-hub-welcome :is(p, span) {
+  color: #c3d5c9;
+}
+
+html[data-theme] :is(
+  .support-topbar,
+  .support-chat,
+  .support-chat-header,
+  .support-queue-card,
+  .support-help-card,
+  .messages-topbar,
+  .messages-layout,
+  .messages-inbox,
+  .conversation-header,
+  .buyer-hub-local-note,
+  .buyer-hub-sidebar,
+  .buyer-hub-panel,
+  .buyer-hub-quick-card,
+  .buyer-hub-product-card,
+  .buyer-hub-order-card,
+  .buyer-hub-order-head,
+  .buyer-hub-address-card,
+  .buyer-hub-settings-nav,
+  .buyer-hub-settings-content > .account-dashboard-card,
+  .buyer-hub-mobile-trigger,
+  .buyer-hub-mobile-dropdown,
+  .buyer-hub-mobile-card,
+  .buyer-hub-mobile-signout,
+  .account-dashboard-card,
+  .account-form,
+  .buyer-hub-address-form,
+  .buyer-hub-empty,
+  .buyer-hub-order-help,
+  .buyer-hub-address-summary,
+  .buyer-hub-order-confirm-delivery,
+  .buyer-hub-order-escrow,
+  .buyer-hub-order-filters,
+  .career-icon,
+  .careers-note
+) {
+  border-color: var(--app-line);
+  background: var(--app-surface);
+}
+
+html[data-theme] .buyer-hub-header {
+  border-color: var(--app-line);
+  background:
+    radial-gradient(circle at 88% 20%, rgb(46 158 134 / 14%), transparent 42%),
+    linear-gradient(125deg, var(--app-surface-2), var(--app-surface) 62%);
+}
+
+html[data-theme] .buyer-hub-settings-content > .account-dashboard-card,
+html[data-theme] .buyer-hub-address-form {
+  background: var(--app-surface);
+}
+
+html[data-theme] :is(.support-message-list, .message-list) {
+  background: var(--app-surface-2);
+}
+
+html[data-theme] .chat-message {
+  border-color: var(--app-line);
+  background: var(--app-surface);
+  color: var(--app-text);
+}
+
+html[data-theme] .chat-message.own-message {
+  border-color: var(--app-line);
+  background: var(--app-teal-soft);
+}
+
+html[data-theme] .chat-message footer,
+html[data-theme] .chat-message footer span {
+  color: var(--app-muted);
+}
+
+html[data-theme] .conversation-item {
+  border-top-color: var(--app-line);
+}
+
+html[data-theme] .conversation-item.active {
+  background: var(--app-teal-soft);
+}
+
+html[data-theme] :is(.conversation-avatar, .support-avatar, .buyer-hub-avatar, .buyer-hub-mobile-avatar, .buyer-hub-quick-icon, .buyer-hub-mobile-status-icon, .buyer-hub-mobile-menu-icon, .buyer-hub-empty > span, .buyer-hub-address-card header > span) {
+  background: var(--app-surface-2);
+  color: var(--app-teal);
+}
+
+html[data-theme] :is(
+  .message-composer input,
+  .buyer-hub-page input:not([type="checkbox"]):not([type="radio"]),
+  .buyer-hub-page select,
+  .buyer-hub-page textarea,
+  .account-form input:not([type="checkbox"]):not([type="radio"]),
+  .account-form select,
+  .account-form textarea,
+  .buyer-hub-settings-select select
+) {
+  border-color: var(--app-line);
+  background: var(--app-surface-2);
+  color: var(--app-text);
+}
+
+html[data-theme] :is(.message-icon-button, .buyer-hub-outline-link, .buyer-hub-header-link, .buyer-hub-mobile-trigger) {
+  border-color: var(--app-line);
+  background: var(--app-surface);
+  color: var(--app-text);
+}
+
+html[data-theme] :is(.buyer-hub-sidebar-nav button, .buyer-hub-services a, .buyer-hub-sidebar-services a, .buyer-hub-settings-nav button) {
+  color: var(--app-muted);
+}
+
+html[data-theme] :is(.buyer-hub-sidebar-nav button:hover, .buyer-hub-services a:hover, .buyer-hub-sidebar-services a:hover, .buyer-hub-settings-nav button:hover) {
+  background: var(--app-surface-2);
+  color: var(--app-text);
+}
+
+html[data-theme] :is(.buyer-hub-sidebar-nav button.active, .buyer-hub-settings-nav button.active, .buyer-hub-mobile-dropdown button.active) {
+  background: var(--app-teal-soft);
+  color: var(--app-teal);
+}
+
+html[data-theme] :is(.buyer-hub-breadcrumb, .support-guest-label, .messages-privacy-note, .support-loading, .support-queue-note, .support-disclaimer, .buyer-hub-local-note, .messages-inbox-note, .careers-message, .careers-note) {
+  color: var(--app-muted);
+}
+
+html[data-theme] :is(.buyer-hub-breadcrumb a, .buyer-hub-text-link, .support-help-card a, .messages-account-link, .messages-empty a, .account-order-support a) {
+  color: var(--app-teal);
+}
+
+html[data-theme] :is(.support-page, .messages-page, .buyer-hub-page, .info-page, .careers-page) .eyebrow {
+  color: var(--app-teal);
+}
+
+html[data-theme] :is(.local-data-note, .support-disclaimer) {
+  border-color: var(--app-line);
+  background: var(--app-surface-2);
+  color: var(--app-muted);
+}
+
+html[data-theme] .buyer-hub-status {
+  background: var(--app-surface-2);
+  color: var(--app-muted);
+}
+
+html[data-theme] .buyer-hub-status.is-processing {
+  background: rgb(242 170 0 / 16%);
+  color: var(--app-amber);
+}
+
+html[data-theme] .buyer-hub-status.is-transit {
+  background: rgb(57 125 190 / 16%);
+  color: #5594cf;
+}
+
+html[data-theme] .buyer-hub-status.is-delivered {
+  background: var(--app-teal-soft);
+  color: var(--app-teal);
+}
+
+html[data-theme] .buyer-hub-status.is-cancelled {
+  background: rgb(255 122 102 / 14%);
+  color: var(--destructive);
 }

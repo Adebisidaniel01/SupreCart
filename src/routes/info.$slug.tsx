@@ -45,21 +45,14 @@ const pages: Record<string, { title: string; eyebrow: string; body: string[] }> 
       "Are sellers and ratings real? Seller names, ratings and products shown here are seeded marketplace content.",
     ],
   },
-  privacy: {
-    title: "Your trust matters.",
-    eyebrow: "PRIVACY",
+  "privacy-terms": {
+    title: "Privacy & terms.",
+    eyebrow: "PRIVACY & TERMS",
     body: [
       "Cart, wishlist and account details are stored only in your browser. Do not enter sensitive personal or payment information.",
       "If you allow analytics cookies, we use Google Analytics to understand how the storefront and seller portal are used. Analytics can see product and cart events, but never your name, email address, delivery address, password or payment details.",
-      "No actual email verification, newsletter signup, account authentication or payment service is connected yet. A complete privacy notice will be published before launch.",
-    ],
-  },
-  terms: {
-    title: "Marketplace terms.",
-    eyebrow: "TERMS",
-    body: [
-      "Product descriptions, prices, seller information and ratings are illustrative and may not represent items available for purchase.",
-      "No order, payment, delivery, subscription or seller transaction is created through this storefront.",
+      "Product descriptions, prices, seller information and ratings are illustrative and may not represent items available for purchase. No order, payment, delivery, subscription or seller transaction is created through this storefront.",
+      "No actual email verification, newsletter signup, account authentication or payment service is connected yet. A complete privacy notice and marketplace terms will be published before launch.",
     ],
   },
   size: {
