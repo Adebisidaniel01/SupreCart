@@ -52,7 +52,6 @@ import {
 import { accountInitials, useActiveAccount } from "@/hooks/use-active-account";
 import {
   products,
-  categories,
   money,
   sellerIsVerified,
   compareAtPrice,
@@ -283,10 +282,6 @@ export function Storefront({ children }: { children: ReactNode }) {
   const navItems = [
     { label: "Home", to: "/" as const },
     { label: "Shop", to: "/shop" as const, filter: "All" },
-    { label: "Clothing", to: "/shop" as const, filter: "Clothing" },
-    { label: "Footwear", to: "/shop" as const, filter: "Footwear" },
-    { label: "Home & living", to: "/shop" as const, filter: "Home" },
-    { label: "Beauty", to: "/shop" as const, filter: "Beauty" },
   ] as const;
 
   function handleSignOut() {
@@ -537,16 +532,6 @@ export function Storefront({ children }: { children: ReactNode }) {
               >
                 All categories
               </Link>
-              {categories.map((category) => (
-                <Link
-                  key={category}
-                  to="/shop"
-                  search={{ filter: category, query: "" }}
-                  onClick={() => setCategoriesOpen(false)}
-                >
-                  {category}
-                </Link>
-              ))}
             </div>
           </div>
         )}
@@ -772,10 +757,6 @@ export function Storefront({ children }: { children: ReactNode }) {
             <Link to="/" aria-label="SupreCart home">
               <Wordmark variant="light" />
             </Link>
-            <p>
-              A little bit of everything, from sellers worth knowing. Find your kind of good at
-              SupreCart.
-            </p>
             <div className="socials">
               <a href="https://x.com" target="_blank" rel="noreferrer" aria-label="X">
                 <Twitter size={14} />

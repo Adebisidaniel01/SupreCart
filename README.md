@@ -1,17 +1,24 @@
 # SupreCart
 
-SupreCart is a browser-local marketplace with a **buyer storefront** and a **seller studio**. Buyers can browse a seeded catalog, receive hybrid product recommendations, manage a cart, use checkout, chat with sellers, and edit account preferences. Sellers can submit an application, manage local listings, review seeded orders, and view payouts.
+SupreCart is a browser-local marketplace with a **buyer storefront** and a **seller studio**. Buyers can browse a seeded catalog, use similar-product recommendations, manage a cart, use checkout, chat with sellers, and edit account preferences. Sellers can submit an application, manage local listings, review seeded orders, and view payouts.
 
 The app is built with **TanStack Start (React)**, **TanStack Router**, and **Tailwind CSS v4**. All marketplace state is stored in this browser. There is no production database, authentication service, file storage, payment processor, or order backend connected yet. Recommendations are computed locally from catalog content and browser-side shopping signals.
 
 ## Key areas
 
-- **Storefront** (`/`, `/shop`) — browse the seeded catalog, personalized and similar-product recommendations, product pages, cart, and checkout.
+- **Storefront** (`/`, `/shop`) — browse the seeded catalog, similar-product recommendations, product pages, cart, and checkout.
 - **Buyer account** (`/account`) — profile, addresses, orders, messages, and preferences.
 - **Messages** (`/messages`) — local buyer/seller conversations with read receipts.
 - **Seller studio** (`/sellers`) — applications, products, seeded orders, payouts, and store settings.
-- **Sign in / sign up** (`/login`, `/signup`) — local buyer and seller accounts.
-- **Admin** (`/admin`) — marketplace overview, seller application review, and account moderation.
+- **Support and information** (`/support`, `/careers`, `/info/:slug`) — customer care, careers, FAQs, contact, policies, and marketplace information.
+- **Sign in / sign up** (`/login`, `/signup`, `/forgot-password`) — local buyer and seller accounts.
+- **Checkout** (`/checkout`) — local order reference and delivery estimates.
+
+## Pages
+
+The app currently has **12 route files**: 11 static routes plus the dynamic `/info/$slug` route, which serves 8 information pages. That is **19 URLs** in total. The `/sellers` route renders the standalone seller studio.
+
+The admin area has been removed.
 
 ## Development
 
@@ -47,11 +54,7 @@ Local credentials live in `src/lib/accounts.ts`:
 - `blackrose@gmail.com` — buyer, `Daniel Adebisi`.
 - `shewa@gmail.com` — buyer with a seeded approved seller application, `Bello-lawal Dorcas`.
 
-Preset accounts can sign in with any password. New accounts are saved in this browser only. Approved buyers get a local seller session when they sign in; new seller applications remain pending until reviewed locally.
-
-## Admin access
-
-Sign in at `/admin` with the local demo credentials `timie_daniel` / `BlackRose`. Set `ADMIN_USERNAME` and either `ADMIN_PASSWORD` or `ADMIN_PASSWORD_HASH` in the server environment (`.env` locally) to override the demo credentials. `ADMIN_SESSION_SECRET` is optional: when it is omitted, the admin session key is derived from the configured credentials. Warnings, bans, and account deletions are applied to local browser accounts only.
+Preset accounts can sign in with any password. New accounts are saved in this browser only. Approved buyers get a local seller session when they sign in; new seller applications remain pending until an approval flow is connected.
 
 ## Local data and safety
 
@@ -78,7 +81,7 @@ Checkout supports a doorstep fee estimate of ₦2,500 and illustrative pickup st
 
 ## Product recommendations
 
-SupreCart uses a deterministic, browser-local hybrid recommender. It combines **content-based filtering** with **item-based collaborative filtering** to rank products for the home storefront and the "More like this" section of a product dialog. The implementation lives in `src/lib/recommendations.ts`, and the behavior is covered by `src/test/recommendations.test.ts`.
+SupreCart uses a deterministic, browser-local hybrid recommender. It combines **content-based filtering** with **item-based collaborative filtering** to rank products for the "More like this" section of a product dialog. The implementation lives in `src/lib/recommendations.ts`, and the behavior is covered by `src/test/recommendations.test.ts`.
 
 This is not a trained machine-learning model and there is no recommendation server. Every score is calculated from the seeded catalog and local browser state, so results are reproducible and never leave the device.
 
@@ -115,7 +118,7 @@ Item vectors are weighted by these signals. Item similarity is the cosine of the
 
 ### Hybrid ranking and cold start
 
-- **Personalized home ranking:** `60% content score + 40% collaborative score + 5% quality nudge`.
+- **Personalized ranking:** `60% content score + 40% collaborative score + 5% quality nudge`.
 - **Product-dialog ranking:** `70% similarity to the focused product + 25% collaborative score + 5% quality nudge`.
 - **Cold start:** when there is no local history, ranking uses `60% seeded popularity + 40% quality`.
 - **Quality nudge:** `70% rating score + 30% review-volume score`.

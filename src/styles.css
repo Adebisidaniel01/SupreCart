@@ -560,6 +560,9 @@ button {
   max-width: 190px;
   margin: 13px 0 10px;
 }
+.footer-about .socials {
+  margin-top: 14px;
+}
 .footer h3 {
   font-size: 11px;
   color: var(--primary-foreground);
@@ -7682,6 +7685,7 @@ body {
     display: none;
   }
   .footer-about .socials {
+    margin-top: 0;
     margin-left: auto;
   }
   .footer h3 {

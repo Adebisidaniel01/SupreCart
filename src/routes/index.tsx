@@ -4,7 +4,7 @@ import { ArrowRight, ArrowUpRight, BadgeCheck, ShieldCheck, Truck } from "lucide
 import { Button } from "@/components/ui/button";
 import { ProductCard, Wordmark } from "@/components/storefront";
 import { accountFirstName, useActiveAccount } from "@/hooks/use-active-account";
-import { products, categories, type Product } from "@/lib/catalog";
+import { products, type Product } from "@/lib/catalog";
 
 function pickProducts(ids: number[]): Product[] {
   return ids
@@ -14,12 +14,6 @@ function pickProducts(ids: number[]): Product[] {
 
 const topProducts = pickProducts([1, 7, 8]);
 const freshProducts = pickProducts([11, 13, 15]);
-
-const averageRating = (
-  products.reduce((total, product) => total + Number(product.rating), 0) / products.length
-).toFixed(1);
-
-const sellerCount = new Set(products.map((product) => product.seller)).size;
 
 function HomeSplash() {
   const [visible, setVisible] = useState(true);
@@ -140,47 +134,6 @@ function Index() {
           <Link to="/support" className="app-escrow-link">
             How it works <ArrowRight size={14} />
           </Link>
-        </section>
-
-        <section className="app-section" id="categories" aria-label="Shop by category">
-          <div className="app-section-head">
-            <div>
-              <p className="app-kicker">Browse</p>
-              <h2>Shop by category</h2>
-              <p>
-                {averageRating} average rating across {products.length} finds from {sellerCount}{" "}
-                independent sellers.
-              </p>
-            </div>
-            <Link to="/shop" search={{ filter: "All", query: "" }} className="app-section-link">
-              All categories <ArrowRight size={14} />
-            </Link>
-          </div>
-          <div className="app-cat-rail">
-            {categories.map((category) => {
-              const categoryProducts = products.filter((product) => product.category === category);
-              const image = categoryProducts[0]?.image;
-              return (
-                <Link
-                  key={category}
-                  to="/shop"
-                  search={{ filter: category, query: "" }}
-                  className="app-cat-card"
-                  aria-label={`Shop ${category}`}
-                >
-                  <span className="app-cat-img">
-                    {image && <img src={image} alt="" loading="lazy" />}
-                  </span>
-                  <span className="app-cat-meta">
-                    <strong>{category}</strong>
-                    <small>
-                      {categoryProducts.length} {categoryProducts.length === 1 ? "find" : "finds"}
-                    </small>
-                  </span>
-                </Link>
-              );
-            })}
-          </div>
         </section>
 
         <AppProductSection
