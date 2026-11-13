@@ -2,6 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState, type FormEvent } from "react";
 import { ArrowLeft, ArrowRight, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Wordmark } from "@/components/storefront";
 import { trackLogin } from "@/lib/analytics";
 import {
   ensureSellerAccount,
@@ -93,10 +94,7 @@ function Login() {
           <ArrowLeft size={15} /> Back to SupreCart
         </Link>
         <div className="account-brand">
-          <img className="account-mark" src="/suprecart-logo.png" alt="SupreCart" />
-          <span>
-            SUPRECART <small>YOUR MARKETPLACE</small>
-          </span>
+          <Wordmark />
         </div>
         <p className="eyebrow">WELCOME BACK</p>
         <h1>Good to see you.</h1>
@@ -149,7 +147,7 @@ function Login() {
         <Link to="/" className="auth-aside-back">
           <ArrowLeft size={15} /> Back to SupreCart
         </Link>
-        <img className="auth-aside-logo" src="/suprecart-logo.png" alt="SupreCart" />
+        <img className="auth-aside-logo" src="/suprecart-logo-light.png" alt="SupreCart" />
         <span>
           THE GOOD STUFF
           <br />

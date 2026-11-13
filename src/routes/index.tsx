@@ -1,25 +1,23 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { ArrowRight, ArrowUpRight, BadgeCheck, Sparkles } from "lucide-react";
+import { ArrowRight, ArrowUpRight, BadgeCheck, ShieldCheck, Truck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ProductCard, Wordmark, useStore } from "@/components/storefront";
 import { accountFirstName, useActiveAccount } from "@/hooks/use-active-account";
-import { products, categories, money, type Product } from "@/lib/catalog";
+import { products, categories, type Product } from "@/lib/catalog";
 import { getOrders } from "@/lib/orders";
 import { recommendProducts, type RecommendationOrder } from "@/lib/recommendations";
 
-const editProducts = [1, 6, 7, 8]
-  .map((id) => products.find((product) => product.id === id))
-  .filter((product): product is Product => product !== undefined);
+function pickProducts(ids: number[]): Product[] {
+  return ids
+    .map((id) => products.find((product) => product.id === id))
+    .filter((product): product is Product => product !== undefined);
+}
 
-const freshProducts = [11, 12, 13, 15]
-  .map((id) => products.find((product) => product.id === id))
-  .filter((product): product is Product => product !== undefined);
-
-const heroMain = products.find((product) => product.id === 7) ?? products[0]!;
-const heroSide = [9, 1]
-  .map((id) => products.find((product) => product.id === id))
-  .filter((product): product is Product => product !== undefined);
+const topProducts = pickProducts([1, 7, 8, 13]);
+const mostViewed = pickProducts([3, 1, 5, 10]);
+const communityPicks = pickProducts([1, 6, 7, 8]);
+const freshProducts = pickProducts([11, 12, 13, 15]);
 
 const averageRating = (
   products.reduce((total, product) => total + Number(product.rating), 0) / products.length
@@ -50,6 +48,38 @@ function HomeSplash() {
   );
 }
 
+function AppProductSection({
+  kicker,
+  title,
+  note,
+  items,
+}: {
+  kicker: string;
+  title: string;
+  note?: string;
+  items: Array<{ product: Product; note?: string }>;
+}) {
+  return (
+    <section className="app-section">
+      <div className="app-section-head">
+        <div>
+          <p className="app-kicker">{kicker}</p>
+          <h2>{title}</h2>
+          {note && <p>{note}</p>}
+        </div>
+        <Link to="/shop" search={{ filter: "All", query: "" }} className="app-section-link">
+          See all <ArrowRight size={14} />
+        </Link>
+      </div>
+      <div className="app-product-grid">
+        {items.map(({ product, note: productNote }) => (
+          <ProductCard key={product.id} product={product} note={productNote ?? ""} />
+        ))}
+      </div>
+    </section>
+  );
+}
+
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
@@ -57,7 +87,7 @@ export const Route = createFileRoute("/")({
       {
         name: "description",
         content:
-          "Discover considered pieces from independent sellers across fashion, footwear, home, tech, beauty and more.",
+          "Shop safely with escrow protection. Considered pieces from independent sellers across fashion, footwear, home, tech, beauty and more.",
       },
     ],
   }),
@@ -100,292 +130,165 @@ function Index() {
         product: recommendation.product,
         note: recommendation.reason,
       }))
-    : editProducts.map((product) => ({ product, note: "" }));
+    : communityPicks.map((product) => ({ product, note: "" }));
 
   return (
-    <main
-      id="main-content"
-      tabIndex={-1}
-      className={`home-main home-hybrid${account ? " home-signed-in" : ""}`}
-    >
+    <main id="main-content" tabIndex={-1} className="app-home">
+      <h1 className="app-sr-only">SupreCart marketplace</h1>
       {!account && <HomeSplash />}
-
-      <div className="home-hybrid-hero">
-        <section className="page-width editorial-hero">
-          <div className="editorial-hero-copy">
-            <p className="editorial-eyebrow">
-              {account
-                ? `${isSeller ? "Seller studio" : "Your SupreCart"} · ${firstName}`
-                : "THE SUPRECART EDIT · VOL. 01"}
-            </p>
-            <h1>
-              {account ? (
-                <>
-                  Welcome back,
-                  <br />
-                  <em>{firstName}.</em>
-                </>
-              ) : (
-                <>
-                  Objects with
-                  <br />
-                  <em>a life of their own.</em>
-                </>
-              )}
-            </h1>
-            <p className="editorial-hero-lead">
-              {account
-                ? isSeller
-                  ? "Your store, orders and buyer conversations are ready. Keep your listings fresh, then step back into the marketplace whenever you want to shop."
-                  : "Your edit is exactly where you left it. Keep browsing the pieces you love, check your saved finds and pick up where you left off."
-                : "Independent makers, considered pieces and the quiet pleasure of finding something that feels like yours. Gathered slowly, from people who care how things are made."}
-            </p>
-            <div className="editorial-hero-actions">
-              <Button size="lg" asChild>
-                {isSeller ? (
-                  <Link to="/sellers">
-                    Open seller studio <ArrowRight size={15} />
-                  </Link>
-                ) : (
-                  <Link to="/shop" search={{ filter: "All", query: "" }}>
-                    Shop the edit <ArrowRight size={15} />
-                  </Link>
-                )}
-              </Button>
-              {account ? (
-                isSeller ? (
-                  <Link
-                    to="/shop"
-                    search={{ filter: "All", query: "" }}
-                    className="editorial-text-link"
-                  >
-                    Browse marketplace <ArrowUpRight size={15} />
-                  </Link>
-                ) : (
-                  <Link to="/account" className="editorial-text-link">
-                    View your account <ArrowUpRight size={15} />
-                  </Link>
-                )
-              ) : (
-                <a href="#categories" className="editorial-text-link">
-                  Browse categories <ArrowUpRight size={15} />
-                </a>
-              )}
-            </div>
-            <dl className="editorial-hero-facts">
-              <div>
-                <dt>{account ? "Signed in as" : "Curated finds"}</dt>
-                <dd>{account ? firstName : products.length}</dd>
-              </div>
-              <div>
-                <dt>{account ? "Account type" : "Independent sellers"}</dt>
-                <dd>{account ? (isSeller ? "Seller" : "Buyer") : sellerCount}</dd>
-              </div>
-              <div>
-                <dt>{account ? "Curated finds" : "Average rating"}</dt>
-                <dd>{account ? products.length : averageRating}</dd>
-              </div>
-            </dl>
-          </div>
-
-          <div className="editorial-hero-visual">
-            <Link
-              to="/shop"
-              search={{ filter: heroMain.category, query: "" }}
-              className="editorial-hero-main"
-            >
-              <img src={heroMain.image} alt={heroMain.name} />
-              <span className="editorial-image-tag">{heroMain.category}</span>
-              <span className="editorial-image-caption">
-                <span>01</span>
-                <strong>{heroMain.name}</strong>
-                <em>{money(heroMain.price)}</em>
-              </span>
-            </Link>
-            {heroSide.map((product, index) => (
-              <Link
-                key={product.id}
-                to="/shop"
-                search={{ filter: product.category, query: "" }}
-                className={`editorial-hero-side side-${index + 1}`}
-              >
-                <img src={product.image} alt={product.name} />
-                <span className="editorial-image-tag">{product.category}</span>
-              </Link>
-            ))}
-            <div className="editorial-hero-stamp">
-              <BadgeCheck size={15} />
+      <div className="page-width app-home-inner">
+        {account && (
+          <section className="app-greeting" aria-label="Your account">
+            <div>
+              <strong>
+                {isSeller ? `Seller studio · ${firstName}` : `Welcome back, ${firstName}.`}
+              </strong>
               <span>
-                {account
-                  ? `Signed in — you'll stay signed in until you choose to log out`
-                  : "Independent sellers, gathered with care"}
+                {isSeller
+                  ? "Manage your listings, orders and buyer conversations."
+                  : "Your saved finds and bag are right where you left them."}
               </span>
             </div>
-          </div>
-        </section>
-      </div>
-
-      <div className="page-width home-hybrid-body">
-        {!account && (
-          <section className="home-value-strip" aria-label="Why shop SupreCart">
-            <div>
-              <span>01</span>
-              <strong>Curated, not crowded</strong>
-              <p>A considered mix of pieces worth making room for.</p>
-            </div>
-            <div>
-              <span>02</span>
-              <strong>Sellers with a story</strong>
-              <p>Independent businesses, makers and local favourites.</p>
-            </div>
-            <div>
-              <span>03</span>
-              <strong>Easy to explore</strong>
-              <p>Clear categories, useful details and a wishlist for later.</p>
-            </div>
+            <Link to={isSeller ? "/sellers" : "/account"}>
+              {isSeller ? "Open seller studio" : "Your account"} <ArrowUpRight size={14} />
+            </Link>
           </section>
         )}
 
-        <section className="category-section" id="categories">
-          <div className="section-heading">
-            <div>
-              <p className="eyebrow">START WITH WHAT YOU LOVE</p>
-              <h2>Good things, by category</h2>
+        <section className="app-escrow" aria-label="Escrow buyer protection">
+          <span className="app-escrow-icon">
+            <ShieldCheck aria-hidden="true" />
+          </span>
+          <div className="app-escrow-copy">
+            <strong>Pay safe with escrow</strong>
+            <p>We hold your payment until you confirm delivery.</p>
+            <div className="app-escrow-meta">
+              <span>
+                <ShieldCheck size={12} /> Buyer protection
+              </span>
+              <span>
+                <BadgeCheck size={12} /> Verified sellers
+              </span>
+              <span>
+                <Truck size={12} /> Campus delivery
+              </span>
             </div>
-            <Link to="/shop" search={{ filter: "All", query: "" }} className="view-all">
+          </div>
+          <Link to="/support" className="app-escrow-link">
+            How it works <ArrowRight size={14} />
+          </Link>
+        </section>
+
+        <section className="app-section" id="categories" aria-label="Shop by category">
+          <div className="app-section-head">
+            <div>
+              <p className="app-kicker">Browse</p>
+              <h2>Shop by category</h2>
+              <p>
+                {averageRating} average rating across {products.length} finds from {sellerCount}{" "}
+                independent sellers.
+              </p>
+            </div>
+            <Link to="/shop" search={{ filter: "All", query: "" }} className="app-section-link">
               All categories <ArrowRight size={14} />
             </Link>
           </div>
-          <div className="category-grid marketplace-categories home-categories">
-            {categories.slice(0, 6).map((category) => {
-              const product = products.find((item) => item.category === category);
-              if (!product) return null;
+          <div className="app-cat-rail">
+            {categories.map((category) => {
+              const categoryProducts = products.filter((product) => product.category === category);
+              const image = categoryProducts[0]?.image;
               return (
                 <Link
                   key={category}
                   to="/shop"
                   search={{ filter: category, query: "" }}
-                  className="category category-card"
-                  aria-label={category}
+                  className="app-cat-card"
+                  aria-label={`Shop ${category}`}
                 >
-                  <div>
-                    <img src={product.image} alt={category} loading="lazy" />
-                  </div>
+                  <span className="app-cat-img">
+                    {image && <img src={image} alt="" loading="lazy" />}
+                  </span>
+                  <span className="app-cat-meta">
+                    <strong>{category}</strong>
+                    <small>
+                      {categoryProducts.length} {categoryProducts.length === 1 ? "find" : "finds"}
+                    </small>
+                  </span>
                 </Link>
               );
             })}
           </div>
         </section>
 
-        {!account && (
-          <section className="sponsored-grid home-edits" aria-label="Marketplace edits">
-            <Link
-              to="/shop"
-              search={{ filter: "Home", query: "" }}
-              className="sponsored-card sponsored-home"
-            >
-              <span className="sponsored-label">
-                <Sparkles size={13} /> THE HOME EDIT
-              </span>
-              <strong>
-                Make room
-                <br />
-                for good things.
-              </strong>
-              <span className="sponsored-card-link">
-                Explore home <ArrowRight size={14} />
-              </span>
-            </Link>
-            <Link
-              to="/shop"
-              search={{ filter: "Beauty", query: "" }}
-              className="sponsored-card sponsored-beauty"
-            >
-              <span className="sponsored-label">
-                <Sparkles size={13} /> EVERYDAY BEAUTY
-              </span>
-              <strong>
-                A softer kind
-                <br />
-                of everyday.
-              </strong>
-              <span className="sponsored-card-link">
-                Explore beauty <ArrowRight size={14} />
-              </span>
-            </Link>
-          </section>
-        )}
+        <AppProductSection
+          kicker="Trending now"
+          title="Top products"
+          note="The pieces shoppers are adding to their bags this week."
+          items={topProducts.map((product) => ({ product }))}
+        />
 
-        <section className="bestsellers home-edit">
-          <div className="section-heading">
-            <div>
-              <p className="eyebrow">{account ? "PICKED FOR YOU" : "COMMUNITY FAVOURITES"}</p>
-              <h2>
-                {account
-                  ? `Finds for ${firstName}`
-                  : "What shoppers with similar taste are finding"}
-              </h2>
-              <p className="recommendation-explainer">
-                Blended from content similarity and patterns across seeded shopper baskets, saved
-                finds, bags and order history.
-              </p>
-            </div>
-            <Link to="/shop" search={{ filter: "All", query: "" }} className="view-all">
-              Shop everything <ArrowRight size={14} />
-            </Link>
-          </div>
-          <div className="product-grid home-product-grid">
-            {recommendationCards.map(({ product, note }) => (
-              <ProductCard key={product.id} product={product} note={note} />
-            ))}
-          </div>
-        </section>
+        <AppProductSection
+          kicker="Popular this week"
+          title="Most viewed"
+          note="Most opened finds across the marketplace right now."
+          items={mostViewed.map((product) => ({ product }))}
+        />
 
-        {!account && (
-          <section className="sponsored-banner home-maker-banner">
+        {account ? (
+          <AppProductSection
+            kicker="Picked for you"
+            title={`More finds for ${firstName}`}
+            note="Blended from what you save, add to your bag and order."
+            items={recommendationCards}
+          />
+        ) : (
+          <section className="app-seller-banner">
             <div>
-              <span className="sponsored-label">
-                <Sparkles size={13} /> FOR INDEPENDENT SELLERS
-              </span>
-              <h2>
-                Good finds deserve
-                <br />a good home.
-              </h2>
+              <p className="app-kicker">For independent sellers</p>
+              <h2>Good finds deserve a good home.</h2>
               <p>
                 Bring your products to a marketplace built around discovery, thoughtful browsing and
                 the people behind every find.
               </p>
-              <Button asChild>
-                <Link to="/sellers">
-                  Sell on SupreCart <ArrowRight />
-                </Link>
-              </Button>
             </div>
-            <div className="sponsored-stamp">
-              More room
-              <br />
-              <strong>to grow</strong>
-              <br />
-              by design
-            </div>
+            <Button asChild>
+              <Link to="/sellers">
+                Sell on SupreCart <ArrowRight size={16} />
+              </Link>
+            </Button>
           </section>
         )}
 
-        <section className="bestsellers latest-finds">
-          <div className="section-heading">
-            <div>
-              <p className="eyebrow">{account ? "KEEP EXPLORING" : "MORE REASONS TO BROWSE"}</p>
-              <h2>{account ? `More to discover, ${firstName}` : "Fresh from the marketplace"}</h2>
-            </div>
-            <Link to="/shop" search={{ filter: "All", query: "" }} className="view-all">
-              See all <ArrowRight size={14} />
-            </Link>
+        {!account && (
+          <AppProductSection
+            kicker="Community favourites"
+            title="Finds shoppers keep coming back to"
+            note="A considered mix of pieces worth making room for."
+            items={communityPicks.map((product) => ({ product }))}
+          />
+        )}
+
+        <AppProductSection
+          kicker="Just landed"
+          title="Fresh from the marketplace"
+          note="New arrivals, small batches and student picks."
+          items={freshProducts.map((product) => ({ product }))}
+        />
+
+        <section className="app-escrow" aria-label="Escrow reminder">
+          <span className="app-escrow-icon">
+            <BadgeCheck aria-hidden="true" />
+          </span>
+          <div className="app-escrow-copy">
+            <strong>Every order is protected.</strong>
+            <p>
+              From checkout to delivery, your payment stays in escrow until you confirm the item
+              arrived as described.
+            </p>
           </div>
-          <div className="product-grid home-product-grid">
-            {freshProducts.map((product) => (
-              <ProductCard key={product.id} product={product} />
-            ))}
-          </div>
+          <Link to="/support" className="app-escrow-link">
+            Read the safety guide <ArrowRight size={14} />
+          </Link>
         </section>
       </div>
     </main>

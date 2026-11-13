@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { SlidersHorizontal, Sparkles } from "lucide-react";
+import { ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ProductCard } from "@/components/storefront";
 import { products, categories, brands } from "@/lib/catalog";
@@ -27,7 +27,6 @@ export const Route = createFileRoute("/shop")({
 function Shop() {
   const { filter, query } = Route.useSearch();
   const [sort, setSort] = useState("featured");
-  const [filtersOpen, setFiltersOpen] = useState(false);
   const allProducts = useMemo(() => products, []);
   const options = ["All", ...new Set([...categories, ...brands])];
   const visible = useMemo(
@@ -57,26 +56,43 @@ function Shop() {
     if (query) trackViewSearchResults(query, visible.length, filter);
     else if (filter !== "All") trackFilterProducts(filter, visible.length);
   }, [filter, query, visible.length]);
+
   return (
-    <main id="main-content" tabIndex={-1} className="page-width shop-main">
-      <div className="shop-heading">
+    <main id="main-content" tabIndex={-1} className="page-width app-shop">
+      <div className="app-shop-head">
         <div>
-          <p className="eyebrow">THE SUPRECART MARKETPLACE</p>
+          <p className="app-kicker">The SupreCart marketplace</p>
           <h1>
             {filter === "All" ? "Shop everything" : filter === "Brands" ? "Brands to know" : filter}
           </h1>
-          <p className="shop-intro">
+          <p className="app-shop-intro">
             {query ? `Showing results for “${query}”.` : "Good finds, from sellers worth knowing."}
           </p>
         </div>
-        <span>{visible.length} finds</span>
+        <span className="app-shop-count">
+          {visible.length} {visible.length === 1 ? "find" : "finds"}
+        </span>
       </div>
-      <div className="shop-toolbar">
-        <Button variant="outline" onClick={() => setFiltersOpen((x) => !x)}>
-          <SlidersHorizontal /> Categories & brands
-        </Button>
+
+      <nav className="app-chips" aria-label="Filter by category or brand">
+        {options.map((option) => (
+          <Link
+            key={option}
+            to="/shop"
+            search={{ filter: option, query }}
+            className={`app-chip${filter === option ? " is-active" : ""}`}
+          >
+            {option}
+          </Link>
+        ))}
+      </nav>
+
+      <div className="app-shop-toolbar">
+        <span className="app-trust-line">
+          <ShieldCheck size={13} /> Every order is protected by escrow
+        </span>
         <label>
-          Sort by{" "}
+          Sort by
           <select value={sort} onChange={(e) => setSort(e.target.value)} aria-label="Sort products">
             <option value="featured">Featured</option>
             <option value="low">Price: low to high</option>
@@ -84,29 +100,13 @@ function Shop() {
           </select>
         </label>
       </div>
-      {filtersOpen && (
-        <div className="filter-options">
-          {options.map((x) => (
-            <Button asChild key={x} variant={filter === x ? "default" : "outline"}>
-              <Link to="/shop" search={{ filter: x, query: query }}>
-                {x}
-              </Link>
-            </Button>
-          ))}
-        </div>
-      )}
-      <div className="sponsored-inline">
-        <span>
-          <Sparkles size={14} /> FEATURED
-        </span>
-        <strong>Made with care by independent sellers.</strong>
-        <span>Curated placement</span>
-      </div>
-      <div className="product-grid shop-products">
+
+      <div className="app-product-grid">
         {visible.map((p) => (
           <ProductCard key={p.id} product={p} />
         ))}
       </div>
+
       {visible.length === 0 && (
         <div className="collection-empty">
           <h2>No finds match this view.</h2>

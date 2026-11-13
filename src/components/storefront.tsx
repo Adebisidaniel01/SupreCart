@@ -14,20 +14,24 @@ import {
   BadgeCheck,
   Headphones,
   Heart,
+  House,
   Instagram,
   LayoutGrid,
   LogOut,
   Menu,
   Minus,
+  Moon,
   Music2,
   MessageCircle,
   Plus,
   Search,
   Settings,
+  ShieldCheck,
   ShoppingBag,
   ShoppingCart,
   Star,
   Store,
+  Sun,
   Truck,
   Twitter,
   UserRound,
@@ -35,6 +39,8 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { ThemeToggle } from "@/components/theme";
+import { useTheme } from "@/lib/theme";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -88,11 +94,25 @@ export function useStore() {
   return store;
 }
 export function Wordmark({ variant = "default" }: { variant?: "default" | "light" }) {
+  if (variant === "light") {
+    return (
+      <span className="wordmark">
+        <img src="/suprecart-logo-light.png" alt="SupreCart" />
+      </span>
+    );
+  }
   return (
     <span className="wordmark">
       <img
-        src={variant === "light" ? "/suprecart-logo-light.png" : "/suprecart-logo.png"}
+        className="wordmark-logo wordmark-logo--light"
+        src="/suprecart-logo.png"
         alt="SupreCart"
+      />
+      <img
+        className="wordmark-logo wordmark-logo--dark"
+        src="/suprecart-logo-light.png"
+        alt=""
+        aria-hidden="true"
       />
     </span>
   );
@@ -115,6 +135,7 @@ export function Storefront({ children }: { children: ReactNode }) {
   const [notice, setNotice] = useState("");
   const navigate = useNavigate();
   const { account, avatar, signOut } = useActiveAccount();
+  const { theme: appTheme, toggle: toggleAppTheme } = useTheme();
   const initials = accountInitials(account);
   useEffect(() => {
     function closeNavigation(event: KeyboardEvent) {
@@ -295,10 +316,10 @@ export function Storefront({ children }: { children: ReactNode }) {
   return (
     <StoreContext.Provider value={store}>
       <div className="announcement">
-        <ShoppingBag size={12} />
-        <span>Good finds from independent sellers</span>
+        <ShieldCheck size={12} />
+        <span>Pay safe with escrow</span>
         <span className="announcement-divider">·</span>
-        <span>A marketplace with more to love</span>
+        <span>Buyer protection on every order</span>
       </div>
       <header className="market-header">
         <div className="market-header-main">
@@ -349,6 +370,7 @@ export function Storefront({ children }: { children: ReactNode }) {
             <Link to="/shop" search={{ filter: "All", query: "" }} className="market-text-link">
               Shop all
             </Link>
+            <ThemeToggle />
             <Button
               variant="ghost"
               size="icon"
@@ -473,6 +495,7 @@ export function Storefront({ children }: { children: ReactNode }) {
             )}
           </nav>
           <div className="market-mobile-tools">
+            <ThemeToggle />
             <Button
               variant="ghost"
               size="icon"
@@ -589,6 +612,16 @@ export function Storefront({ children }: { children: ReactNode }) {
           <div className="market-drawer-tools">
             <button
               type="button"
+              onClick={toggleAppTheme}
+              aria-label="Toggle light mode"
+              aria-pressed={appTheme === "light"}
+            >
+              {appTheme === "dark" ? <Sun /> : <Moon />}
+              <span>{appTheme === "dark" ? "Light mode" : "Dark mode"}</span>
+              <em>{appTheme === "dark" ? "Off" : "On"}</em>
+            </button>
+            <button
+              type="button"
               onClick={() => {
                 setMobileNav(false);
                 openPanel("wishlist");
@@ -669,6 +702,51 @@ export function Storefront({ children }: { children: ReactNode }) {
           )}
         </nav>
       </header>
+      <nav className="app-tabbar" aria-label="Quick navigation">
+        <Link to="/" className={pathname === "/" ? "is-active" : ""}>
+          <House />
+          <span>Home</span>
+        </Link>
+        <Link
+          to="/shop"
+          search={{ filter: "All", query: "" }}
+          className={pathname === "/shop" ? "is-active" : ""}
+        >
+          <LayoutGrid />
+          <span>Shop</span>
+        </Link>
+        <button
+          type="button"
+          onClick={() => openPanel("wishlist")}
+          className={panel === "wishlist" ? "is-active" : ""}
+        >
+          <Heart />
+          <span>Wishlist</span>
+          {favorites.length > 0 && <span className="count-badge">{favorites.length}</span>}
+        </button>
+        <button
+          type="button"
+          onClick={() => openPanel("cart")}
+          className={panel === "cart" ? "is-active" : ""}
+        >
+          <ShoppingCart />
+          <span>Bag</span>
+          {cartCount > 0 && <span className="count-badge">{cartCount}</span>}
+        </button>
+        <Link
+          to={account?.role === "seller" ? "/sellers" : account ? "/account" : "/login"}
+          className={
+            pathname.startsWith("/account") ||
+            pathname.startsWith("/login") ||
+            pathname.startsWith("/signup")
+              ? "is-active"
+              : ""
+          }
+        >
+          <UserRound />
+          <span>Account</span>
+        </Link>
+      </nav>
       {children}
       {pathname === "/" && (
         <section className="benefits page-width">
