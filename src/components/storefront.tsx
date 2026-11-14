@@ -69,6 +69,49 @@ import {
 } from "@/lib/analytics";
 import { getOrders } from "@/lib/orders";
 import { recommendProducts, type RecommendationOrder } from "@/lib/recommendations";
+import { cleanText } from "@/lib/input";
+
+const cartStorageKey = "suprecart-cart";
+const favoritesStorageKey = "suprecart-favorites";
+const maxCartLines = 100;
+const maxCartQuantity = 99;
+const maxFavorites = 200;
+
+function normalizeStoredFavorites(value: unknown): number[] {
+  if (!Array.isArray(value)) return [];
+  const favorites: number[] = [];
+  for (const entry of value) {
+    if (typeof entry !== "number" || !Number.isInteger(entry)) continue;
+    if (favorites.includes(entry)) continue;
+    if (!products.some((product) => product.id === entry)) continue;
+    favorites.push(entry);
+    if (favorites.length >= maxFavorites) break;
+  }
+  return favorites;
+}
+
+function normalizeStoredCart(value: unknown): CartItem[] {
+  if (!Array.isArray(value)) return [];
+  const cart: CartItem[] = [];
+  for (const entry of value.slice(0, maxCartLines)) {
+    if (typeof entry !== "object" || entry === null) continue;
+    const item = entry as Partial<CartItem>;
+    const product = products.find((candidate) => candidate.id === item.product?.id);
+    if (!product) continue;
+    const size = cleanText(item.size, 40);
+    const quantity =
+      typeof item.quantity === "number" && Number.isFinite(item.quantity)
+        ? Math.min(Math.max(Math.floor(item.quantity), 1), maxCartQuantity)
+        : 1;
+    const existing = cart.find((line) => line.product.id === product.id && line.size === size);
+    if (existing) {
+      existing.quantity = Math.min(existing.quantity + quantity, maxCartQuantity);
+      continue;
+    }
+    cart.push({ product, size, quantity });
+  }
+  return cart;
+}
 
 function productSellerVerified(product: Product): boolean {
   return product.sellerVerified ?? sellerIsVerified(product.seller);
@@ -199,10 +242,10 @@ export function Storefront({ children }: { children: ReactNode }) {
   }, [panel, cart]);
   useEffect(() => {
     try {
-      const savedCart = localStorage.getItem("suprecart-cart");
-      const savedFavorites = localStorage.getItem("suprecart-favorites");
-      if (savedCart) setCart(JSON.parse(savedCart) as CartItem[]);
-      if (savedFavorites) setFavorites(JSON.parse(savedFavorites) as number[]);
+      const savedCart = localStorage.getItem(cartStorageKey);
+      const savedFavorites = localStorage.getItem(favoritesStorageKey);
+      if (savedCart) setCart(normalizeStoredCart(JSON.parse(savedCart)));
+      if (savedFavorites) setFavorites(normalizeStoredFavorites(JSON.parse(savedFavorites)));
     } catch (error) {
       console.error("Could not restore the saved SupreCart basket.", error);
       setNotice("Your saved basket could not be restored in this browser.");
@@ -213,8 +256,8 @@ export function Storefront({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!ready) return;
     try {
-      localStorage.setItem("suprecart-cart", JSON.stringify(cart));
-      localStorage.setItem("suprecart-favorites", JSON.stringify(favorites));
+      localStorage.setItem(cartStorageKey, JSON.stringify(cart));
+      localStorage.setItem(favoritesStorageKey, JSON.stringify(favorites));
     } catch (error) {
       console.error("Could not save the SupreCart basket in this browser.", error);
       setNotice("Your browser could not save this basket. Keep this tab open to preserve it.");

@@ -75,7 +75,9 @@ import {
   AVATAR_SIZE,
   avatarErrorMessage,
   processAvatarFile,
+  sniffImageMimeType,
 } from "../../src/lib/avatar";
+import { sanitizeImageSource } from "../../src/lib/image-safety";
 import "./seller.css";
 
 type SellerApplication = {
@@ -257,18 +259,60 @@ function fundEntries(email: string): FundEntry[] {
 const localSellerProductsKey = (email: string) =>
   `suprecart-seller-products:${email.toLowerCase()}`;
 
+const maxLocalSellerProducts = 200;
+
+function normalizeSellerProduct(value: unknown): SellerProduct | null {
+  if (typeof value !== "object" || value === null) return null;
+  const entry = value as Partial<SellerProduct>;
+  const id = cleanText(entry.id, 80);
+  const name = cleanText(entry.name, 160);
+  const category = cleanText(entry.category, 80);
+  const price =
+    typeof entry.price === "number" && Number.isFinite(entry.price) && entry.price >= 0
+      ? entry.price
+      : null;
+  const inventory =
+    typeof entry.inventory === "number" && Number.isFinite(entry.inventory)
+      ? Math.max(0, Math.floor(entry.inventory))
+      : 0;
+  const createdAt = cleanText(entry.created_at, 40);
+  if (!id || !name || !category || price === null || !createdAt) return null;
+  const description = cleanMultiline(entry.description, 2_000);
+  const brand = cleanText(entry.brand, 120);
+  const condition = cleanText(entry.condition, 80);
+  return {
+    id,
+    name,
+    category,
+    price,
+    inventory,
+    published: entry.published !== false,
+    in_stock: entry.in_stock !== false && inventory > 0,
+    image_path: cleanText(entry.image_path, 300),
+    image_url: sanitizeImageSource(entry.image_url),
+    created_at: createdAt,
+    ...(description ? { description } : {}),
+    ...(brand ? { brand } : {}),
+    ...(condition ? { condition } : {}),
+  };
+}
+
+function normalizeSellerProducts(value: unknown): SellerProduct[] {
+  if (!Array.isArray(value)) return [];
+  const products: SellerProduct[] = [];
+  for (const entry of value.slice(0, maxLocalSellerProducts)) {
+    const product = normalizeSellerProduct(entry);
+    if (!product || products.some((item) => item.id === product.id)) continue;
+    products.push(product);
+  }
+  return products;
+}
+
 function readLocalSellerProducts(email: string): SellerProduct[] {
   try {
     const saved = window.localStorage.getItem(localSellerProductsKey(email));
     if (!saved) return [];
-    const parsed: unknown = JSON.parse(saved);
-    if (!Array.isArray(parsed)) return [];
-    return parsed.filter(
-      (entry): entry is SellerProduct =>
-        typeof entry === "object" &&
-        entry !== null &&
-        typeof (entry as SellerProduct).id === "string",
-    );
+    return normalizeSellerProducts(JSON.parse(saved));
   } catch (cause) {
     console.error("Could not read the local seller products.", cause);
     return [];
@@ -277,7 +321,10 @@ function readLocalSellerProducts(email: string): SellerProduct[] {
 
 function writeLocalSellerProducts(email: string, products: SellerProduct[]) {
   try {
-    window.localStorage.setItem(localSellerProductsKey(email), JSON.stringify(products));
+    window.localStorage.setItem(
+      localSellerProductsKey(email),
+      JSON.stringify(normalizeSellerProducts(products)),
+    );
   } catch (cause) {
     console.error("Could not save the local seller products.", cause);
   }
@@ -520,6 +567,10 @@ export default function SellerPortal({ standalone = false }: { standalone?: bool
       if (!(image instanceof File) || image.size === 0) throw new Error("Choose a product image.");
       if (!productImageTypes.includes(image.type) || image.size > 10 * 1024 * 1024) {
         throw new Error("Product images must be JPG, PNG, or WebP files under 10 MB.");
+      }
+      const header = new Uint8Array(await image.slice(0, 16).arrayBuffer());
+      if (!sniffImageMimeType(header)) {
+        throw new Error("That file is not a real JPG, PNG, or WebP image.");
       }
       const imageUrl = await new Promise<string>((resolve, reject) => {
         const reader = new FileReader();

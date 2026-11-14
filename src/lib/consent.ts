@@ -28,8 +28,8 @@ export function readConsent(): ConsentPreferences | null {
     const parsed = JSON.parse(decodeURIComponent(value)) as Partial<ConsentPreferences>;
     return {
       necessary: true,
-      analytics: Boolean(parsed.analytics),
-      marketing: Boolean(parsed.marketing),
+      analytics: parsed.analytics === true,
+      marketing: parsed.marketing === true,
     };
   } catch {
     return null;

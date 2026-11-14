@@ -1,3 +1,6 @@
+import { cleanMultiline, cleanText } from "./input";
+import { sanitizeImageDataUrl } from "./image-safety";
+
 export type NotificationPreferences = {
   orderUpdates: boolean;
   promotions: boolean;
@@ -115,7 +118,66 @@ export function defaultAccountPreferences(): AccountPreferences {
 const storagePrefix = "suprecart-account-preferences:";
 const preferencesChangeEvent = "suprecart-account-preferences-change";
 
-const clone = (value: AccountPreferences): AccountPreferences => JSON.parse(JSON.stringify(value));
+const shippingLabels = new Set(shippingOptionChoices);
+const processingTimes = new Set<string>(processingTimeOptions);
+
+function asRecord(value: unknown): Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {};
+}
+
+function readBoolean(value: unknown, fallback: boolean) {
+  return typeof value === "boolean" ? value : fallback;
+}
+
+function normalizePreferences(value: unknown): AccountPreferences {
+  const defaults = defaultAccountPreferences();
+  const parsed = asRecord(value);
+  const notifications = asRecord(parsed["notifications"]);
+  const store = asRecord(parsed["store"]);
+  const fulfilment = asRecord(parsed["fulfilment"]);
+  const savedShipping = fulfilment["shippingOptions"];
+  const shippingOptions = Array.isArray(savedShipping)
+    ? savedShipping
+        .filter((entry): entry is string => typeof entry === "string" && shippingLabels.has(entry))
+        .slice(0, shippingOptionChoices.length)
+    : defaults.fulfilment.shippingOptions;
+  const processingTime = fulfilment["processingTime"];
+
+  return {
+    avatarDataUrl: sanitizeImageDataUrl(parsed["avatarDataUrl"]),
+    notifications: {
+      orderUpdates: readBoolean(notifications["orderUpdates"], defaults.notifications.orderUpdates),
+      promotions: readBoolean(notifications["promotions"], defaults.notifications.promotions),
+      newsletter: readBoolean(notifications["newsletter"], defaults.notifications.newsletter),
+      securityAlerts: readBoolean(
+        notifications["securityAlerts"],
+        defaults.notifications.securityAlerts,
+      ),
+    },
+    twoFactorEnabled: readBoolean(parsed["twoFactorEnabled"], defaults.twoFactorEnabled),
+    store: {
+      storeName: cleanText(store["storeName"], 120),
+      tagline: cleanText(store["tagline"], 160),
+      description: cleanMultiline(store["description"], 1_000),
+      logoDataUrl: sanitizeImageDataUrl(store["logoDataUrl"]),
+    },
+    fulfilment: {
+      processingTime:
+        typeof processingTime === "string" && processingTimes.has(processingTime)
+          ? processingTime
+          : defaults.fulfilment.processingTime,
+      shippingOptions: shippingOptions.length
+        ? shippingOptions
+        : defaults.fulfilment.shippingOptions,
+      openingHours: cleanText(fulfilment["openingHours"], 160),
+    },
+  };
+}
+
+const clone = (value: AccountPreferences): AccountPreferences =>
+  JSON.parse(JSON.stringify(normalizePreferences(value)));
 
 export function accountPreferenceScope(role: "buyer" | "seller", identity: string) {
   return `${role}:${identity.trim().toLowerCase()}`;
@@ -127,20 +189,7 @@ export function readAccountPreferences(scope: string): AccountPreferences {
   try {
     const saved = window.localStorage.getItem(`${storagePrefix}${scope.toLowerCase()}`);
     if (!saved) return preferences;
-    const parsed = JSON.parse(saved) as Partial<AccountPreferences>;
-    return {
-      avatarDataUrl: typeof parsed.avatarDataUrl === "string" ? parsed.avatarDataUrl : "",
-      notifications: { ...preferences.notifications, ...(parsed.notifications ?? {}) },
-      twoFactorEnabled: Boolean(parsed.twoFactorEnabled),
-      store: { ...preferences.store, ...(parsed.store ?? {}) },
-      fulfilment: {
-        ...preferences.fulfilment,
-        ...(parsed.fulfilment ?? {}),
-        shippingOptions: Array.isArray(parsed.fulfilment?.shippingOptions)
-          ? parsed.fulfilment.shippingOptions
-          : preferences.fulfilment.shippingOptions,
-      },
-    };
+    return normalizePreferences(JSON.parse(saved));
   } catch (cause) {
     console.error("Could not read the saved SupreCart account preferences.", cause);
     return preferences;

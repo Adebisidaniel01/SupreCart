@@ -22,6 +22,16 @@ type AnalyticsItem = {
 
 type EventParams = Record<string, unknown>;
 
+const emailPattern = /[^\s@]+@[^\s@]+\.[^\s@]+/g;
+const phonePattern = /\+?\d[\d\s()-]{6,}\d/g;
+
+function scrubAnalyticsText(value: string, maxLength = 120) {
+  return value
+    .replace(emailPattern, "[email]")
+    .replace(phonePattern, "[phone]")
+    .slice(0, maxLength);
+}
+
 declare global {
   interface Window {
     dataLayer?: unknown[];
@@ -266,9 +276,9 @@ export function trackCheckoutOrder({
 
 export function trackViewSearchResults(term: string, results: number, filter?: string) {
   trackEvent("view_search_results", {
-    search_term: term,
+    search_term: scrubAnalyticsText(term),
     results,
-    ...(filter ? { filter } : {}),
+    ...(filter ? { filter: scrubAnalyticsText(filter) } : {}),
   });
 }
 
@@ -309,11 +319,11 @@ export function trackScrollDepth(percent: number, path?: string) {
 export function trackOutboundClick(url: string, label?: string) {
   trackEvent("outbound_click", {
     link_url: url,
-    ...(label ? { link_text: label.slice(0, 100) } : {}),
+    ...(label ? { link_text: scrubAnalyticsText(label, 100) } : {}),
   });
 }
 
 export function trackException(error: unknown, fatal = false) {
   const description = error instanceof Error ? error.message : String(error);
-  trackEvent("exception", { description, fatal });
+  trackEvent("exception", { description: scrubAnalyticsText(description, 500), fatal });
 }

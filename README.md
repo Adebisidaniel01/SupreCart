@@ -62,6 +62,8 @@ Preset accounts can sign in with any password. New accounts are saved in this br
 - Recommendation signals (saved products, cart quantities, and order item names) stay in this browser. No recommendation data is sent to a server or third party.
 - Form input is normalized and control characters are stripped before it is stored. No SQL database is connected, so there is no SQL query surface; when one is added, use parameterized queries only.
 - Uploaded product images and avatars are stored as browser data URLs; seeded catalog images use remote URLs.
+- Uploads must be genuine JPEG, PNG, or WebP files. Image sources restored from browser storage are re-validated before they reach an `<img>` element.
+- Local passwords use PBKDF2-SHA-256 with a per-account salt. Server responses set a Content Security Policy, HSTS, `nosniff`, frame-deny, and related hardening headers.
 - Checkout saves a local reference only: it does not collect payment, dispatch delivery, or settle a payout.
 - Seller withdrawals are requests only. No money moves.
 - Clearing browser storage resets the local marketplace data.

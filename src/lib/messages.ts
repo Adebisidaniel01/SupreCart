@@ -1,4 +1,5 @@
 import { findAccount, isAccountDeleted, type Account } from "./accounts";
+import { cleanMultiline } from "./input";
 
 export type ChatMessage = {
   id: string;
@@ -17,6 +18,49 @@ export type ChatConversation = {
 };
 
 const storageKey = "suprecart-messages";
+const maxStoredMessages = 500;
+const messageBodyLimit = 4_000;
+
+function normalizeMessage(value: unknown): ChatMessage | null {
+  if (typeof value !== "object" || value === null) return null;
+  const entry = value as Partial<ChatMessage>;
+  if (typeof entry.id !== "string" || !entry.id) return null;
+  if (typeof entry.senderEmail !== "string" || !entry.senderEmail) return null;
+  if (typeof entry.createdAt !== "string" || !entry.createdAt) return null;
+  const body = cleanMultiline(entry.body, messageBodyLimit);
+  if (!body) return null;
+  const readBy = Array.isArray(entry.readBy)
+    ? entry.readBy
+        .filter((email): email is string => typeof email === "string")
+        .map((email) => email.trim().toLowerCase().slice(0, 254))
+        .slice(0, 100)
+    : [];
+  return {
+    id: entry.id.slice(0, 120),
+    senderEmail: entry.senderEmail.trim().toLowerCase().slice(0, 254),
+    body,
+    createdAt: entry.createdAt.slice(0, 40),
+    readBy,
+  };
+}
+
+function normalizeMessages(value: unknown): ChatMessage[] | null {
+  if (!Array.isArray(value)) return null;
+  return value
+    .map(normalizeMessage)
+    .filter((message): message is ChatMessage => message !== null)
+    .slice(-maxStoredMessages);
+}
+
+function readStoredMessageMap(): Record<string, ChatMessage[]> {
+  if (typeof window === "undefined") return {};
+  const stored = window.localStorage.getItem(storageKey);
+  if (!stored) return {};
+  const parsed: unknown = JSON.parse(stored);
+  return typeof parsed === "object" && parsed !== null && !Array.isArray(parsed)
+    ? (parsed as Record<string, ChatMessage[]>)
+    : {};
+}
 
 const seedConversations: ChatConversation[] = [
   {
@@ -217,31 +261,37 @@ export function getChatConversations(account: Account) {
 }
 
 export function readChatMessages(conversation: ChatConversation) {
-  const stored = window.localStorage.getItem(storageKey);
-  if (!stored) return conversation.messages;
-  let savedMessages: Record<string, ChatMessage[]>;
+  if (typeof window === "undefined") return conversation.messages;
   try {
-    savedMessages = JSON.parse(stored) as Record<string, ChatMessage[]>;
+    const savedMessages = readStoredMessageMap();
+    return normalizeMessages(savedMessages[conversation.id]) ?? conversation.messages;
   } catch (cause) {
     console.error("Could not read the local SupreCart messages.", cause);
-    throw new Error("Conversations could not be loaded from this browser.");
+    return conversation.messages;
   }
-  return savedMessages[conversation.id] ?? conversation.messages;
 }
 
 export function saveChatMessages(conversationId: string, messages: ChatMessage[]) {
-  const stored = window.localStorage.getItem(storageKey);
-  let savedMessages: Record<string, ChatMessage[]> = {};
-  if (stored) {
-    try {
-      savedMessages = JSON.parse(stored) as Record<string, ChatMessage[]>;
-    } catch (cause) {
-      console.error("Could not update the local SupreCart messages.", cause);
-      throw new Error("Conversations could not be saved because local data is invalid.");
-    }
+  if (typeof window === "undefined") return;
+  const normalizedId = conversationId.trim().slice(0, 120);
+  const normalizedMessages = normalizeMessages(messages);
+  if (!normalizedId || !normalizedMessages) {
+    throw new Error("Conversations could not be saved because the data is invalid.");
   }
-  savedMessages[conversationId] = messages;
-  window.localStorage.setItem(storageKey, JSON.stringify(savedMessages));
+  let savedMessages: Record<string, ChatMessage[]> = {};
+  try {
+    savedMessages = readStoredMessageMap();
+  } catch (cause) {
+    console.error("Could not update the local SupreCart messages.", cause);
+    throw new Error("Conversations could not be saved because local data is invalid.");
+  }
+  savedMessages[normalizedId] = normalizedMessages;
+  try {
+    window.localStorage.setItem(storageKey, JSON.stringify(savedMessages));
+  } catch (cause) {
+    console.error("Could not save the local SupreCart messages.", cause);
+    throw new Error("Conversations could not be saved because browser storage is full.");
+  }
 }
 
 export function getChatAccount(email: string, role: Account["role"]) {
@@ -256,11 +306,9 @@ export function deleteMessagesFor(email: string) {
         conversation.buyer.email === normalized || conversation.seller.email === normalized,
     )
     .map((conversation) => conversation.id);
-  if (!conversationIds.length) return;
-  const stored = window.localStorage.getItem(storageKey);
-  if (!stored) return;
+  if (!conversationIds.length || typeof window === "undefined") return;
   try {
-    const savedMessages = JSON.parse(stored) as Record<string, ChatMessage[]>;
+    const savedMessages = readStoredMessageMap();
     for (const id of conversationIds) delete savedMessages[id];
     window.localStorage.setItem(storageKey, JSON.stringify(savedMessages));
   } catch (cause) {

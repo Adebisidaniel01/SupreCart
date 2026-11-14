@@ -1,3 +1,5 @@
+import { cleanMultiline, cleanText } from "./input";
+
 export type SupportMessage = {
   id: string;
   sender: "customer" | "care";
@@ -29,6 +31,31 @@ const guestIdKey = "suprecart-support-guest";
 const seededKey = "suprecart-support-seeded";
 const serviceWindowMs = 4 * 60 * 1000;
 const minutesPerTicket = 3;
+const maxTickets = 200;
+const maxMessagesPerTicket = 500;
+const messageBodyLimit = 2_000;
+const requesterIdLimit = 320;
+
+function normalizeRequesterId(value: unknown) {
+  return typeof value === "string" ? value.trim().slice(0, requesterIdLimit) : "";
+}
+
+function normalizeSupportMessage(value: unknown): SupportMessage | null {
+  if (typeof value !== "object" || value === null) return null;
+  const message = value as Partial<SupportMessage>;
+  if (typeof message.id !== "string" || !message.id) return null;
+  if (message.sender !== "customer" && message.sender !== "care") return null;
+  if (typeof message.createdAt !== "string" || !message.createdAt) return null;
+  const body = cleanMultiline(message.body, messageBodyLimit);
+  if (!body) return null;
+  return {
+    id: message.id.slice(0, 120),
+    sender: message.sender,
+    body,
+    createdAt: message.createdAt.slice(0, 40),
+    ...(typeof message.automated === "boolean" ? { automated: message.automated } : {}),
+  };
+}
 
 function canUseStorage() {
   return typeof window !== "undefined" && Boolean(window.localStorage);
@@ -49,28 +76,27 @@ function readTickets(): Record<string, SupportTicket> {
     const parsed: unknown = JSON.parse(raw);
     if (typeof parsed !== "object" || parsed === null) return {};
     const tickets: Record<string, SupportTicket> = {};
-    for (const [id, value] of Object.entries(parsed as Record<string, unknown>)) {
+    for (const [id, value] of Object.entries(parsed as Record<string, unknown>).slice(
+      0,
+      maxTickets,
+    )) {
       if (typeof value !== "object" || value === null) continue;
       const entry = value as Partial<SupportTicket>;
       if (typeof entry.joinedAt !== "string" || !Array.isArray(entry.messages)) continue;
-      const messages = entry.messages.filter(
-        (message): message is SupportMessage =>
-          typeof message === "object" &&
-          message !== null &&
-          typeof (message as SupportMessage).id === "string" &&
-          ((message as SupportMessage).sender === "customer" ||
-            (message as SupportMessage).sender === "care") &&
-          typeof (message as SupportMessage).body === "string" &&
-          typeof (message as SupportMessage).createdAt === "string",
-      );
-      tickets[id] = {
-        requesterId: typeof entry.requesterId === "string" ? entry.requesterId : id,
-        requesterName:
-          typeof entry.requesterName === "string" ? entry.requesterName : "Guest shopper",
-        topic: typeof entry.topic === "string" ? entry.topic : undefined,
-        joinedAt: entry.joinedAt,
+      const messages = entry.messages
+        .map(normalizeSupportMessage)
+        .filter((message): message is SupportMessage => message !== null)
+        .slice(-maxMessagesPerTicket);
+      const ticketId = id.slice(0, requesterIdLimit);
+      tickets[ticketId] = {
+        requesterId: normalizeRequesterId(entry.requesterId) || ticketId,
+        requesterName: cleanText(entry.requesterName, 120) || "Guest shopper",
+        topic: typeof entry.topic === "string" ? cleanText(entry.topic, 120) : undefined,
+        joinedAt: entry.joinedAt.slice(0, 40),
         lastMessageAt:
-          typeof entry.lastMessageAt === "string" ? entry.lastMessageAt : entry.joinedAt,
+          typeof entry.lastMessageAt === "string"
+            ? entry.lastMessageAt.slice(0, 40)
+            : entry.joinedAt.slice(0, 40),
         messages,
         seeded: Boolean(entry.seeded),
       };
@@ -127,7 +153,7 @@ function seedQueue(tickets: Record<string, SupportTicket>) {
 export function getSupportGuestId() {
   if (!canUseStorage()) return "";
   try {
-    const existing = window.localStorage.getItem(guestIdKey);
+    const existing = normalizeRequesterId(window.localStorage.getItem(guestIdKey));
     if (existing) return existing;
     const id = createId();
     window.localStorage.setItem(guestIdKey, id);
@@ -139,8 +165,9 @@ export function getSupportGuestId() {
 }
 
 export function getSupportTicket(requesterId: string) {
-  if (!requesterId) return null;
-  return readTickets()[requesterId] ?? null;
+  const id = normalizeRequesterId(requesterId);
+  if (!id) return null;
+  return readTickets()[id] ?? null;
 }
 
 export function createSupportTicket(
@@ -149,17 +176,20 @@ export function createSupportTicket(
   body: string,
   topic?: string,
 ) {
-  if (!requesterId) throw new Error("A customer care identity is required.");
+  const id = normalizeRequesterId(requesterId);
+  if (!id) throw new Error("A customer care identity is required.");
+  const messageBody = cleanMultiline(body, messageBodyLimit);
+  if (!messageBody) throw new Error("Write a message before joining the queue.");
   const tickets = seedQueue(readTickets());
   const now = new Date().toISOString();
   const ticket: SupportTicket = {
-    requesterId,
-    requesterName,
-    topic,
+    requesterId: id,
+    requesterName: cleanText(requesterName, 120) || "Guest shopper",
+    topic: typeof topic === "string" ? cleanText(topic, 120) : undefined,
     joinedAt: now,
     lastMessageAt: now,
     messages: [
-      { id: createId(), sender: "customer", body, createdAt: now },
+      { id: createId(), sender: "customer", body: messageBody, createdAt: now },
       {
         id: createId(),
         sender: "care",
@@ -169,23 +199,29 @@ export function createSupportTicket(
       },
     ],
   };
-  tickets[requesterId] = ticket;
+  tickets[id] = ticket;
   writeTickets(tickets);
   return ticket;
 }
 
 export function appendSupportMessage(requesterId: string, body: string) {
-  if (!requesterId) return null;
+  const id = normalizeRequesterId(requesterId);
+  if (!id) return null;
+  const messageBody = cleanMultiline(body, messageBodyLimit);
+  if (!messageBody) return null;
   const tickets = readTickets();
-  const ticket = tickets[requesterId];
+  const ticket = tickets[id];
   if (!ticket) return null;
   const now = new Date().toISOString();
-  ticket.messages = [
-    ...ticket.messages,
-    { id: createId(), sender: "customer", body, createdAt: now },
-  ];
+  const message: SupportMessage = {
+    id: createId(),
+    sender: "customer",
+    body: messageBody,
+    createdAt: now,
+  };
+  ticket.messages = [...ticket.messages, message].slice(-maxMessagesPerTicket);
   ticket.lastMessageAt = now;
-  tickets[requesterId] = ticket;
+  tickets[id] = ticket;
   writeTickets(tickets);
   return ticket;
 }
@@ -198,15 +234,16 @@ export function getSupportQueue(requesterId: string, now = Date.now()): SupportQ
     estimatedMinutes: 0,
     isNext: false,
   };
-  if (!requesterId) return empty;
+  const id = normalizeRequesterId(requesterId);
+  if (!id) return empty;
   const tickets = readTickets();
-  const ticket = tickets[requesterId];
+  const ticket = tickets[id];
   if (!ticket) return empty;
   const joinedAt = Date.parse(ticket.joinedAt);
   if (!Number.isFinite(joinedAt)) return empty;
 
   const waitingAhead = Object.values(tickets).filter((entry) => {
-    if (entry.requesterId === requesterId) return false;
+    if (entry.requesterId === id) return false;
     const entryJoinedAt = Date.parse(entry.joinedAt);
     if (!Number.isFinite(entryJoinedAt)) return false;
     if (entryJoinedAt >= joinedAt) return false;
@@ -224,9 +261,10 @@ export function getSupportQueue(requesterId: string, now = Date.now()): SupportQ
 }
 
 export function deleteSupportFor(requesterId: string) {
-  if (!requesterId) return;
+  const id = normalizeRequesterId(requesterId);
+  if (!id) return;
   const tickets = readTickets();
-  if (!tickets[requesterId]) return;
-  delete tickets[requesterId];
+  if (!tickets[id]) return;
+  delete tickets[id];
   writeTickets(tickets);
 }

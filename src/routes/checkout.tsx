@@ -150,7 +150,12 @@ function Checkout() {
   function submitDelivery(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const data = new FormData(event.currentTarget);
-    const method = String(data.get("deliveryMethod")) as DeliveryMethod;
+    const methodValue = String(data.get("deliveryMethod"));
+    if (methodValue !== "doorstep" && methodValue !== "pickup") {
+      setOrderError("Choose a delivery option.");
+      return;
+    }
+    const method: DeliveryMethod = methodValue;
     const station = pickupStations.find((item) => item.id === String(data.get("pickupStationId")));
     if (method === "pickup" && !station) {
       setOrderError("Choose an active pickup station.");
@@ -183,10 +188,11 @@ function Checkout() {
       setOrderError("Enter a valid phone number.");
       return;
     }
-    if (
-      method === "doorstep" &&
-      (!nextDetails.lga || !nextDetails.community || !nextDetails.streetAddress)
-    ) {
+    if (method === "doorstep" && !KWARA_LGAS.includes(nextDetails.lga)) {
+      setOrderError("Choose a Kwara LGA from the list.");
+      return;
+    }
+    if (method === "doorstep" && (!nextDetails.community || !nextDetails.streetAddress)) {
       setOrderError("Complete your delivery address before continuing.");
       return;
     }
@@ -237,8 +243,28 @@ function Checkout() {
         settlements,
       };
       const savedOrders = localStorage.getItem("suprecart-checkout-orders");
-      const orders = savedOrders ? (JSON.parse(savedOrders) as CheckoutOrder[]) : [];
-      localStorage.setItem("suprecart-checkout-orders", JSON.stringify([newOrder, ...orders]));
+      let orders: CheckoutOrder[] = [];
+      if (savedOrders) {
+        try {
+          const parsed: unknown = JSON.parse(savedOrders);
+          if (Array.isArray(parsed)) {
+            orders = parsed
+              .filter(
+                (entry): entry is CheckoutOrder =>
+                  typeof entry === "object" &&
+                  entry !== null &&
+                  typeof (entry as CheckoutOrder).batchNumber === "string",
+              )
+              .slice(0, 100);
+          }
+        } catch (cause) {
+          console.error("Could not read the saved checkout orders.", cause);
+        }
+      }
+      localStorage.setItem(
+        "suprecart-checkout-orders",
+        JSON.stringify([newOrder, ...orders].slice(0, 100)),
+      );
       trackCheckoutOrder({
         transactionId: newOrder.batchNumber,
         cart,

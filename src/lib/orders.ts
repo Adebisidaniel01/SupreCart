@@ -1,5 +1,6 @@
 import { isAccountDeleted, updateAccountName } from "./accounts";
 import { calculateCommission } from "./commission";
+import { cleanPhone, cleanText } from "./input";
 
 export type OrderStatus =
   "Delivered" | "In transit" | "Processing" | "Cancellation requested" | "Cancelled";
@@ -299,7 +300,7 @@ function readOrderStatusOverrides(): Record<string, StoredOrderStatus> {
       overrides[orderId] = {
         ...(status ? { status } : {}),
         ...(requestedAt ? { requestedAt } : {}),
-        reason: typeof entry.reason === "string" ? entry.reason : "",
+        reason: cleanText(entry.reason, 300),
         ...(deliveryConfirmedAt ? { deliveryConfirmedAt } : {}),
         ...(fundsReleasedAt ? { fundsReleasedAt } : {}),
       };
@@ -319,17 +320,20 @@ function writeOrderStatusOverrides(overrides: Record<string, StoredOrderStatus>)
 function checkoutOrderItems(lines: unknown) {
   if (!Array.isArray(lines)) return "Checkout order";
   const parts: string[] = [];
-  for (const line of lines) {
+  for (const line of lines.slice(0, 100)) {
     if (typeof line !== "object" || line === null) continue;
     const entry = line as {
       product?: { name?: unknown };
       size?: unknown;
       quantity?: unknown;
     };
-    const name = typeof entry.product?.name === "string" ? entry.product.name : "";
+    const name = cleanText(entry.product?.name, 160);
     if (!name) continue;
     const size = typeof entry.size === "string" && entry.size ? ` · ${entry.size}` : "";
-    const quantity = typeof entry.quantity === "number" ? entry.quantity : 1;
+    const quantity =
+      typeof entry.quantity === "number" && Number.isFinite(entry.quantity) && entry.quantity > 0
+        ? Math.min(Math.floor(entry.quantity), 999)
+        : 1;
     parts.push(`${name}${size} × ${quantity}`);
   }
   return parts.length ? parts.join(", ") : "Checkout order";
@@ -338,25 +342,31 @@ function checkoutOrderItems(lines: unknown) {
 function readSettlements(value: unknown): OrderSettlement[] {
   if (!Array.isArray(value)) return [];
   const settlements: OrderSettlement[] = [];
-  for (const item of value) {
+  for (const item of value.slice(0, 50)) {
     if (typeof item !== "object" || item === null) continue;
     const entry = item as Partial<OrderSettlement>;
-    if (typeof entry.seller !== "string" || !entry.seller.trim()) continue;
+    const seller = cleanText(entry.seller, 120);
+    if (!seller) continue;
     if (
       typeof entry.gross !== "number" ||
+      !Number.isFinite(entry.gross) ||
       typeof entry.commission !== "number" ||
-      typeof entry.sellerNet !== "number"
+      !Number.isFinite(entry.commission) ||
+      typeof entry.sellerNet !== "number" ||
+      !Number.isFinite(entry.sellerNet)
     ) {
       continue;
     }
     const status: OrderSettlementStatus = entry.status === "released" ? "released" : "held";
     settlements.push({
-      seller: entry.seller.trim(),
+      seller,
       gross: entry.gross,
       commission: entry.commission,
       sellerNet: entry.sellerNet,
       status,
-      ...(typeof entry.releasedAt === "string" ? { releasedAt: entry.releasedAt } : {}),
+      ...(typeof entry.releasedAt === "string"
+        ? { releasedAt: cleanText(entry.releasedAt, 40) }
+        : {}),
     });
   }
   return settlements;
@@ -394,23 +404,23 @@ function readCheckoutOrders(email: string): Order[] {
     const parsed: unknown = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
     const orders: Order[] = [];
-    for (const value of parsed) {
+    for (const value of parsed.slice(-200)) {
       if (typeof value !== "object" || value === null) continue;
       const entry = value as Record<string, unknown>;
-      if (typeof entry["batchNumber"] !== "string" || !entry["batchNumber"]) continue;
-      if (typeof entry["buyerEmail"] !== "string") continue;
-      if (entry["buyerEmail"].trim().toLowerCase() !== normalized) continue;
-      if (typeof entry["createdAt"] !== "string" || typeof entry["total"] !== "number") continue;
+      const batchNumber = cleanText(entry["batchNumber"], 80);
+      const buyerEmail = cleanText(entry["buyerEmail"], 254).toLowerCase();
+      const createdAt = cleanText(entry["createdAt"], 40);
+      const total = entry["total"];
+      if (!batchNumber || buyerEmail !== normalized) continue;
+      if (!createdAt || !Number.isFinite(Date.parse(createdAt))) continue;
+      if (typeof total !== "number" || !Number.isFinite(total) || total < 0) continue;
       orders.push({
-        id: entry["batchNumber"],
+        id: batchNumber,
         status: "Processing",
-        created_at: entry["createdAt"],
-        total: entry["total"],
+        created_at: createdAt,
+        total,
         items: checkoutOrderItems(entry["lines"]),
-        delivery:
-          typeof entry["deliveryDestination"] === "string" && entry["deliveryDestination"]
-            ? entry["deliveryDestination"]
-            : "Checkout",
+        delivery: cleanText(entry["deliveryDestination"], 400) || "Checkout",
         source: "checkout",
         settlements: checkoutOrderSettlements(entry["lines"], entry["settlements"]),
       });
@@ -425,7 +435,7 @@ function readCheckoutOrders(email: string): Order[] {
 export function getOrders(email: string) {
   if (isAccountDeleted(email)) return [];
   const overrides = readOrderStatusOverrides();
-  const normalized = email.toLowerCase();
+  const normalized = email.trim().toLowerCase();
   const seeded = (seededOrders[normalized] ?? []).map((order) => ({
     ...order,
     source: "seeded" as const,
@@ -473,7 +483,7 @@ export function canCancelOrder(order: Order, now = Date.now()) {
 }
 
 export function cancelOrder(email: string, orderId: string, reason: string) {
-  const trimmedReason = reason.trim();
+  const trimmedReason = cleanText(reason, 300);
   if (!trimmedReason) throw new Error("Choose a cancellation reason first.");
   const order = getOrders(email).find((entry) => entry.id === orderId);
   if (!order) throw new Error("That order could not be found in this browser.");
@@ -568,14 +578,19 @@ export function deleteOrdersFor(email: string) {
   if (changed) writeOrderStatusOverrides(overrides);
 }
 
+function profileKey(email: string) {
+  return `suprecart-profile:${email.trim().toLowerCase()}`;
+}
+
 export function getProfile(email: string, fallbackName: string) {
+  if (typeof window === "undefined") return { name: fallbackName, phone: "" };
   try {
-    const saved = window.localStorage.getItem(`suprecart-profile:${email.toLowerCase()}`);
+    const saved = window.localStorage.getItem(profileKey(email));
     if (!saved) return { name: fallbackName, phone: "" };
     const profile = JSON.parse(saved) as { name?: unknown; phone?: unknown };
     return {
-      name: typeof profile.name === "string" && profile.name.trim() ? profile.name : fallbackName,
-      phone: typeof profile.phone === "string" ? profile.phone : "",
+      name: cleanText(profile.name, 120) || fallbackName,
+      phone: cleanPhone(profile.phone),
     };
   } catch (cause) {
     console.error("Could not read the local SupreCart profile.", cause);
@@ -584,17 +599,20 @@ export function getProfile(email: string, fallbackName: string) {
 }
 
 export function saveProfile(email: string, profile: { name: string; phone: string }) {
+  if (typeof window === "undefined") return;
+  const safeProfile = {
+    name: cleanText(profile.name, 120),
+    phone: cleanPhone(profile.phone),
+  };
   try {
-    window.localStorage.setItem(
-      `suprecart-profile:${email.toLowerCase()}`,
-      JSON.stringify(profile),
-    );
+    window.localStorage.setItem(profileKey(email), JSON.stringify(safeProfile));
   } catch (cause) {
     console.error("Could not save the local SupreCart profile.", cause);
   }
-  updateAccountName(email, profile.name);
+  updateAccountName(email, safeProfile.name);
 }
 
 export function deleteProfile(email: string) {
-  window.localStorage.removeItem(`suprecart-profile:${email.toLowerCase()}`);
+  if (typeof window === "undefined") return;
+  window.localStorage.removeItem(profileKey(email));
 }

@@ -1,4 +1,5 @@
 import { isAccountDeleted } from "./accounts";
+import { cleanEmail, cleanMultiline, cleanPhone, cleanText } from "./input";
 
 export type SellerApplicationStatus = "pending" | "approved" | "rejected";
 
@@ -45,18 +46,52 @@ function normalizeEmail(email: string) {
   return email.trim().toLowerCase();
 }
 
-function isSellerApplication(value: unknown): value is SellerApplication {
-  if (typeof value !== "object" || value === null) return false;
+const applicationStatuses = new Set<SellerApplicationStatus>(["pending", "approved", "rejected"]);
+const maxApplications = 200;
+
+function validTimestamp(value: unknown) {
+  const timestamp = cleanText(value, 40);
+  return timestamp && Number.isFinite(Date.parse(timestamp)) ? timestamp : "";
+}
+
+function normalizeApplication(value: unknown): SellerApplication | null {
+  if (typeof value !== "object" || value === null) return null;
   const entry = value as Partial<SellerApplication>;
-  return (
-    typeof entry.email === "string" &&
-    typeof entry.name === "string" &&
-    typeof entry.storeName === "string" &&
-    typeof entry.phone === "string" &&
-    typeof entry.productDescription === "string" &&
-    ["pending", "approved", "rejected"].includes(entry.status ?? "") &&
-    typeof entry.submittedAt === "string"
-  );
+  const email = cleanEmail(entry.email);
+  const name = cleanText(entry.name, 120);
+  const storeName = cleanText(entry.storeName, 120);
+  const phone = cleanPhone(entry.phone);
+  const productDescription = cleanMultiline(entry.productDescription, 2_000);
+  const status = entry.status;
+  const submittedAt = validTimestamp(entry.submittedAt);
+  if (!email || !name || !storeName || !phone || !productDescription) return null;
+  if (!status || !applicationStatuses.has(status) || !submittedAt) return null;
+  const reviewedAt = validTimestamp(entry.reviewedAt);
+  const reviewNote = cleanText(entry.reviewNote, 300);
+  return {
+    email,
+    name,
+    storeName,
+    phone,
+    productDescription,
+    status,
+    submittedAt,
+    ...(reviewedAt ? { reviewedAt } : {}),
+    ...(reviewNote ? { reviewNote } : {}),
+  };
+}
+
+function normalizeApplications(value: unknown): SellerApplication[] {
+  if (!Array.isArray(value)) return [];
+  const applications: SellerApplication[] = [];
+  for (const entry of value.slice(-maxApplications)) {
+    const application = normalizeApplication(entry);
+    if (!application) continue;
+    const existing = applications.findIndex((item) => item.email === application.email);
+    if (existing >= 0) applications[existing] = application;
+    else applications.push(application);
+  }
+  return applications;
 }
 
 function writeApplications(applications: SellerApplication[]) {
@@ -86,8 +121,7 @@ export function readSellerApplications(): SellerApplication[] {
   try {
     const raw = window.localStorage.getItem(storageKey);
     const parsed: unknown = raw ? JSON.parse(raw) : [];
-    const applications = Array.isArray(parsed) ? parsed.filter(isSellerApplication) : [];
-    return ensureSeeded(applications).sort(
+    return ensureSeeded(normalizeApplications(parsed)).sort(
       (first, second) => Date.parse(second.submittedAt) - Date.parse(first.submittedAt),
     );
   } catch (cause) {
@@ -109,17 +143,18 @@ export function deleteSellerApplication(email: string) {
 }
 
 export function submitSellerApplication(draft: SellerApplicationDraft): SellerApplication {
-  const email = normalizeEmail(draft.email);
-  const applications = readSellerApplications();
-  const existing = applications.find((entry) => entry.email === email);
-  const application: SellerApplication = {
+  const application = normalizeApplication({
     ...draft,
-    email,
     status: "pending",
     submittedAt: new Date().toISOString(),
-  };
+  });
+  if (!application) {
+    throw new Error("Complete the seller application with valid details before submitting.");
+  }
+  const applications = readSellerApplications();
+  const existing = applications.find((entry) => entry.email === application.email);
   const next = existing
-    ? applications.map((entry) => (entry.email === email ? application : entry))
+    ? applications.map((entry) => (entry.email === application.email ? application : entry))
     : [application, ...applications];
   writeApplications(next);
   return application;
@@ -134,7 +169,7 @@ export function reviewSellerApplication(
   let reviewed: SellerApplication | null = null;
   const next = readSellerApplications().map((entry): SellerApplication => {
     if (entry.email !== normalized) return entry;
-    const note = reviewNote.trim();
+    const note = cleanText(reviewNote, 300);
     const updated: SellerApplication = {
       email: entry.email,
       name: entry.name,

@@ -1,3 +1,5 @@
+import { cleanEmail, cleanSecret, cleanText } from "./input";
+
 export type Account = {
   email: string;
   name: string;
@@ -57,9 +59,13 @@ function readDeletedAccounts(): string[] {
     const raw = window.localStorage.getItem(deletedAccountsKey);
     if (!raw) return [];
     const parsed: unknown = JSON.parse(raw);
-    return Array.isArray(parsed)
-      ? parsed.filter((email): email is string => typeof email === "string")
-      : [];
+    if (!Array.isArray(parsed)) return [];
+    const deleted = new Set<string>();
+    for (const entry of parsed.slice(0, 500)) {
+      const email = cleanEmail(entry);
+      if (email) deleted.add(email);
+    }
+    return [...deleted];
   } catch (cause) {
     console.error("Could not read the list of deleted SupreCart accounts.", cause);
     return [];
@@ -85,12 +91,13 @@ function readModerationMap(): Record<string, AccountModeration> {
     for (const [email, value] of Object.entries(parsed as Record<string, unknown>)) {
       if (typeof value !== "object" || value === null) continue;
       const entry = value as Partial<AccountModeration>;
-      if (!isModerationStatus(entry.status)) continue;
-      map[normalizeEmail(email)] = {
-        email: normalizeEmail(email),
+      const normalizedEmail = cleanEmail(email);
+      if (!normalizedEmail || !isModerationStatus(entry.status)) continue;
+      map[normalizedEmail] = {
+        email: normalizedEmail,
         status: entry.status,
-        reason: typeof entry.reason === "string" ? entry.reason : "",
-        updatedAt: typeof entry.updatedAt === "string" ? entry.updatedAt : "",
+        reason: cleanText(entry.reason, 300),
+        updatedAt: cleanText(entry.updatedAt, 40),
       };
     }
     return map;
@@ -125,7 +132,7 @@ export function setAccountModeration(
   const entry: AccountModeration = {
     email: normalized,
     status,
-    reason: reason.trim(),
+    reason: cleanText(reason, 300),
     updatedAt: new Date().toISOString(),
   };
   writeModerationMap({ ...readModerationMap(), [normalized]: entry });
@@ -161,14 +168,26 @@ function readStoredAccounts(): StoredAccount[] {
     if (!raw) return [];
     const parsed: unknown = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
-    return parsed.filter(
-      (entry): entry is StoredAccount =>
-        typeof entry === "object" &&
-        entry !== null &&
-        typeof (entry as Account).email === "string" &&
-        typeof (entry as Account).name === "string" &&
-        typeof (entry as StoredAccount).passwordHash === "string",
-    );
+    const accounts: StoredAccount[] = [];
+    for (const value of parsed.slice(-100)) {
+      if (typeof value !== "object" || value === null) continue;
+      const entry = value as Partial<StoredAccount>;
+      const email = cleanEmail(entry.email);
+      const name = cleanText(entry.name, 120);
+      const role = entry.role === "seller" ? "seller" : entry.role === "buyer" ? "buyer" : null;
+      const salt = cleanText(entry.salt, 120);
+      const passwordHash = cleanText(entry.passwordHash, 500);
+      if (!email || !name || !role || !salt || !passwordHash) continue;
+      accounts.push({
+        email,
+        name,
+        role,
+        salt,
+        passwordHash,
+        createdAt: cleanText(entry.createdAt, 40),
+      });
+    }
+    return accounts;
   } catch (cause) {
     console.error("Could not read the locally saved SupreCart accounts.", cause);
     return [];
@@ -192,7 +211,46 @@ function randomSalt(): string {
     .join("");
 }
 
-async function hashPassword(password: string, salt: string): Promise<string> {
+const passwordHashPrefix = "pbkdf2-sha256";
+const PASSWORD_ITERATIONS = 600_000;
+const PASSWORD_MIN_LENGTH = 8;
+const PASSWORD_MAX_LENGTH = 256;
+
+function toHex(bytes: ArrayBuffer | Uint8Array) {
+  const view = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
+  return Array.from(view)
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+async function hashPassword(
+  password: string,
+  salt: string,
+  iterations = PASSWORD_ITERATIONS,
+): Promise<string> {
+  if (!globalThis.crypto?.subtle) {
+    throw new Error(
+      "This browser cannot store a password safely. Use one of the listed accounts instead.",
+    );
+  }
+  const encoder = new TextEncoder();
+  const key = await crypto.subtle.importKey("raw", encoder.encode(password), "PBKDF2", false, [
+    "deriveBits",
+  ]);
+  const bits = await crypto.subtle.deriveBits(
+    {
+      name: "PBKDF2",
+      salt: encoder.encode(salt),
+      iterations,
+      hash: "SHA-256",
+    },
+    key,
+    256,
+  );
+  return toHex(bits);
+}
+
+async function legacyHashPassword(password: string, salt: string): Promise<string> {
   if (!globalThis.crypto?.subtle) {
     throw new Error(
       "This browser cannot store a password safely. Use one of the listed accounts instead.",
@@ -202,9 +260,37 @@ async function hashPassword(password: string, salt: string): Promise<string> {
     "SHA-256",
     new TextEncoder().encode(`${salt}:${password}`),
   );
-  return Array.from(new Uint8Array(digest))
-    .map((byte) => byte.toString(16).padStart(2, "0"))
-    .join("");
+  return toHex(digest);
+}
+
+function formatPasswordHash(iterations: number, hash: string) {
+  return `${passwordHashPrefix}$${iterations}$${hash}`;
+}
+
+function parsePasswordHash(value: string): { iterations: number; hash: string } | null {
+  const [scheme, iterations, hash] = value.split("$");
+  if (scheme !== passwordHashPrefix || !iterations || !hash) return null;
+  if (!/^[a-f0-9]{64}$/i.test(hash)) return null;
+  const parsedIterations = Number(iterations);
+  if (!Number.isInteger(parsedIterations) || parsedIterations < 100_000) return null;
+  return { iterations: parsedIterations, hash };
+}
+
+function constantTimeEqual(first: string, second: string) {
+  if (first.length !== second.length) return false;
+  let difference = 0;
+  for (let index = 0; index < first.length; index += 1) {
+    difference |= first.charCodeAt(index) ^ second.charCodeAt(index);
+  }
+  return difference === 0;
+}
+
+function validatedPassword(value: unknown) {
+  const password = cleanSecret(value, PASSWORD_MAX_LENGTH);
+  if (password.length < PASSWORD_MIN_LENGTH) {
+    throw new Error(`Choose a password with at least ${PASSWORD_MIN_LENGTH} characters.`);
+  }
+  return password;
 }
 
 export function findAccount(email: string, role: Account["role"]) {
@@ -252,7 +338,10 @@ export function getAllAccounts(): Account[] {
 
 export function saveAccount(account: Account) {
   if (!canUseStorage()) return;
-  window.localStorage.setItem(sessionKey, JSON.stringify(account));
+  const role = account.role === "seller" ? "seller" : "buyer";
+  const match = findAccount(account.email, role);
+  if (!match) throw new Error("That account is not available in this browser.");
+  window.localStorage.setItem(sessionKey, JSON.stringify(match));
   window.dispatchEvent(new Event(sessionChangeEvent));
 }
 
@@ -268,18 +357,18 @@ export function readActiveAccount(): Account | null {
   if (!savedAccount) return null;
   try {
     const account = JSON.parse(savedAccount) as Partial<Account>;
-    if (typeof account.email !== "string") {
+    const email = cleanEmail(account.email);
+    if (!email) {
       window.localStorage.removeItem(sessionKey);
       return null;
     }
     const role = account.role === "seller" ? "seller" : "buyer";
-    const match = findAccount(account.email, role) ?? null;
+    const match = findAccount(email, role) ?? null;
     if (!match || getAccountModeration(match.email).status === "banned") {
       window.localStorage.removeItem(sessionKey);
       return null;
     }
-    const sessionName =
-      typeof account.name === "string" && account.name.trim() ? account.name.trim() : match.name;
+    const sessionName = cleanText(account.name, 120) || match.name;
     return { email: match.email, name: sessionName, role: match.role };
   } catch (cause) {
     console.error("Could not read the local SupreCart account.", cause);
@@ -358,7 +447,7 @@ export function ensureSellerAccount(buyer: Account): Account {
 export function updateAccountName(email: string, name: string) {
   if (!canUseStorage()) return;
   const normalized = normalizeEmail(email);
-  const trimmed = name.trim();
+  const trimmed = cleanText(name, 120);
   if (!trimmed) return;
   writeStoredAccounts(
     readStoredAccounts().map((account) =>
@@ -374,7 +463,7 @@ export function updateAccountName(email: string, name: string) {
 
 /**
  * Creates an account that only exists in this browser. There is no email
- * verification and no server: the password is kept as a salted SHA-256 digest.
+ * verification and no server: the password is kept as a salted PBKDF2 digest.
  */
 export async function createLocalAccount(details: {
   email: string;
@@ -382,22 +471,28 @@ export async function createLocalAccount(details: {
   role: Account["role"];
   password: string;
 }): Promise<Account> {
-  const email = details.email.trim().toLowerCase();
-  if (findAccount(email, details.role)) {
+  const email = cleanEmail(details.email);
+  const name = cleanText(details.name, 120);
+  const role = details.role === "seller" ? "seller" : details.role === "buyer" ? "buyer" : null;
+  if (!role) throw new Error("Choose a valid account type.");
+  if (!email) throw new Error("Enter a valid email address.");
+  if (!name) throw new Error("Enter your name.");
+  const password = validatedPassword(details.password);
+  if (findAccount(email, role)) {
     throw new Error("An account with that email already exists. Try signing in instead.");
   }
   const salt = randomSalt();
   const accounts = readStoredAccounts();
   accounts.push({
     email,
-    name: details.name.trim(),
-    role: details.role,
+    name,
+    role,
     salt,
-    passwordHash: await hashPassword(details.password, salt),
+    passwordHash: formatPasswordHash(PASSWORD_ITERATIONS, await hashPassword(password, salt)),
     createdAt: new Date().toISOString(),
   });
   writeStoredAccounts(accounts);
-  return { email, name: details.name.trim(), role: details.role };
+  return { email, name, role };
 }
 
 export async function verifyAccountPassword(
@@ -405,12 +500,42 @@ export async function verifyAccountPassword(
   role: Account["role"],
   password: string,
 ): Promise<boolean> {
-  const normalized = email.trim().toLowerCase();
+  const normalized = cleanEmail(email);
+  const passwordValue = cleanSecret(password, PASSWORD_MAX_LENGTH);
+  if (!normalized || !passwordValue) return false;
   const stored = readStoredAccounts().find(
     (account) => account.email === normalized && account.role === role,
   );
   if (!stored) return false;
-  return (await hashPassword(password, stored.salt)) === stored.passwordHash;
+
+  const parsed = parsePasswordHash(stored.passwordHash);
+  if (parsed) {
+    const candidate = await hashPassword(passwordValue, stored.salt, parsed.iterations);
+    return constantTimeEqual(candidate, parsed.hash);
+  }
+
+  const legacyCandidate = await legacyHashPassword(passwordValue, stored.salt);
+  if (!constantTimeEqual(legacyCandidate, stored.passwordHash)) return false;
+
+  // Upgrade older SHA-256 accounts the next time the correct password is used.
+  try {
+    const salt = randomSalt();
+    const upgraded = await hashPassword(passwordValue, salt);
+    writeStoredAccounts(
+      readStoredAccounts().map((account) =>
+        account.email === stored.email && account.role === stored.role
+          ? {
+              ...account,
+              salt,
+              passwordHash: formatPasswordHash(PASSWORD_ITERATIONS, upgraded),
+            }
+          : account,
+      ),
+    );
+  } catch (cause) {
+    console.error("Could not upgrade the saved SupreCart password hash.", cause);
+  }
+  return true;
 }
 
 /**
@@ -419,7 +544,9 @@ export async function verifyAccountPassword(
  * this browser.
  */
 export async function resetLocalAccountPassword(email: string, password: string): Promise<void> {
-  const normalized = email.trim().toLowerCase();
+  const normalized = cleanEmail(email);
+  if (!normalized) throw new Error("Enter the email you signed up with.");
+  const passwordValue = validatedPassword(password);
   const accounts = readStoredAccounts();
   const matching = accounts.filter((account) => account.email === normalized);
   if (matching.length === 0) {
@@ -428,7 +555,10 @@ export async function resetLocalAccountPassword(email: string, password: string)
     );
   }
   const salt = randomSalt();
-  const passwordHash = await hashPassword(password, salt);
+  const passwordHash = formatPasswordHash(
+    PASSWORD_ITERATIONS,
+    await hashPassword(passwordValue, salt),
+  );
   writeStoredAccounts(
     accounts.map((account) =>
       account.email === normalized ? { ...account, salt, passwordHash } : account,

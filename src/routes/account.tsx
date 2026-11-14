@@ -85,20 +85,60 @@ type BuyerAddress = {
   is_default: boolean;
 };
 
-const addressStorageKey = (email: string) => `suprecart-addresses:${email.toLowerCase()}`;
+const addressStorageKey = (email: string) => `suprecart-addresses:${cleanEmail(email)}`;
+const maxStoredAddresses = 50;
+
+function normalizeAddress(value: unknown): BuyerAddress | null {
+  if (typeof value !== "object" || value === null) return null;
+  const entry = value as Partial<BuyerAddress>;
+  const id = cleanText(entry.id, 80);
+  const first_name = cleanText(entry.first_name, 80);
+  const last_name = cleanText(entry.last_name, 80);
+  const addressEmail = cleanEmail(entry.email);
+  const phone = cleanPhone(entry.phone);
+  const lga = cleanText(entry.lga, 80);
+  const community = cleanText(entry.community, 120);
+  const street_address = cleanText(entry.street_address, 200);
+  const landmark = cleanText(entry.landmark, 160);
+  if (!id || !first_name || !last_name || !addressEmail || !phone || !lga) return null;
+  if (!community || !street_address) return null;
+  return {
+    id,
+    first_name,
+    last_name,
+    email: addressEmail,
+    phone,
+    lga,
+    community,
+    street_address,
+    landmark,
+    is_default: entry.is_default === true,
+  };
+}
+
+function normalizeAddresses(value: unknown): BuyerAddress[] {
+  if (!Array.isArray(value)) return [];
+  const addresses: BuyerAddress[] = [];
+  for (const entry of value.slice(0, maxStoredAddresses)) {
+    const address = normalizeAddress(entry);
+    if (!address || addresses.some((item) => item.id === address.id)) continue;
+    if (address.is_default && addresses.some((item) => item.is_default)) {
+      address.is_default = false;
+    }
+    addresses.push(address);
+  }
+  const firstAddress = addresses[0];
+  if (firstAddress && !addresses.some((address) => address.is_default)) {
+    firstAddress.is_default = true;
+  }
+  return addresses;
+}
 
 function readLocalAddresses(email: string): BuyerAddress[] {
   try {
     const saved = window.localStorage.getItem(addressStorageKey(email));
     if (!saved) return [];
-    const parsed: unknown = JSON.parse(saved);
-    if (!Array.isArray(parsed)) return [];
-    return parsed.filter(
-      (entry): entry is BuyerAddress =>
-        typeof entry === "object" &&
-        entry !== null &&
-        typeof (entry as BuyerAddress).id === "string",
-    );
+    return normalizeAddresses(JSON.parse(saved));
   } catch (cause) {
     console.error("Could not read the local SupreCart delivery addresses.", cause);
     return [];
@@ -107,7 +147,10 @@ function readLocalAddresses(email: string): BuyerAddress[] {
 
 function writeLocalAddresses(email: string, addresses: BuyerAddress[]) {
   try {
-    window.localStorage.setItem(addressStorageKey(email), JSON.stringify(addresses));
+    window.localStorage.setItem(
+      addressStorageKey(email),
+      JSON.stringify(normalizeAddresses(addresses)),
+    );
   } catch (cause) {
     console.error("Could not save the local SupreCart delivery addresses.", cause);
   }
