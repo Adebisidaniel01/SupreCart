@@ -20,13 +20,27 @@ beforeEach(() => {
 });
 
 describe("seller applications", () => {
-  it("seeds the approved Shewa application", () => {
-    expect(readSellerApplications()).toHaveLength(1);
-    expect(getSellerApplication("SHEWA@gmail.com")).toMatchObject({
-      email: "shewa@gmail.com",
-      storeName: "Shewa Studio",
-      status: "approved",
-    });
+  it("does not seed a seller application", () => {
+    expect(readSellerApplications()).toHaveLength(0);
+  });
+
+  it("drops the retired Shewa application from stored data", () => {
+    window.localStorage.setItem(
+      "suprecart-seller-applications",
+      JSON.stringify([
+        {
+          email: "shewa@gmail.com",
+          name: "Bello-lawal Dorcas",
+          storeName: "Shewa Studio",
+          phone: "+234 803 000 0000",
+          productDescription: "Considered footwear and everyday accessories.",
+          status: "approved",
+          submittedAt: "2026-08-28T09:30:00.000Z",
+        },
+      ]),
+    );
+
+    expect(readSellerApplications()).toHaveLength(0);
   });
 
   it("submits a normalized pending application", () => {
@@ -38,14 +52,14 @@ describe("seller applications", () => {
     });
     expect(application.reviewedAt).toBeUndefined();
     expect(application.reviewNote).toBeUndefined();
-    expect(readSellerApplications()).toHaveLength(2);
+    expect(readSellerApplications()).toHaveLength(1);
   });
 
   it("replaces an existing application when it is resubmitted", () => {
     submitSellerApplication(draft);
     submitSellerApplication({ ...draft, storeName: "Renamed Studio" });
 
-    expect(readSellerApplications()).toHaveLength(2);
+    expect(readSellerApplications()).toHaveLength(1);
     expect(getSellerApplication(draft.email)).toMatchObject({
       storeName: "Renamed Studio",
       status: "pending",

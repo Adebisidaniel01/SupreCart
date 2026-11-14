@@ -64,35 +64,6 @@ function readStoredMessageMap(): Record<string, ChatMessage[]> {
 
 const seedConversations: ChatConversation[] = [
   {
-    id: "chat-daniel-shewa",
-    buyer: { email: "blackrose@gmail.com", name: "Daniel Adebisi", role: "buyer" },
-    seller: { email: "shewa@gmail.com", name: "Bello-lawal Dorcas", role: "seller" },
-    productName: "Hand-finished leather slides",
-    messages: [
-      {
-        id: "ds-1",
-        senderEmail: "blackrose@gmail.com",
-        body: "Hi, are these true to size?",
-        createdAt: "2026-09-18T09:12:00.000Z",
-        readBy: [],
-      },
-      {
-        id: "ds-2",
-        senderEmail: "shewa@gmail.com",
-        body: "Hello Daniel! Yes, they fit true to size. I can help with sizing if you share your usual size.",
-        createdAt: "2026-09-18T09:18:00.000Z",
-        readBy: ["blackrose@gmail.com"],
-      },
-      {
-        id: "ds-3",
-        senderEmail: "blackrose@gmail.com",
-        body: "Great, thank you. I usually wear a 43.",
-        createdAt: "2026-09-18T09:23:00.000Z",
-        readBy: ["shewa@gmail.com"],
-      },
-    ],
-  },
-  {
     id: "chat-daniel-daniella",
     buyer: { email: "blackrose@gmail.com", name: "Daniel Adebisi", role: "buyer" },
     seller: { email: "daniella@gmail.com", name: "Daniella Olusegun", role: "seller" },
@@ -220,28 +191,6 @@ const seedConversations: ChatConversation[] = [
         senderEmail: "bukunmi@gmail.com",
         body: "It has a USB-C port and three brightness levels, which is handy for late study sessions.",
         createdAt: "2026-09-12T12:52:00.000Z",
-        readBy: ["olowe@gmail.com"],
-      },
-    ],
-  },
-  {
-    id: "chat-olowe-shewa",
-    buyer: { email: "olowe@gmail.com", name: "Olowe Goodness", role: "buyer" },
-    seller: { email: "shewa@gmail.com", name: "Bello-lawal Dorcas", role: "seller" },
-    productName: "Adidas Superstar",
-    messages: [
-      {
-        id: "os-1",
-        senderEmail: "olowe@gmail.com",
-        body: "Do you have these in a UK 9?",
-        createdAt: "2026-09-11T13:15:00.000Z",
-        readBy: ["shewa@gmail.com"],
-      },
-      {
-        id: "os-2",
-        senderEmail: "shewa@gmail.com",
-        body: "Yes, the available sizes are listed on the product page; this chat is stored locally.",
-        createdAt: "2026-09-11T13:27:00.000Z",
         readBy: ["olowe@gmail.com"],
       },
     ],

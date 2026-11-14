@@ -117,8 +117,6 @@ type SellerStats = {
   committedPayouts: number;
 };
 
-type FundEntry = { id: string; description: string; amount: number; date: string };
-
 type SellerSettingsTab =
   "account" | "store" | "fulfilment" | "commission" | "notifications" | "security" | "danger";
 
@@ -160,13 +158,11 @@ const formatMoney = (amount: number) =>
 
 function buildSeededSellerStats(email: string): SellerStats {
   const sellerProducts =
-    email === "shewa@gmail.com"
-      ? seededCatalog.filter((product) => product.category === "Footwear").slice(0, 3)
-      : email === "daniella@gmail.com"
-        ? seededCatalog.filter((product) => product.category === "Beauty").slice(0, 3)
-        : email === "adeniji@gmail.com"
-          ? seededCatalog.filter((product) => product.category === "Clothing").slice(0, 3)
-          : seededCatalog.filter((product) => product.category === "Home").slice(0, 3);
+    email === "daniella@gmail.com"
+      ? seededCatalog.filter((product) => product.category === "Beauty").slice(0, 3)
+      : email === "adeniji@gmail.com"
+        ? seededCatalog.filter((product) => product.category === "Clothing").slice(0, 3)
+        : seededCatalog.filter((product) => product.category === "Home").slice(0, 3);
   const createdAt = (daysAgo: number) => {
     const date = new Date();
     date.setDate(date.getDate() - daysAgo);
@@ -192,33 +188,28 @@ function buildSeededSellerStats(email: string): SellerStats {
     { id: "SC-0996", status: "in_transit", created_at: createdAt(6) },
     { id: "SC-0942", status: "delivered", created_at: createdAt(12), buyer_confirmed: true },
   ];
-  const sellerNet = (index: number, quantity = 1) => {
-    const product = products[index];
-    if (!product) return 0;
-    return calculateCommission(product.price).sellerNet * quantity;
-  };
   const items: SellerStats["items"] = [
     {
       quantity: 1,
-      seller_net: sellerNet(0),
+      seller_net: 0,
       product_id: products[0]?.id || "",
       order_id: "SC-1048",
     },
     {
       quantity: 2,
-      seller_net: sellerNet(1, 2),
+      seller_net: 0,
       product_id: products[1]?.id || "",
       order_id: "SC-1031",
     },
     {
       quantity: 1,
-      seller_net: sellerNet(2),
+      seller_net: 0,
       product_id: products[2]?.id || "",
       order_id: "SC-0996",
     },
     {
       quantity: 1,
-      seller_net: sellerNet(0),
+      seller_net: 0,
       product_id: products[0]?.id || "",
       order_id: "SC-0942",
     },
@@ -234,26 +225,6 @@ function buildSeededSellerStats(email: string): SellerStats {
     })),
     committedPayouts: 0,
   };
-}
-
-function fundEntries(email: string): FundEntry[] {
-  const entries: Record<string, FundEntry[]> = {
-    "shewa@gmail.com": [
-      { id: "fund-s-1", description: "Refund adjustment", amount: 12500, date: "18 Sep 2026" },
-      { id: "fund-s-2", description: "Wallet top-up", amount: 20000, date: "12 Sep 2026" },
-    ],
-    "daniella@gmail.com": [
-      { id: "fund-d-1", description: "Wallet top-up", amount: 25000, date: "16 Sep 2026" },
-    ],
-    "adeniji@gmail.com": [
-      { id: "fund-a-1", description: "Refund adjustment", amount: 8400, date: "14 Sep 2026" },
-    ],
-    "bukunmi@gmail.com": [
-      { id: "fund-b-1", description: "Refund adjustment", amount: 6500, date: "13 Sep 2026" },
-      { id: "fund-b-2", description: "Wallet top-up", amount: 10000, date: "10 Sep 2026" },
-    ],
-  };
-  return entries[email] ?? [];
 }
 
 const localSellerProductsKey = (email: string) =>
@@ -682,9 +653,7 @@ export default function SellerPortal({ standalone = false }: { standalone?: bool
     ) ?? [];
   const seededEarnings = seededConfirmedItems.reduce((sum, item) => sum + item.seller_net, 0);
   const seededSoldCount = seededConfirmedItems.reduce((sum, item) => sum + item.quantity, 0);
-  const seededWalletEntries = sessionAccount ? fundEntries(sessionAccount.email) : [];
-  const seededBalance =
-    seededEarnings + seededWalletEntries.reduce((sum, entry) => sum + entry.amount, 0);
+  const seededBalance = seededEarnings;
 
   if (loadingScreen) return <SellerLoadingScreen />;
 
@@ -1010,7 +979,6 @@ export default function SellerPortal({ standalone = false }: { standalone?: bool
               submitting={submitting}
               seededMode
               sessionProfile={sessionProfile}
-              fundEntries={seededWalletEntries}
               page={page}
               settingsTab={settingsTab}
               onNavigate={goToPage}
@@ -1359,7 +1327,6 @@ function SellerDashboard({
   submitting,
   seededMode = false,
   sessionProfile,
-  fundEntries = [],
   page,
   settingsTab,
   onNavigate,
@@ -1378,7 +1345,6 @@ function SellerDashboard({
   submitting: boolean;
   seededMode?: boolean;
   sessionProfile?: { name: string; phone: string };
-  fundEntries?: FundEntry[];
   page: SellerPage;
   settingsTab: SellerSettingsTab;
   onNavigate: (page: SellerPage) => void;
@@ -1683,7 +1649,7 @@ function SellerDashboard({
               </label>
               <label>
                 Brand / maker
-                <input name="brand" maxLength={60} placeholder="e.g. Shewa Studio" />
+                <input name="brand" maxLength={60} placeholder="e.g. Northline Studio" />
               </label>
               <label>
                 Condition
@@ -1928,21 +1894,6 @@ function SellerDashboard({
             deducts its commission, then releases the seller net. If a sale does not complete, the
             held amount is never credited to your available balance.
           </p>
-          {seededMode && fundEntries.length > 0 && (
-            <div className="seller-fund-ledger">
-              <h3>Balance activity</h3>
-              <p>Refund adjustments and top-ups included in this balance.</p>
-              {fundEntries.map((entry) => (
-                <div className="seller-fund-ledger-row" key={entry.id}>
-                  <span>
-                    <strong>{entry.description}</strong>
-                    <small>{entry.date}</small>
-                  </span>
-                  <b>+{formatMoney(entry.amount)}</b>
-                </div>
-              ))}
-            </div>
-          )}
         </section>
       )}
       {page === "settings" && (
@@ -2089,7 +2040,7 @@ function SellerDashboard({
                     name="storeName"
                     defaultValue={preferences.store.storeName || application.first_name}
                     maxLength={80}
-                    placeholder="e.g. Shewa Home Studio"
+                    placeholder="e.g. Northline Home Studio"
                   />
                 </label>
                 <label>

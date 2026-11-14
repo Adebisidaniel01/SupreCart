@@ -52,9 +52,8 @@ npm run build:sellers # standalone seller build
 Local credentials live in `src/lib/accounts.ts`:
 
 - `blackrose@gmail.com` — buyer, `Daniel Adebisi`.
-- `shewa@gmail.com` — buyer with a seeded approved seller application, `Bello-lawal Dorcas`.
 
-Preset accounts can sign in with any password. New accounts are saved in this browser only. Approved buyers get a local seller session when they sign in; new seller applications remain pending until an approval flow is connected.
+The preset account can sign in with any password. New accounts are saved in this browser only. An approved buyer gets a local seller session when they sign in; new seller applications remain pending until an approval flow is connected.
 
 ## Local data and safety
 

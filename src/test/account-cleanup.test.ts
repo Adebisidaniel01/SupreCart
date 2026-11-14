@@ -4,7 +4,7 @@ import { deleteAccountData } from "@/lib/account-cleanup";
 import { findAccount, getAccounts, isAccountDeleted, saveAccount } from "@/lib/accounts";
 import { getChatConversations } from "@/lib/messages";
 import { getOrders, getProfile, saveProfile } from "@/lib/orders";
-import { getSellerApplication } from "@/lib/seller-applications";
+import { getSellerApplication, submitSellerApplication } from "@/lib/seller-applications";
 
 beforeEach(() => {
   window.localStorage.clear();
@@ -36,18 +36,25 @@ describe("account cleanup", () => {
     ).toHaveLength(0);
   });
 
-  it("permanently removes a seller application, profile and seeded chats", () => {
-    expect(getSellerApplication("shewa@gmail.com")?.status).toBe("approved");
-    saveProfile("shewa@gmail.com", { name: "Dorcas", phone: "+234 800 000 0000" });
+  it("permanently removes a seller application, profile and chats", () => {
+    const email = "new.seller@example.com";
+    submitSellerApplication({
+      email,
+      name: "New Seller",
+      storeName: "New Seller Studio",
+      phone: "+234 800 000 0000",
+      productDescription: "Handmade goods.",
+    });
+    saveProfile(email, { name: "New Seller", phone: "+234 800 000 0000" });
 
-    deleteAccountData("shewa@gmail.com");
+    deleteAccountData(email);
 
-    expect(getSellerApplication("shewa@gmail.com")).toBeNull();
-    expect(getProfile("shewa@gmail.com", "Dorcas").phone).toBe("");
+    expect(getSellerApplication(email)).toBeNull();
+    expect(getProfile(email, "New Seller").phone).toBe("");
     expect(
       getChatConversations({
-        email: "shewa@gmail.com",
-        name: "Bello-lawal Dorcas",
+        email,
+        name: "New Seller",
         role: "seller",
       }),
     ).toHaveLength(0);

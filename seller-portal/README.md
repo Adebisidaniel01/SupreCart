@@ -19,7 +19,6 @@ Set `VITE_MARKETPLACE_URL` to the buyer storefront URL when deploying the seller
 
 ## Access
 
-- `shewa@gmail.com` has a seeded approved seller application. Sign in through `/login` to create a local seller session.
 - New sellers can register from the seller studio. Their application is saved locally as pending.
 - Buyers without a seller session are redirected to `/login`.
 - Sign out clears the active local session and returns to the storefront.

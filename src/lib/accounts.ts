@@ -7,14 +7,14 @@ export type Account = {
 };
 
 /**
- * The two built-in identities that ship with SupreCart. Both are buyers first;
- * the Shewa account also has a pre-approved seller application seeded locally.
- * They need no password, so sign-in is just the listed email address.
+ * The built-in identity that ships with SupreCart. It needs no password, so
+ * sign-in is just the listed email address.
  */
 const presetAccounts: Account[] = [
   { email: "blackrose@gmail.com", name: "Daniel Adebisi", role: "buyer" },
-  { email: "shewa@gmail.com", name: "Bello-lawal Dorcas", role: "buyer" },
 ];
+
+const retiredSeedEmails = new Set(["shewa@gmail.com"]);
 
 const sessionKey = "suprecart-account-session";
 const localAccountsKey = "suprecart-local-accounts";
@@ -178,6 +178,7 @@ function readStoredAccounts(): StoredAccount[] {
       const salt = cleanText(entry.salt, 120);
       const passwordHash = cleanText(entry.passwordHash, 500);
       if (!email || !name || !role || !salt || !passwordHash) continue;
+      if (retiredSeedEmails.has(email)) continue;
       accounts.push({
         email,
         name,

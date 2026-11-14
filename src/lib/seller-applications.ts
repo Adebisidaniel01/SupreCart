@@ -1,4 +1,3 @@
-import { isAccountDeleted } from "./accounts";
 import { cleanEmail, cleanMultiline, cleanPhone, cleanText } from "./input";
 
 export type SellerApplicationStatus = "pending" | "approved" | "rejected";
@@ -23,20 +22,7 @@ export type SellerApplicationDraft = Pick<
 const storageKey = "suprecart-seller-applications";
 const changeEvent = "suprecart-seller-applications-change";
 
-const seededApplications: SellerApplication[] = [
-  {
-    email: "shewa@gmail.com",
-    name: "Bello-lawal Dorcas",
-    storeName: "Shewa Studio",
-    phone: "+234 803 000 0000",
-    productDescription:
-      "Considered footwear and everyday accessories, sourced and styled in small batches.",
-    status: "approved",
-    submittedAt: "2026-08-28T09:30:00.000Z",
-    reviewedAt: "2026-08-30T11:15:00.000Z",
-    reviewNote: "Seller approved for the marketplace.",
-  },
-];
+const retiredSeedEmails = new Set(["shewa@gmail.com"]);
 
 function canUseStorage() {
   return typeof window !== "undefined" && Boolean(window.localStorage);
@@ -100,20 +86,8 @@ function writeApplications(applications: SellerApplication[]) {
   window.dispatchEvent(new Event(changeEvent));
 }
 
-function ensureSeeded(applications: SellerApplication[]) {
-  let changed = false;
-  const next = [...applications];
-  for (const application of seededApplications) {
-    if (isAccountDeleted(application.email)) continue;
-    if (!next.some((entry) => normalizeEmail(entry.email) === application.email)) {
-      next.push(application);
-      changed = true;
-    }
-  }
-  if (changed) {
-    window.localStorage.setItem(storageKey, JSON.stringify(next));
-  }
-  return next;
+function dropRetiredApplications(applications: SellerApplication[]) {
+  return applications.filter((application) => !retiredSeedEmails.has(application.email));
 }
 
 export function readSellerApplications(): SellerApplication[] {
@@ -121,7 +95,7 @@ export function readSellerApplications(): SellerApplication[] {
   try {
     const raw = window.localStorage.getItem(storageKey);
     const parsed: unknown = raw ? JSON.parse(raw) : [];
-    return ensureSeeded(normalizeApplications(parsed)).sort(
+    return dropRetiredApplications(normalizeApplications(parsed)).sort(
       (first, second) => Date.parse(second.submittedAt) - Date.parse(first.submittedAt),
     );
   } catch (cause) {
