@@ -159,7 +159,13 @@ export function Wordmark({ variant = "default" }: { variant?: "default" | "light
   );
 }
 
-export function Storefront({ children }: { children: ReactNode }) {
+export function Storefront({
+  children,
+  focused = false,
+}: {
+  children: ReactNode;
+  focused?: boolean;
+}) {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const [favorites, setFavorites] = useState<number[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -350,428 +356,436 @@ export function Storefront({ children }: { children: ReactNode }) {
 
   return (
     <StoreContext.Provider value={store}>
-      <div className="announcement">
-        <ShieldCheck size={12} />
-        <span>Pay safe with escrow</span>
-        <span className="announcement-divider">·</span>
-        <span>Buyer protection on every order</span>
-      </div>
-      <header className="market-header">
-        <div className="market-header-main">
-          <button
-            type="button"
-            className="market-menu-button"
-            aria-label={mobileNav ? "Close menu" : "Open menu"}
-            aria-expanded={mobileNav}
-            aria-controls="market-mobile-drawer"
-            onClick={() => setMobileNav((value) => !value)}
+      {!focused && (
+        <>
+          <div className="announcement">
+            <ShieldCheck size={12} />
+            <span>Pay safe with escrow</span>
+            <span className="announcement-divider">·</span>
+            <span>Buyer protection on every order</span>
+          </div>
+          <header className="market-header">
+            <div className="market-header-main">
+              <button
+                type="button"
+                className="market-menu-button"
+                aria-label={mobileNav ? "Close menu" : "Open menu"}
+                aria-expanded={mobileNav}
+                aria-controls="market-mobile-drawer"
+                onClick={() => setMobileNav((value) => !value)}
+              >
+                {mobileNav ? <X /> : <Menu />}
+              </button>
+              <Link to="/" className="market-logo" aria-label="SupreCart home">
+                <Wordmark />
+              </Link>
+              <button
+                type="button"
+                className="market-cat-button"
+                aria-expanded={categoriesOpen}
+                aria-controls="market-category-menu"
+                onClick={() => setCategoriesOpen((value) => !value)}
+              >
+                <LayoutGrid size={18} />
+                <span>Categories</span>
+              </button>
+              <form
+                className="market-search"
+                role="search"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  setCategoriesOpen(false);
+                  setMobileNav(false);
+                  navigate({ to: "/shop", search: { filter: "All", query } });
+                }}
+              >
+                <Search size={18} aria-hidden="true" />
+                <input
+                  type="search"
+                  name="query"
+                  value={query}
+                  onChange={(event) => setQuery(event.target.value)}
+                  placeholder="Search products, brands and sellers"
+                  aria-label="Search products, brands and sellers"
+                />
+              </form>
+              <nav className="market-links" aria-label="Account, wishlist and bag">
+                <Link to="/shop" search={{ filter: "All", query: "" }} className="market-text-link">
+                  Shop all
+                </Link>
+                <ThemeToggle />
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  title="Wishlist"
+                  aria-label="Wishlist"
+                  className="market-icon-button count-control"
+                  onClick={() => openPanel("wishlist")}
+                >
+                  <Heart />
+                  {favorites.length > 0 && <span className="count-badge">{favorites.length}</span>}
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  title="Shopping bag"
+                  aria-label="Shopping bag"
+                  className="market-icon-button count-control"
+                  onClick={() => openPanel("cart")}
+                >
+                  <ShoppingCart />
+                  {cartCount > 0 && <span className="count-badge">{cartCount}</span>}
+                </Button>
+                {account ? (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button
+                        type="button"
+                        className="market-avatar-button"
+                        title={`${account.name} — open account menu`}
+                        aria-label={`Open account menu for ${account.name}`}
+                      >
+                        {avatar ? (
+                          <img src={avatar} alt={`${account.name} profile photo`} />
+                        ) : (
+                          <span aria-hidden="true">{initials}</span>
+                        )}
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" sideOffset={10} className="account-menu">
+                      <DropdownMenuLabel className="account-menu-head">
+                        <span className="account-menu-avatar">
+                          {avatar ? <img src={avatar} alt="" /> : <span>{initials}</span>}
+                        </span>
+                        <span className="account-menu-identity">
+                          <strong>{account.name}</strong>
+                          <small>
+                            {account.role === "seller" ? "Seller account" : "Buyer account"} ·{" "}
+                            {account.email}
+                          </small>
+                        </span>
+                      </DropdownMenuLabel>
+                      <DropdownMenuSeparator />
+                      {account.role === "seller" ? (
+                        <>
+                          <DropdownMenuItem asChild>
+                            <Link to="/sellers">
+                              <Store /> Seller studio
+                            </Link>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem asChild>
+                            <Link
+                              to="/sellers"
+                              hash="settings"
+                              onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+                            >
+                              <Settings /> Store settings
+                            </Link>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem asChild>
+                            <Link to="/messages">
+                              <MessageCircle /> Messages
+                            </Link>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem asChild>
+                            <Link to="/">
+                              <ShoppingBag /> Marketplace home
+                            </Link>
+                          </DropdownMenuItem>
+                        </>
+                      ) : (
+                        <>
+                          <DropdownMenuItem asChild>
+                            <Link to="/account">
+                              <UserRound /> My account
+                            </Link>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onSelect={() => openPanel("wishlist")}>
+                            <Heart /> Wishlist
+                          </DropdownMenuItem>
+                          <DropdownMenuItem asChild>
+                            <Link to="/messages">
+                              <MessageCircle /> Messages
+                            </Link>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem asChild>
+                            <Link to="/sellers">
+                              <Store /> Sell on SupreCart
+                            </Link>
+                          </DropdownMenuItem>
+                        </>
+                      )}
+                      <DropdownMenuItem asChild>
+                        <Link to="/support">
+                          <Headphones /> Customer care
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem className="account-menu-signout" onSelect={handleSignOut}>
+                        <LogOut /> Sign out
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                ) : (
+                  <div className="market-auth-links">
+                    <Link to="/login" className="market-button market-button-outline">
+                      Log in
+                    </Link>
+                    <Link to="/signup" className="market-button market-button-solid">
+                      Sign up
+                    </Link>
+                  </div>
+                )}
+              </nav>
+              <div className="market-mobile-tools">
+                <ThemeToggle />
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  title="Search"
+                  aria-label="Search"
+                  className="market-icon-button"
+                  onClick={() => openPanel("search")}
+                >
+                  <Search />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  title="Wishlist"
+                  aria-label="Wishlist"
+                  className="market-icon-button count-control"
+                  onClick={() => openPanel("wishlist")}
+                >
+                  <Heart />
+                  {favorites.length > 0 && <span className="count-badge">{favorites.length}</span>}
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  title="Shopping bag"
+                  aria-label="Shopping bag"
+                  className="market-icon-button count-control"
+                  onClick={() => openPanel("cart")}
+                >
+                  <ShoppingCart />
+                  {cartCount > 0 && <span className="count-badge">{cartCount}</span>}
+                </Button>
+              </div>
+            </div>
+            {categoriesOpen && (
+              <div className="market-category-menu" id="market-category-menu">
+                <div className="market-category-inner">
+                  <Link
+                    to="/shop"
+                    search={{ filter: "All", query: "" }}
+                    onClick={() => setCategoriesOpen(false)}
+                  >
+                    All categories
+                  </Link>
+                </div>
+              </div>
+            )}
+            <button
+              type="button"
+              aria-label="Close menu"
+              className={mobileNav ? "market-drawer-backdrop open" : "market-drawer-backdrop"}
+              onClick={() => setMobileNav(false)}
+            />
+            <nav
+              id="market-mobile-drawer"
+              className={mobileNav ? "market-drawer open" : "market-drawer"}
+              aria-label="Main navigation"
+            >
+              <div className="market-drawer-head">
+                <Link to="/" aria-label="SupreCart home" onClick={() => setMobileNav(false)}>
+                  <Wordmark />
+                </Link>
+                <button type="button" aria-label="Close menu" onClick={() => setMobileNav(false)}>
+                  <X />
+                </button>
+              </div>
+              <form
+                className="market-drawer-search"
+                role="search"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  setMobileNav(false);
+                  navigate({ to: "/shop", search: { filter: "All", query } });
+                }}
+              >
+                <Search size={18} aria-hidden="true" />
+                <input
+                  type="search"
+                  name="mobile-query"
+                  value={query}
+                  onChange={(event) => setQuery(event.target.value)}
+                  placeholder="Search SupreCart"
+                  aria-label="Search SupreCart"
+                />
+              </form>
+              <div className="market-drawer-links">
+                {navItems.map((item) =>
+                  item.to === "/" ? (
+                    <Link key={item.label} to="/" onClick={() => setMobileNav(false)}>
+                      {item.label}
+                    </Link>
+                  ) : (
+                    <Link
+                      key={item.label}
+                      to="/shop"
+                      search={{ filter: item.filter, query: "" }}
+                      onClick={() => setMobileNav(false)}
+                    >
+                      {item.label}
+                    </Link>
+                  ),
+                )}
+              </div>
+              <div className="market-drawer-tools">
+                <button
+                  type="button"
+                  onClick={toggleAppTheme}
+                  aria-label="Toggle light mode"
+                  aria-pressed={appTheme === "light"}
+                >
+                  {appTheme === "dark" ? <Sun /> : <Moon />}
+                  <span>{appTheme === "dark" ? "Light mode" : "Dark mode"}</span>
+                  <em>{appTheme === "dark" ? "Off" : "On"}</em>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMobileNav(false);
+                    openPanel("wishlist");
+                  }}
+                >
+                  <Heart />
+                  <span>Wishlist</span>
+                  <em>{favorites.length}</em>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMobileNav(false);
+                    openPanel("cart");
+                  }}
+                >
+                  <ShoppingCart />
+                  <span>Shopping bag</span>
+                  <em>{cartCount}</em>
+                </button>
+                {account ? (
+                  <Link
+                    to={account.role === "seller" ? "/sellers" : "/account"}
+                    className="market-drawer-account"
+                    onClick={() => setMobileNav(false)}
+                  >
+                    <span className="market-drawer-avatar">
+                      {avatar ? <img src={avatar} alt="" /> : <span>{initials}</span>}
+                    </span>
+                    <span className="market-drawer-identity">
+                      <strong>{account.name}</strong>
+                      <small>
+                        {account.role === "seller" ? "Seller account" : "Buyer account"}
+                      </small>
+                    </span>
+                    <ArrowRight />
+                  </Link>
+                ) : (
+                  <Link to="/account" onClick={() => setMobileNav(false)}>
+                    <UserRound />
+                    <span>My account</span>
+                    <ArrowRight />
+                  </Link>
+                )}
+                <Link to="/messages" onClick={() => setMobileNav(false)}>
+                  <MessageCircle />
+                  <span>Messages</span>
+                  <ArrowRight />
+                </Link>
+                <Link to="/support" onClick={() => setMobileNav(false)}>
+                  <Headphones />
+                  <span>Customer care</span>
+                  <ArrowRight />
+                </Link>
+                {account && (
+                  <button type="button" onClick={handleSignOut}>
+                    <LogOut />
+                    <span>Sign out</span>
+                    <ArrowRight />
+                  </button>
+                )}
+              </div>
+              {!account && (
+                <div className="market-drawer-actions">
+                  <Link
+                    to="/login"
+                    className="market-button market-button-outline"
+                    onClick={() => setMobileNav(false)}
+                  >
+                    Log in
+                  </Link>
+                  <Link
+                    to="/signup"
+                    className="market-button market-button-solid"
+                    onClick={() => setMobileNav(false)}
+                  >
+                    Sign up
+                  </Link>
+                </div>
+              )}
+            </nav>
+          </header>
+        </>
+      )}
+      {!focused && (
+        <nav className="app-tabbar" aria-label="Quick navigation">
+          <Link to="/" className={pathname === "/" ? "is-active" : ""}>
+            <House />
+            <span>Home</span>
+          </Link>
+          <Link
+            to="/shop"
+            search={{ filter: "All", query: "" }}
+            className={pathname === "/shop" ? "is-active" : ""}
           >
-            {mobileNav ? <X /> : <Menu />}
-          </button>
-          <Link to="/" className="market-logo" aria-label="SupreCart home">
-            <Wordmark />
+            <LayoutGrid />
+            <span>Shop</span>
           </Link>
           <button
             type="button"
-            className="market-cat-button"
-            aria-expanded={categoriesOpen}
-            aria-controls="market-category-menu"
-            onClick={() => setCategoriesOpen((value) => !value)}
+            onClick={() => openPanel("wishlist")}
+            className={panel === "wishlist" ? "is-active" : ""}
           >
-            <LayoutGrid size={18} />
-            <span>Categories</span>
+            <Heart />
+            <span>Wishlist</span>
+            {favorites.length > 0 && <span className="count-badge">{favorites.length}</span>}
           </button>
-          <form
-            className="market-search"
-            role="search"
-            onSubmit={(event) => {
-              event.preventDefault();
-              setCategoriesOpen(false);
-              setMobileNav(false);
-              navigate({ to: "/shop", search: { filter: "All", query } });
-            }}
+          <button
+            type="button"
+            onClick={() => openPanel("cart")}
+            className={panel === "cart" ? "is-active" : ""}
           >
-            <Search size={18} aria-hidden="true" />
-            <input
-              type="search"
-              name="query"
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search products, brands and sellers"
-              aria-label="Search products, brands and sellers"
-            />
-          </form>
-          <nav className="market-links" aria-label="Account, wishlist and bag">
-            <Link to="/shop" search={{ filter: "All", query: "" }} className="market-text-link">
-              Shop all
-            </Link>
-            <ThemeToggle />
-            <Button
-              variant="ghost"
-              size="icon"
-              title="Wishlist"
-              aria-label="Wishlist"
-              className="market-icon-button count-control"
-              onClick={() => openPanel("wishlist")}
-            >
-              <Heart />
-              {favorites.length > 0 && <span className="count-badge">{favorites.length}</span>}
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              title="Shopping bag"
-              aria-label="Shopping bag"
-              className="market-icon-button count-control"
-              onClick={() => openPanel("cart")}
-            >
-              <ShoppingCart />
-              {cartCount > 0 && <span className="count-badge">{cartCount}</span>}
-            </Button>
-            {account ? (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <button
-                    type="button"
-                    className="market-avatar-button"
-                    title={`${account.name} — open account menu`}
-                    aria-label={`Open account menu for ${account.name}`}
-                  >
-                    {avatar ? (
-                      <img src={avatar} alt={`${account.name} profile photo`} />
-                    ) : (
-                      <span aria-hidden="true">{initials}</span>
-                    )}
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" sideOffset={10} className="account-menu">
-                  <DropdownMenuLabel className="account-menu-head">
-                    <span className="account-menu-avatar">
-                      {avatar ? <img src={avatar} alt="" /> : <span>{initials}</span>}
-                    </span>
-                    <span className="account-menu-identity">
-                      <strong>{account.name}</strong>
-                      <small>
-                        {account.role === "seller" ? "Seller account" : "Buyer account"} ·{" "}
-                        {account.email}
-                      </small>
-                    </span>
-                  </DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  {account.role === "seller" ? (
-                    <>
-                      <DropdownMenuItem asChild>
-                        <Link to="/sellers">
-                          <Store /> Seller studio
-                        </Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem asChild>
-                        <Link
-                          to="/sellers"
-                          hash="settings"
-                          onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-                        >
-                          <Settings /> Store settings
-                        </Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem asChild>
-                        <Link to="/messages">
-                          <MessageCircle /> Messages
-                        </Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem asChild>
-                        <Link to="/">
-                          <ShoppingBag /> Marketplace home
-                        </Link>
-                      </DropdownMenuItem>
-                    </>
-                  ) : (
-                    <>
-                      <DropdownMenuItem asChild>
-                        <Link to="/account">
-                          <UserRound /> My account
-                        </Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onSelect={() => openPanel("wishlist")}>
-                        <Heart /> Wishlist
-                      </DropdownMenuItem>
-                      <DropdownMenuItem asChild>
-                        <Link to="/messages">
-                          <MessageCircle /> Messages
-                        </Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem asChild>
-                        <Link to="/sellers">
-                          <Store /> Sell on SupreCart
-                        </Link>
-                      </DropdownMenuItem>
-                    </>
-                  )}
-                  <DropdownMenuItem asChild>
-                    <Link to="/support">
-                      <Headphones /> Customer care
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem className="account-menu-signout" onSelect={handleSignOut}>
-                    <LogOut /> Sign out
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            ) : (
-              <div className="market-auth-links">
-                <Link to="/login" className="market-button market-button-outline">
-                  Log in
-                </Link>
-                <Link to="/signup" className="market-button market-button-solid">
-                  Sign up
-                </Link>
-              </div>
-            )}
-          </nav>
-          <div className="market-mobile-tools">
-            <ThemeToggle />
-            <Button
-              variant="ghost"
-              size="icon"
-              title="Search"
-              aria-label="Search"
-              className="market-icon-button"
-              onClick={() => openPanel("search")}
-            >
-              <Search />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              title="Wishlist"
-              aria-label="Wishlist"
-              className="market-icon-button count-control"
-              onClick={() => openPanel("wishlist")}
-            >
-              <Heart />
-              {favorites.length > 0 && <span className="count-badge">{favorites.length}</span>}
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              title="Shopping bag"
-              aria-label="Shopping bag"
-              className="market-icon-button count-control"
-              onClick={() => openPanel("cart")}
-            >
-              <ShoppingCart />
-              {cartCount > 0 && <span className="count-badge">{cartCount}</span>}
-            </Button>
-          </div>
-        </div>
-        {categoriesOpen && (
-          <div className="market-category-menu" id="market-category-menu">
-            <div className="market-category-inner">
-              <Link
-                to="/shop"
-                search={{ filter: "All", query: "" }}
-                onClick={() => setCategoriesOpen(false)}
-              >
-                All categories
-              </Link>
-            </div>
-          </div>
-        )}
-        <button
-          type="button"
-          aria-label="Close menu"
-          className={mobileNav ? "market-drawer-backdrop open" : "market-drawer-backdrop"}
-          onClick={() => setMobileNav(false)}
-        />
-        <nav
-          id="market-mobile-drawer"
-          className={mobileNav ? "market-drawer open" : "market-drawer"}
-          aria-label="Main navigation"
-        >
-          <div className="market-drawer-head">
-            <Link to="/" aria-label="SupreCart home" onClick={() => setMobileNav(false)}>
-              <Wordmark />
-            </Link>
-            <button type="button" aria-label="Close menu" onClick={() => setMobileNav(false)}>
-              <X />
-            </button>
-          </div>
-          <form
-            className="market-drawer-search"
-            role="search"
-            onSubmit={(event) => {
-              event.preventDefault();
-              setMobileNav(false);
-              navigate({ to: "/shop", search: { filter: "All", query } });
-            }}
+            <ShoppingCart />
+            <span>Bag</span>
+            {cartCount > 0 && <span className="count-badge">{cartCount}</span>}
+          </button>
+          <Link
+            to={account?.role === "seller" ? "/sellers" : account ? "/account" : "/login"}
+            className={
+              pathname.startsWith("/account") ||
+              pathname.startsWith("/login") ||
+              pathname.startsWith("/signup")
+                ? "is-active"
+                : ""
+            }
           >
-            <Search size={18} aria-hidden="true" />
-            <input
-              type="search"
-              name="mobile-query"
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search SupreCart"
-              aria-label="Search SupreCart"
-            />
-          </form>
-          <div className="market-drawer-links">
-            {navItems.map((item) =>
-              item.to === "/" ? (
-                <Link key={item.label} to="/" onClick={() => setMobileNav(false)}>
-                  {item.label}
-                </Link>
-              ) : (
-                <Link
-                  key={item.label}
-                  to="/shop"
-                  search={{ filter: item.filter, query: "" }}
-                  onClick={() => setMobileNav(false)}
-                >
-                  {item.label}
-                </Link>
-              ),
-            )}
-          </div>
-          <div className="market-drawer-tools">
-            <button
-              type="button"
-              onClick={toggleAppTheme}
-              aria-label="Toggle light mode"
-              aria-pressed={appTheme === "light"}
-            >
-              {appTheme === "dark" ? <Sun /> : <Moon />}
-              <span>{appTheme === "dark" ? "Light mode" : "Dark mode"}</span>
-              <em>{appTheme === "dark" ? "Off" : "On"}</em>
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setMobileNav(false);
-                openPanel("wishlist");
-              }}
-            >
-              <Heart />
-              <span>Wishlist</span>
-              <em>{favorites.length}</em>
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setMobileNav(false);
-                openPanel("cart");
-              }}
-            >
-              <ShoppingCart />
-              <span>Shopping bag</span>
-              <em>{cartCount}</em>
-            </button>
-            {account ? (
-              <Link
-                to={account.role === "seller" ? "/sellers" : "/account"}
-                className="market-drawer-account"
-                onClick={() => setMobileNav(false)}
-              >
-                <span className="market-drawer-avatar">
-                  {avatar ? <img src={avatar} alt="" /> : <span>{initials}</span>}
-                </span>
-                <span className="market-drawer-identity">
-                  <strong>{account.name}</strong>
-                  <small>{account.role === "seller" ? "Seller account" : "Buyer account"}</small>
-                </span>
-                <ArrowRight />
-              </Link>
-            ) : (
-              <Link to="/account" onClick={() => setMobileNav(false)}>
-                <UserRound />
-                <span>My account</span>
-                <ArrowRight />
-              </Link>
-            )}
-            <Link to="/messages" onClick={() => setMobileNav(false)}>
-              <MessageCircle />
-              <span>Messages</span>
-              <ArrowRight />
-            </Link>
-            <Link to="/support" onClick={() => setMobileNav(false)}>
-              <Headphones />
-              <span>Customer care</span>
-              <ArrowRight />
-            </Link>
-            {account && (
-              <button type="button" onClick={handleSignOut}>
-                <LogOut />
-                <span>Sign out</span>
-                <ArrowRight />
-              </button>
-            )}
-          </div>
-          {!account && (
-            <div className="market-drawer-actions">
-              <Link
-                to="/login"
-                className="market-button market-button-outline"
-                onClick={() => setMobileNav(false)}
-              >
-                Log in
-              </Link>
-              <Link
-                to="/signup"
-                className="market-button market-button-solid"
-                onClick={() => setMobileNav(false)}
-              >
-                Sign up
-              </Link>
-            </div>
-          )}
+            <UserRound />
+            <span>Account</span>
+          </Link>
         </nav>
-      </header>
-      <nav className="app-tabbar" aria-label="Quick navigation">
-        <Link to="/" className={pathname === "/" ? "is-active" : ""}>
-          <House />
-          <span>Home</span>
-        </Link>
-        <Link
-          to="/shop"
-          search={{ filter: "All", query: "" }}
-          className={pathname === "/shop" ? "is-active" : ""}
-        >
-          <LayoutGrid />
-          <span>Shop</span>
-        </Link>
-        <button
-          type="button"
-          onClick={() => openPanel("wishlist")}
-          className={panel === "wishlist" ? "is-active" : ""}
-        >
-          <Heart />
-          <span>Wishlist</span>
-          {favorites.length > 0 && <span className="count-badge">{favorites.length}</span>}
-        </button>
-        <button
-          type="button"
-          onClick={() => openPanel("cart")}
-          className={panel === "cart" ? "is-active" : ""}
-        >
-          <ShoppingCart />
-          <span>Bag</span>
-          {cartCount > 0 && <span className="count-badge">{cartCount}</span>}
-        </button>
-        <Link
-          to={account?.role === "seller" ? "/sellers" : account ? "/account" : "/login"}
-          className={
-            pathname.startsWith("/account") ||
-            pathname.startsWith("/login") ||
-            pathname.startsWith("/signup")
-              ? "is-active"
-              : ""
-          }
-        >
-          <UserRound />
-          <span>Account</span>
-        </Link>
-      </nav>
+      )}
       {children}
       {pathname === "/" && (
         <section className="benefits page-width">
@@ -794,70 +808,72 @@ export function Storefront({ children }: { children: ReactNode }) {
           })}
         </section>
       )}
-      <footer className="footer">
-        <div className="footer-main page-width">
-          <div className="footer-about">
-            <Link to="/" aria-label="SupreCart home">
-              <Wordmark variant="light" />
-            </Link>
-            <div className="socials">
-              <a href="https://x.com" target="_blank" rel="noreferrer" aria-label="X">
-                <Twitter size={14} />
-              </a>
-              <a
-                href="https://instagram.com"
-                target="_blank"
-                rel="noreferrer"
-                aria-label="Instagram"
-              >
-                <Instagram size={14} />
-              </a>
-              <a href="https://tiktok.com" target="_blank" rel="noreferrer" aria-label="TikTok">
-                <Music2 size={14} />
-              </a>
+      {!focused && (
+        <footer className="footer">
+          <div className="footer-main page-width">
+            <div className="footer-about">
+              <Link to="/" aria-label="SupreCart home">
+                <Wordmark variant="light" />
+              </Link>
+              <div className="socials">
+                <a href="https://x.com" target="_blank" rel="noreferrer" aria-label="X">
+                  <Twitter size={14} />
+                </a>
+                <a
+                  href="https://instagram.com"
+                  target="_blank"
+                  rel="noreferrer"
+                  aria-label="Instagram"
+                >
+                  <Instagram size={14} />
+                </a>
+                <a href="https://tiktok.com" target="_blank" rel="noreferrer" aria-label="TikTok">
+                  <Music2 size={14} />
+                </a>
+              </div>
+            </div>
+            <div className="footer-column">
+              <h3>HELP & SUPPORT</h3>
+              <Link to="/support">Customer care</Link>
+              {(
+                [
+                  ["Contact us", "contact"],
+                  ["FAQs", "faq"],
+                ] as const
+              ).map(([label, slug]) => (
+                <Link key={slug} to="/info/$slug" params={{ slug }}>
+                  {label}
+                </Link>
+              ))}
+            </div>
+            <div className="footer-column">
+              <h3>ABOUT SUPRECART</h3>
+              <Link to="/info/$slug" params={{ slug: "about" }}>
+                Our story
+              </Link>
+              <Link to="/info/$slug" params={{ slug: "privacy-terms" }}>
+                Privacy &amp; terms
+              </Link>
             </div>
           </div>
-          <div className="footer-column">
-            <h3>HELP & SUPPORT</h3>
-            <Link to="/support">Customer care</Link>
-            {(
-              [
-                ["Contact us", "contact"],
-                ["FAQs", "faq"],
-              ] as const
-            ).map(([label, slug]) => (
-              <Link key={slug} to="/info/$slug" params={{ slug }}>
-                {label}
+          <div className="footer-bottom page-width">
+            <p>
+              © 2026 SupreCart. All rights reserved.{" "}
+              <span>
+                For more inquiries, contact <a href="tel:09015505210">09015505210</a>.
+              </span>
+            </p>
+            <div>
+              <Link to="/info/$slug" params={{ slug: "privacy-terms" }}>
+                Privacy & terms
               </Link>
-            ))}
+              <Link to="/info/$slug" params={{ slug: "cookies" }}>
+                Cookie policy
+              </Link>
+            </div>
           </div>
-          <div className="footer-column">
-            <h3>ABOUT SUPRECART</h3>
-            <Link to="/info/$slug" params={{ slug: "about" }}>
-              Our story
-            </Link>
-            <Link to="/info/$slug" params={{ slug: "privacy-terms" }}>
-              Privacy &amp; terms
-            </Link>
-          </div>
-        </div>
-        <div className="footer-bottom page-width">
-          <p>
-            © 2026 SupreCart. All rights reserved.{" "}
-            <span>
-              For more inquiries, contact <a href="tel:09015505210">09015505210</a>.
-            </span>
-          </p>
-          <div>
-            <Link to="/info/$slug" params={{ slug: "privacy-terms" }}>
-              Privacy & terms
-            </Link>
-            <Link to="/info/$slug" params={{ slug: "cookies" }}>
-              Cookie policy
-            </Link>
-          </div>
-        </div>
-      </footer>
+        </footer>
+      )}
       <Dialog
         open={!!panel}
         onOpenChange={(open) => {

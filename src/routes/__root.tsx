@@ -142,7 +142,7 @@ function RootComponent() {
       {pathname.startsWith("/sellers") ? (
         <Outlet />
       ) : (
-        <Storefront>
+        <Storefront focused={pathname.startsWith("/checkout")}>
           <Outlet />
         </Storefront>
       )}
