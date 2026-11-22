@@ -1,0 +1,2391 @@
+# SUPRECART REGENERATION PROMPT
+
+Copy everything below this line into a new AI session/repo when you want to recreate this site.
+
+---
+
+## 0. OBJECTIVE
+
+Rebuild **SupreCart** as a pixel-faithful, behavior-faithful clone.
+
+SupreCart is a browser-local marketplace with two connected experiences:
+
+1. **Buyer storefront** — `/`, `/shop`, `/checkout`, `/account`, `/messages`, `/support`, `/careers`, `/info/:slug`, plus auth routes.
+2. **Seller studio** — embedded at `/sellers`, also buildable as a standalone Vite React app.
+
+The app is **TanStack Start + React 19 + TanStack Router + Tailwind CSS v4**, with shadcn-style UI primitives, lucide icons, and two large custom CSS systems. It has **no backend**. Everything is stored in `localStorage` / cookies. Never claim an order, payment, refund, payout, delivery, subscription, email verification, seller message, support ticket, or live-agent contact was processed. Always use the exact demo/local-only disclaimers specified below.
+
+Address the user as **BlackRose**.
+
+Hosted environment notes from `AGENTS.md`:
+- Use TanStack Start React routes with Tailwind v4; the hosted environment does not support a Python web server.
+- Keep seeded catalog data in a shared browser-safe module.
+- Share storefront controls across home and shop routes so shopping state stays consistent.
+- Shopping and newsletter controls are local until real inventory, checkout, and subscriptions are connected.
+- The project is connected to Lovable. Do not force-push or rewrite already-published history.
+
+---
+
+## 1. EXACT STACK AND INSTALLATION
+
+### 1.1 Identity
+
+- Product name: **SupreCart**
+- npm package name: `tanstack_start_ts`
+- Private, unpublished, `"type": "module"`, `"sideEffects": false`
+- SEO title: `SupreCart — Good finds, all in one place`
+- Domain: `suprecart.com` via root `CNAME`
+- README description: SupreCart is a browser-local marketplace with a buyer storefront and a seller studio. Buyers can browse a seeded catalog, use similar-product recommendations, manage a cart, use checkout, chat with sellers, and edit account preferences. Sellers can submit an application, manage local listings, review seeded orders, and view payouts.
+
+### 1.2 Install/run commands
+
+Use **npm** as source of truth. `package.json` + `package-lock.json` are in sync. `bun.lock` is stale; do not trust it unless regenerated.
+
+```sh
+npm install
+npm run dev              # buyer app, local 127.0.0.1:5180; Lovable sandbox uses 8080
+npm run dev:sellers      # standalone seller portal, 127.0.0.1:5181
+npm run build            # buyer production build, TanStack Start + Nitro
+npm run build:sellers    # static seller-portal/dist
+npm run build:dev
+npm run preview
+npm run test             # vitest run
+npm run test:watch
+npm run lint             # eslint .
+npm run typecheck        # tsc --noEmit
+npm run format           # prettier --write .
+```
+
+Need Node.js and npm. No `engines`, `.nvmrc`, Dockerfile, GitHub workflow, or `wrangler.toml` exists.
+
+### 1.3 package.json dependencies — copy exactly
+
+```json
+{
+  "dependencies": {
+    "@hookform/resolvers": "^5.2.2",
+    "@radix-ui/react-accordion": "^1.2.12",
+    "@radix-ui/react-alert-dialog": "^1.1.15",
+    "@radix-ui/react-aspect-ratio": "^1.1.8",
+    "@radix-ui/react-avatar": "^1.1.11",
+    "@radix-ui/react-checkbox": "^1.3.3",
+    "@radix-ui/react-collapsible": "^1.1.12",
+    "@radix-ui/react-context-menu": "^2.2.16",
+    "@radix-ui/react-dialog": "^1.1.15",
+    "@radix-ui/react-dropdown-menu": "^2.1.16",
+    "@radix-ui/react-hover-card": "^1.1.15",
+    "@radix-ui/react-label": "^2.1.8",
+    "@radix-ui/react-menubar": "^1.1.16",
+    "@radix-ui/react-navigation-menu": "^1.2.14",
+    "@radix-ui/react-popover": "^1.1.15",
+    "@radix-ui/react-progress": "^1.1.8",
+    "@radix-ui/react-radio-group": "^1.3.8",
+    "@radix-ui/react-scroll-area": "^1.2.10",
+    "@radix-ui/react-select": "^2.2.6",
+    "@radix-ui/react-separator": "^1.1.8",
+    "@radix-ui/react-slider": "^1.3.6",
+    "@radix-ui/react-slot": "^1.2.4",
+    "@radix-ui/react-switch": "^1.2.6",
+    "@radix-ui/react-tabs": "^1.1.13",
+    "@radix-ui/react-toggle": "^1.1.10",
+    "@radix-ui/react-toggle-group": "^1.1.11",
+    "@radix-ui/react-tooltip": "^1.2.8",
+    "@tailwindcss/vite": "^4.2.1",
+    "@tanstack/react-query": "^5.101.1",
+    "@tanstack/react-router": "1.170.41",
+    "@tanstack/react-start": "1.168.60",
+    "@tanstack/router-plugin": "1.168.42",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "cmdk": "^1.1.1",
+    "date-fns": "^4.1.0",
+    "embla-carousel-react": "^8.6.0",
+    "input-otp": "^1.4.2",
+    "lucide-react": "^0.575.0",
+    "react": "^19.2.0",
+    "react-day-picker": "^9.14.0",
+    "react-dom": "^19.2.0",
+    "react-hook-form": "^7.71.2",
+    "react-resizable-panels": "^4.6.5",
+    "recharts": "^2.15.4",
+    "sonner": "^2.0.7",
+    "tailwind-merge": "^3.5.0",
+    "tailwindcss": "^4.2.1",
+    "tw-animate-css": "^1.3.4",
+    "vaul": "^1.1.2",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.32.0",
+    "@lovable.dev/vite-tanstack-config": "2.25.3",
+    "@testing-library/jest-dom": "^6.6.0",
+    "@testing-library/react": "^16.0.0",
+    "@types/node": "^22.16.5",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "@vitejs/plugin-react": "^5.2.0",
+    "eslint": "^9.32.0",
+    "eslint-config-prettier": "^10.1.1",
+    "eslint-plugin-prettier": "^5.2.6",
+    "eslint-plugin-react-hooks": "^5.2.0",
+    "eslint-plugin-react-refresh": "^0.4.20",
+    "globals": "^15.15.0",
+    "jsdom": "^20.0.3",
+    "nitro": "3.0.260603-beta",
+    "prettier": "^3.7.3",
+    "typescript": "^5.8.3",
+    "typescript-eslint": "^8.56.1",
+    "vite": "^8.3.4",
+    "vitest": "^5.0.5"
+  },
+  "overrides": {
+    "rolldown": "1.2.1",
+    "@typescript-eslint/typescript-estree": {
+      "minimatch": "^11.0.1"
+    }
+  }
+}
+```
+
+Resolved versions in the working lockfile: React/ReactDOM 19.3.0, Tailwind 4.3.3, TypeScript 5.9.3, Vite 8.3.4, Vitest 5.0.5, Zod 4.6.7. The scoped `minimatch` override is required by README; do not make it global. `npm audit` is reported as 0 vulnerabilities.
+
+### 1.4 tsconfig.json
+
+```json
+{
+  "include": [
+    "src/**/*.ts", "src/**/*.tsx",
+    "seller-portal/src/**/*.ts", "seller-portal/src/**/*.tsx",
+    "seller-portal/vite.config.ts", "vite.config.ts", "vitest.config.ts", "eslint.config.js"
+  ],
+  "compilerOptions": {
+    "target": "ES2022",
+    "jsx": "react-jsx",
+    "module": "ESNext",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "types": ["vite/client", "vitest/globals"],
+    "moduleResolution": "Bundler",
+    "allowImportingTsExtensions": true,
+    "verbatimModuleSyntax": false,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitOverride": true,
+    "noImplicitReturns": true,
+    "noPropertyAccessFromIndexSignature": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "noUncheckedSideEffectImports": true,
+    "paths": { "@/*": ["./src/*"] }
+  }
+}
+```
+
+### 1.5 vite.config.ts behavior
+
+The file imports `defineConfig` from `@lovable.dev/vite-tanstack-config`. That wrapper already provides TanStack devtools (dev only), `tanstackStart`, `viteReact`, `tailwindcss`, tsconfig paths, Nitro (Cloudflare default target), `VITE_*` injection, `@` alias, React/TanStack dedupe, error logger plugins, and sandbox port/host detection. **Do not manually add those plugins** or the app breaks with duplicate plugins.
+
+Custom config:
+- Custom Vite logger suppresses `vite-tsconfig-paths` warnings.
+- Dev-only plugin named `suprecart-admin-env` loads legacy `ADMIN_USERNAME`, `ADMIN_PASSWORD`, `ADMIN_PASSWORD_HASH`, `ADMIN_SESSION_SECRET` from env in development. These are legacy; admin area removed.
+- `tanstackStart.server.entry: "server"` redirects to `src/server.ts`.
+- Dev server binds `127.0.0.1:5180`, watches ignore `**/seller-portal/dist/**`.
+
+### 1.6 seller-portal/vite.config.ts
+
+```ts
+import { resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+import react from "@vitejs/plugin-react";
+import { defineConfig } from "vite";
+
+const portalDirectory = fileURLToPath(new URL(".", import.meta.url));
+
+export default defineConfig({
+  root: portalDirectory,
+  envDir: resolve(portalDirectory, ".."),
+  plugins: [react()],
+  resolve: { alias: { "@": resolve(portalDirectory, "../src") } },
+  publicDir: resolve(portalDirectory, "../public"),
+  server: { host: "127.0.0.1", port: 5181 },
+  build: { outDir: "dist", emptyOutDir: true },
+});
+```
+
+### 1.7 vitest.config.ts
+
+```ts
+import { defineConfig } from "vitest/config";
+import react from "@vitejs/plugin-react";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const rootDirectory = fileURLToPath(new URL(".", import.meta.url));
+
+export default defineConfig({
+  plugins: [react()],
+  test: {
+    environment: "jsdom",
+    globals: true,
+    setupFiles: ["./src/test/setup.ts"],
+    include: ["src/**/*.{test,spec}.{ts,tsx}"],
+  },
+  resolve: { alias: { "@": path.resolve(rootDirectory, "./src") } },
+});
+```
+
+`src/test/setup.ts` imports `@testing-library/jest-dom/vitest`, stubs `window.scrollTo`, and stubs `window.matchMedia` with `matches: false` plus no-op listener methods.
+
+### 1.8 eslint/prettier/git
+
+- ESLint flat config: `js.configs.recommended`, TypeScript recommended, React Hooks recommended, React Refresh warn, Prettier recommended last. Ignores `dist`, `.output`, `.vinxi`. Forbids importing `server-only`; use `*.server.ts` or `@tanstack/react-start/server-only` instead. `@typescript-eslint/no-unused-vars` is off.
+- `.prettierrc`: `{ "printWidth": 100, "semi": true, "singleQuote": false, "trailingComma": "all" }`
+- `.prettierignore`: `node_modules`, `dist`, `.output`, `.vinxi`, `pnpm-lock.yaml`, `package-lock.json`, `bun.lock`, `routeTree.gen.ts`
+- `.gitignore`: `node_modules`, `dist`, `dist-ssr`, `.output`, `.vinxi`, `.tanstack/**`, `.nitro`, `*.local`, `.env`, `.env.*` except `.env.example`, `.wrangler/`, `.dev.vars`, editor/OS files.
+- `.gitattributes`: `* text=auto eol=lf`; binary for `png/jpg/jpeg/gif/webp/ico/woff/woff2/ttf/otf`.
+- `bunfig.toml`: text lockfile, `minimumReleaseAge = 86400`, excludes `@lovable.dev/vite-tanstack-config`, `@lovable.dev/mcp-js`, `@lovable.dev/email-js`, `@lovable.dev/webhooks-js`.
+
+### 1.9 .env.example
+
+```dotenv
+VITE_MARKETPLACE_URL=
+
+VITE_GA_MEASUREMENT_ID=
+
+ADMIN_USERNAME=
+ADMIN_PASSWORD=
+ADMIN_PASSWORD_HASH=
+ADMIN_SESSION_SECRET=
+```
+
+Actual behavior:
+- `VITE_MARKETPLACE_URL`: seller portal base URL for standalone deployment, fallback `/`. Derived links: `/login`, `/account#seller`, `/messages?...`, `/info/cookies`.
+- `VITE_GA_MEASUREMENT_ID`: GA4 loads only if set and analytics consent accepted.
+- `ADMIN_*`: legacy/dev-only; no `src/` code uses them.
+- No DB, auth, payment, email, or storage service env vars exist.
+
+### 1.10 components.json
+
+```json
+{
+  "$schema": "https://ui.shadcn.com/schema.json",
+  "style": "new-york",
+  "rsc": false,
+  "tsx": true,
+  "tailwind": {
+    "css": "src/styles.css",
+    "baseColor": "slate",
+    "cssVariables": true,
+    "prefix": ""
+  },
+  "iconLibrary": "lucide",
+  "rtl": false,
+  "aliases": {
+    "components": "@/components",
+    "utils": "@/lib/utils",
+    "ui": "@/components/ui",
+    "lib": "@/lib",
+    "hooks": "@/hooks"
+  },
+  "registries": { "@supabase": "https://supabase.com/ui/r/{name}.json" }
+}
+```
+
+---
+
+## 2. FILE AND ROUTE ARCHITECTURE
+
+### 2.1 Routing rules
+
+TanStack Start file-based routing in `src/routes/`. Only root layout is `src/routes/__root.tsx`. Do not create `src/pages/`, `src/routes/_app/index.tsx`, or `app/layout.tsx`. Dynamic segments use bare `$`, e.g. `info.$slug.tsx`. `routeTree.gen.ts` is auto-generated; do not hand-edit.
+
+`src/router.tsx`:
+
+```ts
+import { QueryClient } from "@tanstack/react-query";
+import { createRouter } from "@tanstack/react-router";
+import { routeTree } from "./routeTree.gen";
+
+export const getRouter = () => {
+  const queryClient = new QueryClient();
+  const router = createRouter({
+    routeTree,
+    context: { queryClient },
+    scrollRestoration: true,
+    defaultPreloadStaleTime: 0,
+  });
+  return router;
+};
+```
+
+### 2.2 11 static + 1 dynamic route = 19 URLs
+
+Static: `/`, `/account`, `/careers`, `/checkout`, `/forgot-password`, `/login`, `/messages`, `/sellers`, `/shop`, `/signup`, `/support`.
+Dynamic `/info/$slug`: `about`, `contact`, `shipping`, `returns`, `faq`, `privacy-terms`, `size`, `cookies`.
+
+No `beforeLoad` guards exist. The only route-level redirect is an effect in `account.tsx`: signed-out → `/login`, seller → `/sellers`.
+
+### 2.3 Route head metadata
+
+- `__root`: title `SupreCart — Good finds, all in one place`; description `Discover independent sellers and considered finds across fashion, footwear, home, tech, beauty and more.`; OG description `Discover your kind of good across the SupreCart marketplace.`; og type `website`; twitter card `summary_large_image`; theme-color `#0f1513`; stylesheets `styles.css` then `app-theme.css`; icons `/suprecart-favicon.png` and `/apple-touch-icon.png`.
+- `/`: title same as root; description `Shop safely with escrow protection. Considered pieces from independent sellers across fashion, footwear, home, tech, beauty and more.`
+- `/shop`: `Shop the marketplace — SupreCart`; `Browse thoughtfully selected products from independent sellers across the SupreCart marketplace.`
+- `/checkout`: `Checkout — SupreCart`; `Confirm your delivery details, review your items and see your order total.`
+- `/account`: `Your account — SupreCart`; `View your SupreCart buyer account.`
+- `/support`: `Customer care — SupreCart`; `Join the SupreCart customer care queue and chat with support.`
+- `/careers`: `Careers — SupreCart`; `There are no open positions at SupreCart right now. Check back later.`
+- `/messages`: `Messages — SupreCart`; `Chat with buyers and sellers on SupreCart.`
+- `/login`: `Sign in — SupreCart`; `Sign in to your SupreCart buyer or seller account.`
+- `/signup`: `Create your account — SupreCart`; `Create a SupreCart buyer account.`
+- `/forgot-password`: `Reset your password — SupreCart`; `Reset the password for a SupreCart account saved in this browser.`
+- `/info/$slug`: only `Marketplace information — SupreCart`.
+- `/sellers`: `Sell with SupreCart`; `Apply to sell on SupreCart, manage your products and track your sales.`
+
+### 2.4 Root shell
+
+`<html lang="en" data-theme="dark" className="dark" suppressHydrationWarning>`. Inline `THEME_INIT_SCRIPT` applies theme before hydration. Skip link `Skip to content` → `#main-content`. `QueryClientProvider` wraps `<Analytics />`, `<CookieConsent policyHref="/info/cookies" />`, then:
+
+```tsx
+pathname.startsWith("/sellers")
+  ? <Outlet />
+  : <Storefront focused={pathname.startsWith("/checkout")}><Outlet /></Storefront>
+```
+
+So checkout keeps the app CSS but hides global announcement/header/tabbar/footer. Sellers bypass the shared storefront shell entirely.
+
+404: eyebrow `404 · PAGE NOT FOUND`, heading `We couldn’t find that page.`, body about broken/moved link, CTA `Back to SupreCart`.
+Error: eyebrow `SOMETHING WENT WRONG`, heading `This page didn’t load.`, body, buttons `Try again`, `Go home`.
+
+### 2.5 Top-level source layout
+
+```text
+root
+├─ package.json, package-lock.json, bun.lock, bunfig.toml
+├─ vite.config.ts, vitest.config.ts, tsconfig.json, eslint.config.js
+├─ .prettierrc, .prettierignore, .gitignore, .gitattributes, .env.example
+├─ components.json, README.md, AGENTS.md, roadmap.md, CNAME
+├─ public/ logo/icon/robots assets
+├─ seller-portal/ standalone seller app
+└─ src/
+   ├─ styles.css, app-theme.css
+   ├─ start.ts, server.ts, router.tsx, routeTree.gen.ts
+   ├─ routes/ 13 files
+   ├─ components/ storefront.tsx, theme.tsx, Analytics.tsx, CookieConsent.tsx, ui/ 46 files
+   ├─ hooks/ use-mobile.tsx, use-active-account.ts
+   ├─ lib/ 20 files
+   └─ test/ 10 test files + setup.ts
+```
+
+---
+
+## 3. VISUAL DESIGN SYSTEM
+
+### 3.1 Fonts
+
+No local font files. Google Fonts import at the top of `src/styles.css` and `seller-portal/src/standalone.css`:
+
+```css
+@import url("https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;600;700&display=swap");
+```
+
+Effective usage:
+- Body: `Inter, "Helvetica Neue", Arial, sans-serif`
+- UI/nav/headings: **Space Grotesk**
+- Numeric/meta/detail: **DM Mono**
+- Editorial/auth/recommendation accents: Georgia/Times serif
+- Seller splash tagline: Georgia serif 18px `#3b5138`
+- Auth aside editorial headings use large Space Grotesk/serif-style display.
+
+CSP allows `fonts.googleapis.com` and `fonts.gstatic.com`.
+
+### 3.2 Tailwind v4 entry
+
+Top of `src/styles.css`:
+
+```css
+@import url("https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;600;700&display=swap");
+@import "tailwindcss" source(none);
+@import "tw-animate-css";
+@source "../src";
+@custom-variant dark (&:is(.dark *));
+```
+
+`source(none)` disables auto content detection; `@source "../src"` explicitly scans src. Dark mode is class-based (`.dark`).
+
+Base Tailwind theme:
+- `--font-sans: Arial, Helvetica, sans-serif`
+- `--color-card: #ffffff`, `--color-popover: #ffffff`, `--color-ring: #263b31`
+- Radii `--radius-sm: 4px`, `--radius-md: 6px`, `--radius-lg/xl: 8px`
+- Base root oklch tokens include `--background: oklch(1 0 0)`, `--foreground: oklch(0.15 0.002 85)`, `--gold: oklch(0.72 0.09 78)`, `--footer-surface: oklch(0.13 0.002 85)`.
+
+`src/app-theme.css` loads after `src/styles.css`, so its equal-specificity rules win. There are also later override blocks in `styles.css`, so final visuals depend on cascade order.
+
+### 3.3 Buyer light theme tokens (`src/app-theme.css`)
+
+```css
+--background: #f7f6f1;
+--foreground: #1c2721;
+--primary: #263b31;
+--secondary: #ecece2;
+--muted: #f0efe9;
+--border: #e2e2d7;
+--gold: #a2ad78;
+--destructive: #b12704;
+--hero-surface: #e8e6dc;
+--footer-surface: #25372e;
+--radius: 14px;
+
+--app-bg: #f7f6f1;
+--app-surface: #ffffff;
+--app-surface-2: #f1f1e9;
+--app-surface-3: #e8e8de;
+--app-line: #e2e2d7;
+--app-line-strong: #cfd1c3;
+--app-text: #1c2721;
+--app-muted: #5f6a61;
+--app-deep: #263b31;
+--app-teal: #1f8a72;
+--app-teal-strong: #187a64;
+--app-teal-soft: rgb(31 138 114 / 12%);
+--app-on-teal: #ffffff;
+--app-amber: #f2aa00;
+--app-on-amber: #201700;
+--app-shadow: 0 26px 60px -36px rgb(31 45 35 / 45%);
+```
+
+### 3.4 Buyer dark theme tokens
+
+```css
+--background: #0f1513;
+--foreground: #eef3ed;
+--secondary: #1c2723;
+--muted: #1a231f;
+--border: #2a352f;
+--gold: #d8b25a;
+--destructive: #ff7a66;
+--hero-surface: #143a2f;
+--footer-surface: #0b1210;
+--radius: 16px;
+
+--app-bg: #0f1513;
+--app-surface: #18211e;
+--app-surface-2: #1e2925;
+--app-surface-3: #26332e;
+--app-line: #2a352f;
+--app-line-strong: #3a4740;
+--app-text: #eef3ed;
+--app-muted: #97a39b;
+--app-deep: #13372d;
+--app-teal: #2e9e86;
+--app-teal-strong: #249b7f;
+--app-teal-soft: rgb(46 158 134 / 14%);
+--app-on-teal: #04120e;
+--app-amber: #f2aa00;
+--app-on-amber: #1b1300;
+--app-shadow: 0 30px 70px -40px rgb(0 0 0 / 85%);
+```
+
+Default theme is dark. Storage key `suprecart-theme`. `<meta name="theme-color">` is `#0f1513` dark, `#f7f6f1` light. `ThemeToggle` uses `Sun` when dark, `Moon` when light, class `theme-toggle`, `aria-label="Switch to {next} mode"`.
+
+Global focus style:
+
+```css
+html[data-theme] :is(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--app-teal);
+  outline-offset: 2px;
+}
+```
+
+### 3.5 Seller studio tokens
+
+Light seller CSS root:
+
+```css
+--seller-ink: #17251f;
+--seller-muted: #748078;
+--seller-green: #118f7a;
+--seller-line: #e7e0d2;
+background: #f6f1e7;
+color: var(--seller-ink);
+font-family: "Space Grotesk", Arial, sans-serif;
+font-size: 13px;
+font-weight: 500;
+```
+
+Dark seller theme:
+`--seller-ink #eef3ed`, `--seller-muted #97a39b`, `--seller-green #2e9e86`, `--seller-line #2a352f`; page `#0f1513`, surfaces `#18211e`, panels `#1e2925`; amber warning text `#e5bd64`; rejected `#ff9f8e`.
+
+Seller palette by role:
+- Green primary `#167b67`, border `#197a66`, hover `#105f4f`, accent `#118f7a`; pale greens `#eff5ef`, `#f0f5ec`, `#f1f6ef`, `#eef6ef`, `#edf5ed`, `#f1f8f5`, `#f2f9f5`.
+- Ink `#17251f`, `#24372c`, `#26382d`, `#30443a`, `#35443a`, muted `#5d6b60`, `#66736a`, `#748078`, `#87918a`, `#9aa39c`.
+- Lines `#e8ece6`, `#e2e8df`, `#e7e0d2`, `#dfe5df`, `#e6ebe5`, `#edf0ec`, `#e7ece7`.
+- Amber `#b07d2b`, `#dbad4d`, `#9d7b34`, pale `#fdf8ee`, `#f0e2c4`, `#fdf7ea`, `#ecd9b5`, `#8a5f1e`.
+- Red `#b0443b`, hover `#963830`, `#963d31`, `#8a3d33`, pale `#fff6f4`, `#f1d3cc`, `#fffaf9`, `#fdf3f1`, `#f0d3ce`.
+- Blue in-transit: `#eef3f7` / `#4a6680`.
+- Splash: `#c7d9b4` dotted with `#fffefa`.
+
+### 3.6 Radii, shadows, motion
+
+Buyer:
+- Page max width `.page-width`, `.market-header-main`, `.market-category-inner`: `width: calc(100% - (var(--page-gutter) * 2)); max-width: 1320px; margin-inline: auto`.
+- Header `.market-header` sticky `top: 0`, `z-index: 40`; themed header background `color-mix(in srgb, var(--app-bg) 88%, transparent)`, `border-bottom: 1px solid var(--app-line)`, `backdrop-filter: blur(18px)`.
+- Active themed header main (`html[data-theme] .market-header-main`): height **74px**, gap 12px. Active themed logo (`html[data-theme] .market-logo .wordmark img`): **128×33**, `mix-blend-mode: normal`. Legacy/base values (58–64px header, logo 118–132×33–35) exist in `src/styles.css` but are overridden because `app-theme.css` loads after `styles.css`.
+- Category button height 42 pill `0 15px`, radius 999; search height 44 radius 999 with teal focus ring; icon buttons `42×42` radius 50%; avatar `36×36`; account menu `268px`, padding 6, radius 12, strong shadow.
+- Product photo aspect ratio 1.15, radius 10; product price now Space Grotesk 17/700; was 10.5; discount pill teal-soft; add button min-height 38.
+- Active themed product photo: `html[data-theme] .product-card .product-photo` aspect-ratio `1` (square), radius 14, no border, `--app-surface-2` background; themed card `gap: 0; padding: 9px 9px 11px; border-radius: 18px; box-shadow: none`. These themed rules override the older 1.15/radius-10 values.
+- App kicker `.app-kicker`: DM Mono 10, letter-spacing .16em, teal.
+- `.app-section-head h2`: Space Grotesk `clamp(22px, 2.6vw, 31px)`, 700.
+- `.app-shop-head h1`: Space Grotesk `clamp(30px,4vw,46px)`, 700.
+- `.app-chip`: pill `9px 16px`, font 11.5.
+- `.app-escrow`: radius 20, `21px 24px`, dark green gradient.
+- `.store-dialog`: padding 24, radius 22, app surface/shadow.
+- `.product-detail > img`: height 300, radius 16, cover; 230 at ≤1023px.
+- Checkout: `.co-page` min-height 100dvh + safe-area bottom; `.co-topbar` sticky z20 min-height 56; `.co-back` 44×44 circle; `.co-content` `min(720px,100%)`; `.co-card` padding 18 radius 20; `.co-bottom-bar` fixed bottom z30 blur surface; `.co-place-order` full width min-height 56 radius 16 teal.
+- Status pills: radius 999 uppercase 8px/750. Processing `#fdf2dc`/`#8a641e`, In transit `#e8f0fa`/`#2a5d91`, Delivered `#e7f3e9`/`#2b6b3d`, Cancellation requested `#fbe9df`/`#94532e`, Cancelled `#f3eded`/`#8a5d5d`.
+- Order card radius 14 border `#e2e2d9` soft shadow. Settings layout `220px + content`, gap 14; active settings nav `#edf4eb`/`#205237`.
+
+Seller:
+- Display/form headings `clamp(38px,5vw,60px)`, 700, line-height 1.03, letter-spacing -.065em; green span.
+- Confirmation/status `clamp(28px,4vw,39px)` line-height 1.17.
+- Dashboard h1 `clamp(25px,3vw,34px)`, letter-spacing -.055em; section h2 18–19px, -.04em.
+- Eyebrows 8–9px, 700–750, uppercase, letter-spacing .08em–.16em.
+- Body 11–13px, line-height 1.5–1.8.
+- Mono `DM Mono` for `.seller-step-pill` (9px), splash small text (8px, `.14em`) and `.seller-config-note code`; splash tagline uses `Georgia, serif` 18px `#3b5138`.
+- Radii: 3px chips, 5px thumbs, 6px inputs/buttons/alerts, 7px side links/upload/product form/payout panels, 8px metric cards/order rows/toggles/status chips, 9px dashboard sections/settings tabs/commission tiers, 10px mobile toggles/store logo/cookie banner, 12px form card/account dropdown/status card, 14px settings dropdowns, 999px pills/switches, 50% avatars.
+- Shadows: form card `0 9px 28px rgb(35 53 39 / 4%)`; account dropdown `0 18px 40px rgb(32 54 40 / 16%)`; settings dropdown `0 20px 44px rgb(32 54 40 / 18%)`; active tab `0 1px 4px rgb(25 69 55 / 10%)`; switch knob `0 1px 2px rgb(25 69 55 / 25%)`; cookie `0 12px 40px rgb(26 39 28 / 16%)`.
+- Input focus: border `#6ba991`, `box-shadow 0 0 0 3px rgb(65 141 111 / 10%)`; global focus outline `#167b67`.
+- Animations: `seller-dropdown-in` .16s ease-out, `seller-spin` .8s linear infinite, `seller-load` 1s ease-in-out, `seller-splash-in` .4s ease-out; reduced motion ~0.01ms.
+- Sizes: header 76px (65px mobile), sidebar 252px (210px ≤1080, hidden ≤760), content `min(100%,1380px)` padding `43px clamp(24px,5vw,76px) 0`; form page `min(100%,780px)`; auth card `min(100%,460px)`; confirmation `min(100%,680px)`, `11vh auto`, `54px 38px`; card padding 19–27px; grid gaps 8–16px; footer `18px 0 22px`.
+
+---
+
+## 4. SHARED STOREFRONT SHELL — DESKTOP AND MOBILE
+
+Source: `src/components/storefront.tsx`, `src/styles.css`, `src/app-theme.css`.
+
+### 4.1 Announcement bar — desktop
+
+Exact copy:
+
+```text
+Pay safe with escrow · Buyer protection on every order
+```
+
+Classes `.announcement`, `.announcement-divider`. Compact ~29px tall, dark background, gold shield icon. Hidden entirely on focused checkout.
+
+### 4.2 Desktop header
+
+Layout: sticky `.market-header`, centered `.market-header-main` max 1320px, announcement above/beside.
+
+Controls in exact DOM order (left→right):
+1. Menu button `Open menu` / `Close menu`, `aria-expanded`, `aria-controls="market-mobile-drawer"` (mobile/drawer trigger; rendered first in DOM).
+2. Logo link `/suprecart-logo.png` (light variant `/suprecart-logo-light.png` on dark surfaces), `aria-label="SupreCart home"`, wordmark image `Wordmark` (active themed size 128×33).
+3. Categories button with `LayoutGrid` icon, label `Categories`, `aria-expanded`, `aria-controls="market-category-menu"`. Dropdown copy is only `All categories` with CSS pseudo-label `Browse categories` — this is a stub in the original; recreate that exact limitation unless told otherwise.
+4. Search form (`role="search"`) with input placeholder/aria `Search products, brands and sellers`; submit navigates to `/shop` with `filter: "All"` and the current query.
+5. `<nav aria-label="Account, wishlist and bag">`: text link `Shop all`.
+6. `ThemeToggle` inside that nav.
+7. Wishlist icon `title="Wishlist"`, `aria-label="Wishlist"`, count badge.
+8. Shopping bag icon `title="Shopping bag"`, `aria-label="Shopping bag"`, count badge.
+9. Signed-out: `Log in`, `Sign up`.
+10. Signed-in avatar button: `title="{account.name} — open account menu"` and `aria-label="Open account menu for {account.name}"`; shows avatar image `alt="{account.name} profile photo"` or initials with `aria-hidden="true"`.
+
+`Shop all` and the icon buttons are wrapped by `nav.market-links` with `aria-label="Account, wishlist and bag"`. The menu button precedes the logo in DOM order even though visually it appears on the left on mobile.
+
+Account menu anatomy: `DropdownMenuLabel` first renders the avatar/initials and `<strong>{account.name}</strong>`, then the role/email line.
+
+Buyer:
+```text
+{account.name}
+Buyer account · {account.email}
+My account
+Wishlist
+Messages
+Sell on SupreCart
+Customer care
+Sign out
+```
+
+Seller:
+```text
+{account.name}
+Seller account · {account.email}
+Seller studio
+Store settings
+Messages
+Marketplace home
+Customer care
+Sign out
+```
+
+Uses `DropdownMenu`, `DropdownMenuContent`, `DropdownMenuItem`, `DropdownMenuLabel`, `DropdownMenuSeparator`, `DropdownMenuTrigger` from `src/components/ui/dropdown-menu.tsx`.
+
+Responsive (both CSS systems; `app-theme.css` wins on equal specificity):
+- Base `src/styles.css`: `max-width: 1240px`, `max-width: 1180px` (hide some header text links), `max-width: 1100px`, `max-width: 1024px` (hide categories, desktop search and desktop links; show mobile menu/tools/drawer), `max-width: 900px`, `max-width: 800px`, `max-width: 760px`, `max-width: 720px`, `max-width: 640px`, `max-width: 560px`, `max-width: 520px`, `max-width: 380px`, `min-width: 1500px`, plus `prefers-reduced-motion`.
+- Themed `src/app-theme.css`: `max-width: 1023px` (tablet header/drawer/tabbar compaction), `max-width: 900px` (escrow/seller banner wrap), `max-width: 640px`, `min-width: 700px` and `min-width: 1024px` (product grid), `min-width: 768px` and `min-width: 900px`, plus `prefers-reduced-motion`.
+- Global `MOBILE_BREAKPOINT = 768`; `useIsMobile()` uses `matchMedia("(max-width: 767px)")`.
+
+### 4.3 Mobile header and drawer
+
+Mobile header: menu button left, centered logo, then theme, search, wishlist badge, bag badge.
+
+Drawer exact copy:
+
+```text
+SupreCart home
+Close menu
+Search SupreCart
+Home
+Shop
+Light mode / Dark mode
+Off / On
+Wishlist
+Shopping bag
+My account
+Messages
+Customer care
+Sign out
+Log in
+Sign up
+```
+
+`Main navigation` is the `aria-label` on the drawer `<nav>` (not visible copy). `Quick navigation` is the `aria-label` on the bottom tabbar. Signed-in identity shows `{account.name}` and `Buyer account` / `Seller account`.
+
+Accessibility quirk to preserve: drawer theme button visible text toggles `Light mode`/`Dark mode` but `aria-label` always `Toggle light mode`.
+
+### 4.4 Bottom tabbar
+
+Visible only on tablet/mobile. Fixed/sticky bottom. Labels:
+
+```text
+Home, Shop, Wishlist, Bag, Account
+```
+
+Targets:
+- Home → `/`
+- Shop → `/shop?filter=All&query=`
+- Wishlist → opens wishlist dialog
+- Bag → opens cart dialog
+- Account → `/sellers` for sellers, `/account` for buyers, `/login` signed out
+
+Badges on Wishlist and Bag.
+
+### 4.5 Footer — shared desktop/mobile DOM
+
+Exact copy:
+
+```text
+SupreCart light wordmark
+X
+Instagram
+TikTok
+
+HELP & SUPPORT
+Customer care
+Contact us
+FAQs
+
+ABOUT SUPRECART
+Our story
+Privacy & terms
+
+© 2026 SupreCart. All rights reserved.
+For more inquiries, contact 09015505210.
+Privacy & terms
+Cookie policy
+```
+
+Links:
+- `/support`, `/info/contact`, `/info/faq`, `/info/about`, `/info/privacy-terms`, `/info/cookies`
+- `tel:09015505210`
+- `https://x.com`, `https://instagram.com`, `https://tiktok.com`
+
+Social links are generic platform homepages in the original. Dark green footer surface (`--footer-surface`), light wordmark, two link columns plus brand/social block; bottom bar separated by hairline. Responsive CSS stacks columns on small screens; copy does not change.
+
+### 4.6 Global dialogs
+
+One shared Radix `Dialog` renders four panel types: `product`, `cart`, `search`, `wishlist`. Classes `.store-dialog`, `.product-detail`, `.cart-content`, `.search-field`, `.search-results`, `.wish-row`, `.empty-state`, `.local-note`.
+
+Titles/descriptions:
+
+```text
+{product.name} / {category} · Sold by {seller}
+Your bag ({cartCount}) / Items from your favourite independent sellers.
+Saved for later / Good finds to come back to.
+Search the marketplace / Find something across the marketplace.
+```
+
+Product detail exact copy:
+```text
+{selected.name}
+{category} · Sold by {seller}
+{money(price)}
+{rating} ({reviews})
+Seller details
+{seller}
+Verified
+{sellerRating} seller rating
+{listings} listings
+Select size
+6, 7, 8, 9, 10, 11, 12
+Quantity
+Decrease quantity
+Increase quantity
+Add to bag · {money}
+Message seller
+Orders and payments are not processed.
+HYBRID RECOMMENDATIONS
+More like this
+Content + shopper signals
+```
+
+- `{rating} ({reviews})` is rendered with a filled `Star`. `Verified` uses `title="Verified seller"`. `Select size` and the 6–12 button list render only for products with sizes (`hasSizes`).
+- `Decrease quantity` / `Increase quantity` are `aria-label`s. `Message seller` renders **only** when `selected.marketplaceProductId && selected.sellerId`; it tracks `contact_seller` then navigates to `/messages?productId=...`.
+- `HYBRID RECOMMENDATIONS` is the visible kicker, `More like this` the heading, `Content + shopper signals` the descriptor; `Hybrid product recommendations` is the section `aria-label`, not visible copy.
+
+Cart exact copy:
+```text
+Your bag is waiting for its first good find.
+Explore the marketplace
+Decrease {name} quantity
+Increase {name} quantity
+Remove {name}
+Subtotal
+Continue to checkout
+Your bag is saved on this device. No payments are collected.
+Your saved basket could not be restored in this browser.
+Your browser could not save this basket. Keep this tab open to preserve it.
+```
+
+Cart row anatomy: thumbnail, product name, seller with `Verified` mark (`title="Verified seller"` when applicable), size text, `money(price × qty)`, and quantity controls with `aria-label={`Decrease ${item.product.name} quantity`}` / `Increase … quantity`. `Remove {name}` is also an aria-label. `Your saved basket could not be restored in this browser.` is the visible restore error; `Could not restore the saved SupreCart basket.` / `Could not save the SupreCart basket in this browser.` are console-only.
+
+Search:
+```text
+Try footwear, home, or headphones...
+No matches for “{query}”. Try another product, brand, or seller.
+Search the catalogue by product, brand, category, or seller.
+```
+
+Wishlist:
+```text
+Remove {name} from wishlist
+Your saved finds will show up here.
+```
+
+State keys/limits:
+- `suprecart-cart`, `suprecart-favorites`
+- Max cart lines 100, max qty per line 99, max favorites 200, qty clamp 1–99.
+
+### 4.7 Product card
+
+Classes `.product-card`, `.product-card--{category}`, `.product-photo`, `.product-image-button`, `.product-label`, `.favorite-control`, `.product-name`, `.product-audience`, `.product-seller`, `.product-seller-name`, `.seller-verified-mark`, `.product-price`, `.product-price-now`, `.product-price-was`, `.product-price-off`, `.product-add-button`, `.product-recommendation-note`.
+
+Copy/ARIA:
+```text
+View {name}
+Save to wishlist / Remove from wishlist
+Save {name} / Unsave {name}
+{category} · {brand}
+All products from {seller}
+Verified
+{sellerRating}
+Choose size          (footwear)
+Add to cart          (non-footwear)
+Choose a size for {name}
+Add {name} to cart
+```
+
+Compare-at pricing is simulated: factors `[1.18, 1.25, 1.15, 1.3, 1.22, 1.2]`, `compareAtPrice(price,id) = round((price*factor)/500)*500`, discount `-{percent}%`. Do not present as verified historical pricing.
+
+---
+
+## 5. BUYER PAGES — LAYOUT AND COPY
+
+### 5.1 Home `/`
+
+Exact homepage copy:
+
+```text
+SupreCart marketplace                         (hidden h1)
+Good finds. Good things ahead.
+INDEPENDENT FINDS, ALL IN ONE PLACE
+
+Welcome back, {firstName}.                    (buyer)
+Seller studio · {firstName}                   (seller)
+
+Your saved finds and bag are right where you left them. / Your account    (buyer)
+Manage your listings, orders and buyer conversations. / Open seller studio (seller)
+
+Pay safe with escrow
+We hold your payment until you confirm delivery.
+Buyer protection
+Verified sellers
+Campus delivery
+How it works
+
+Trending now
+Top products
+The pieces shoppers are adding to their bags this week.
+See all
+
+Just landed
+Fresh from the marketplace
+New arrivals, small batches and student picks.
+See all
+
+For independent sellers
+Good finds deserve a good home.
+Bring your products to a marketplace built around discovery, thoughtful browsing and the people behind every find.
+Sell on SupreCart
+
+Every order is protected.
+From checkout to delivery, your payment stays in escrow until you confirm the item arrived as described.
+Read the safety guide
+
+Independent sellers / One marketplace, many makers
+Seller ratings / Shop with useful context
+Easy to explore / Good finds, all in one place
+Save your finds / Keep a wishlist for later
+```
+
+Sections:
+1. Hidden H1 (`app-sr-only`) and signed-out splash `HomeSplash` (600ms reduced motion, else 1200ms; `role="status" aria-label="Loading SupreCart"`, wordmark + `Good finds. Good things ahead.` + loader + `INDEPENDENT FINDS, ALL IN ONE PLACE`). The escrow panels use `aria-label="Escrow buyer protection"` and `aria-label="Escrow reminder"`. The greeting uses `aria-label="Your account"`; both product sections use `See all` → `/shop?filter=All&query=`.
+2. Greeting/account CTA: buyer `Welcome back, {firstName}.` / `Your saved finds and bag are right where you left them.` / `Your account`; seller `Seller studio · {firstName}` / `Manage your listings, orders and buyer conversations.` / `Open seller studio`.
+3. Primary escrow panel `.app-escrow` — compact dark-green gradient card with shield, title, subtitle, three tags, `How it works` link.
+4. `Top products` grid: `pickProducts([1,7,8])`; kicker `Trending now`, note, `See all` → `/shop?filter=All&query=`.
+5. Signed-out seller banner: kicker `For independent sellers`, title/body/CTA `/sellers`.
+6. `Fresh from the marketplace` grid: `pickProducts([11,13,15])`.
+7. Second escrow card: `Every order is protected.` with escrow explanation and `Read the safety guide`.
+8. Benefits strip shown only on `/`.
+
+Desktop: `.page-width` max 1320. Active themed `.app-product-grid` is **2 columns** by default, **3 columns from 700px**, and stays **3 columns at ≥1024px** (`src/app-theme.css:541-557`). Legacy base CSS had 4–5 columns but is overridden. Mobile ≤640: home/greeting/section/product-grid compaction, tighter gaps; ≤900: escrow/seller banners wrap.
+
+### 5.2 Shop `/shop`
+
+Search validation: `{filter: string ?? "All", query: string ?? ""}`.
+
+Exact copy:
+
+```text
+The SupreCart marketplace
+Shop everything
+Brands to know
+Showing results for “{query}”.
+Good finds, from sellers worth knowing.
+{n} find / {n} finds
+Every order is protected by escrow
+Sort by
+Featured
+Price: low to high
+Price: high to low
+No finds match this view.
+Nothing matched “{query}”. Try another product, brand, or seller.
+Try a different category or brand.
+Clear filters
+```
+
+Filter options `["All", ...new Set([...categories, ...brands])]`. `All` and `Brands` show everything; otherwise match `category` or `brand`. Query matches lowercase `name brand category seller`. Sort featured = id asc, low = price asc, high = price desc. Chips link to `/shop` with `search={{filter, query}}`. `aria-label="Filter by category or brand"` on the chip list and `aria-label="Sort products"` on the sort select.
+
+Analytics: query change → `trackViewSearchResults(query, visible.length, filter)`; non-All filter → `trackFilterProducts(filter, visible.length)`; dedupe via ref key `${query}|${filter}`.
+
+### 5.3 Checkout `/checkout`
+
+Uses `focused` shell: own top bar and bottom action bar only.
+
+Constants:
+```ts
+DELIVERY_FEE = 250;
+addressKey(email) = `suprecart-addresses:${cleanEmail(email)}`;
+createReference(prefix) = `${prefix}-${token}`;
+// token = globalThis.crypto?.randomUUID?.().replaceAll("-", "").slice(0, 12).toUpperCase()
+// if (!token) throw new Error("Secure order references are not available in this browser.");
+```
+References: batch `CC-BATCH-*`, per-seller tracking `CC-TRACK-*`. Storage `suprecart-checkout-orders`; existing orders are read defensively, filtered to objects with a string `batchNumber`, and capped with `.slice(0, 100)`; new order is written as `[newOrder, ...orders].slice(0, 100)`.
+
+Checkout ARIA/local-error strings to preserve: topbar back `aria-label="Back to checkout"`, link `aria-label="Back to shopping"`; delivery method group `role="radiogroup" aria-label="Delivery method"`; area group `aria-label="Delivery area"`; field labels `Phone number`, `Pickup point`, `Delivery address`. Fallback contact name `Signed-in buyer`. Local errors: `Secure order references are not available in this browser.`, `Could not read the saved checkout orders.`, `Could not read the saved delivery address.`, `Could not save the SupreCart order.`, and the confirm-step error `We couldn’t save your receipt in this browser. Please try again.`
+
+Empty bag:
+```text
+YOUR BAG IS EMPTY
+Good finds are waiting.
+Add a few things to your bag before heading to checkout.
+Explore the marketplace
+```
+
+Checkout step:
+```text
+Checkout
+Your items ({n})
+How do you want it?
+Deliver to me / A SupreCart rider brings it to you
+Pick up / Collect it free at the area office
+Where are you?
+On campus / On campus delivery
+Off campus / Off campus delivery
+Delivery address
+Add a delivery address in your account
+Sign in to load your delivery address
+No phone number on file
+Sign in to load your phone number
+Delivery details are loaded from your account.
+Items
+Delivery
+Total
+Free
+Your money stays with SupreCart until you confirm you've received your order.
+Demo checkout — no order is placed and no payment is collected.
+Place order - {money(total)}
+```
+
+Receipt review step:
+```text
+Review receipt
+Delivery details
+Pickup point / Delivery address
+Area office pickup / Delivery address on file
+Phone number
+No phone number on file
+Delivery option
+Pick up / Deliver to me · On campus / Off campus
+Your items ({n})
+{seller} · Qty {quantity} · Size {size}
+Summary
+Save receipt
+This is a local receipt. No payment is collected and no order is sent to a seller.
+```
+
+Complete step:
+```text
+Order receipt                         (topbar title)
+RECEIPT SAVED
+Your receipt is saved.
+These references are stored in this browser only. No order was sent to a seller and no parcel is being shipped.
+Batch number
+Payment option
+Paystack
+Created {en-NG locale}
+Tracking references
+{money(gross)} held in escrow until you confirm delivery
+SupreCart deducts its seller commission, then releases the net amount to the seller. This is a local demonstration, not a real payout.
+{gross} item value / {commission} commission
+{net} seller net
+Keep exploring
+No payment was collected and no real order exists on SupreCart.
+```
+
+Flow details:
+- Prefill from `getProfile` and saved address.
+- `deliveryState: "Kwara"`, destination like `On campus · Area office pickup`.
+- `trackCheckoutOrder` uses `paymentType: "paystack"` but no payment occurs.
+- Clears cart after `confirmOrder()`.
+- Error: `We couldn’t save your receipt in this browser. Please try again.`
+
+### 5.4 Account `/account` — buyer hub
+
+Guard: signed-out → `/login`; seller → `/sellers`. Hash sections `#orders`, `#addresses`, `#seller`, `#settings`.
+
+Shell copy:
+```text
+YOUR ACCOUNT
+Hello, {firstName}
+Loading account details...
+No phone added yet
+Messages
+Continue shopping
+Home / Your Account
+Buyer account
+Your account
+Demo account: orders, profile edits and saved details live in this browser only. No real order is placed and no payment is taken.
+```
+
+Sidebar: `SupreCart buyer`, `Buyer account`, nav `Your account`, services `Help & services` → `Messages`, `Customer service`, `Help centre`, `Sign out`.
+
+Mobile overview:
+```text
+MY ACCOUNT
+Hi, {firstName}
+Edit profile
+Demo account. Orders, profile edits and saved details stay in this browser.
+MY ORDERS / Orders / See all
+RECENT PURCHASES / Recent orders
+No orders yet. Your next good find will show up here.
+Start shopping
+Profile / Update your name and phone
+Addresses / Add a delivery address
+Notifications / {n} preferences active
+Login & security / Extra protection on or Review sign-in settings
+Sell on SupreCart / {sellerStatus}
+Messages / Chat with sellers
+Help & support / Orders, returns and account help
+Sign out
+```
+
+Desktop overview:
+```text
+BUYER ACCOUNT
+Welcome back, {firstName}
+Track orders, manage delivery details and keep your SupreCart account up to date.
+Continue shopping
+View messages
+Your Orders
+Your Addresses
+Notifications
+Login & Security
+Sell on SupreCart
+RECENT PURCHASES / Recent orders / See all orders
+ORDER PLACED / TOTAL / SHIP TO / ORDER # / View
+No orders yet / When you place an order, it will appear here.
+Account details: Name / Email / Phone / Not set / Not added / Edit
+Default address / Manage / No delivery address saved yet. / Add an address
+POPULAR ON SUPRECART / Recommended for you / Shop all
+{rating} ★ · {reviews} reviews
+```
+
+Orders section:
+```text
+YOUR PURCHASES
+Your Orders
+Track packages, request cancellations and buy your favourites again.
+All orders, Processing, In transit, Delivered, Cancellation requested, Cancelled
+Placed through SupreCart checkout / Marketplace order
+Delivering to {delivery}
+Order placed, Processing, In transit, Delivered
+Confirm package received
+Buy again
+Get help
+Cancel order
+Confirm package received?
+This marks the order delivered and releases the simulated escrow to the seller after commission. No real money moves in this demo.
+Confirm delivery
+Not yet
+Escrow released to the seller / {money} held in escrow
+Seller net
+SupreCart share
+Delivery was confirmed by the buyer in this browser. SupreCart commission has been deducted from the seller payout.
+SupreCart holds the item funds until you confirm the package arrived. Commission is deducted from the seller net before release.
+Refund status: Pending review
+Reason: {reason}
+Request submitted, Seller and logistics review, Refund processed
+Requested. No payment or refund has been processed yet.
+Cancelled on {date}. No payment or refund was processed.
+The 24-hour cancellation window for this order has closed.
+Need help with a delivery?
+Our customer care team can help with order questions and cancellation requests.
+Chat with customer care
+```
+
+Cancellation modal/form:
+```text
+Request cancellation for order {id}? It will be reviewed before any refund is processed. This request is saved in this browser only.
+Cancellation reason
+Select a reason
+Changed my mind
+Ordered by mistake
+Found a better price
+Delivery is taking too long
+Need to change the delivery details
+Other
+Submit request
+Keep order
+Cancellation request for order {id} was saved and is awaiting review. No payment or refund has been processed.
+```
+
+Addresses:
+```text
+DELIVERY DETAILS
+Your Addresses
+Save the places you order to most often. Addresses stay in this browser only.
+Add a new address
+Saved delivery addresses
+No saved delivery addresses
+Add an address to make checkout faster.
+DEFAULT
+Set as default
+Remove
+NEW ADDRESS
+Add a delivery address
+First name, Last name, Email, Phone
+Kwara LGA / e.g. Ilorin West
+Community
+Street address
+Landmark (optional)
+Make this my default delivery address
+Save address
+```
+
+Seller application section:
+```text
+GROW WITH SUPRECART
+Sell on SupreCart
+Apply for a seller account, track your review and manage your seller studio.
+Your studio is ready. / Your application is with us. / Let’s try that again.
+Bring what you make to more people.
+Approved seller / Pending review / Application not approved / Not applied
+Seller studio / APPROVED / Open seller studio
+01 We review your details
+02 You get an answer here
+03 Your studio opens
+Update your application / Seller application
+Fields marked below are shared with the review team. No payment or product goes live from this form.
+Shop or business name / e.g. Form & Field
+Phone number / +234
+What will you sell? / A short introduction to your products, materials and how you make or source them.
+Resubmit for review / Submit for review
+```
+
+Settings:
+```text
+ACCOUNT SETTINGS
+Account Settings
+Manage your profile, preferences and account security.
+Settings section
+Profile, Notifications, Security, Danger zone
+Profile photo / Shown on your account and reviews. Saved in this browser only.
+Add photo / Change photo / Remove
+Profile changes stay in this browser. Your email address identifies the account and cannot be changed here.
+Display name, Phone, Account email, Save profile
+Order updates / Delivery and fulfilment progress
+Deals & promotions / Sale alerts from sellers you follow
+Newsletter / Occasional marketplace news
+Security alerts / Sign-ins and account changes
+SupreCart does not send real messages yet; toggles are remembered locally.
+Two-factor authentication / Extra protection for sign-in has not been connected yet.
+Password / Reset your password from the sign-in page.
+Other sessions / Sign out every other device signed in to this account.
+Sign out other sessions
+Two-factor authentication is a placeholder; it never blocks sign-in.
+Permanently delete this local account, its profile, orders, messages, seller application and saved preferences from this browser.
+This permanently deletes every local record for this account. It cannot be undone. Continue?
+Delete account / Cancel
+Closing a real SupreCart account is handled by our team. / Request account deletion
+```
+
+Account anatomy and remaining exact strings:
+- ARIA: mobile menu button `aria-label="Account menu"`, section nav `aria-label="Account sections"`, breadcrumb `aria-label="Breadcrumb"`, order filter group `aria-label="Order status"`.
+- Sidebar nav labels are `Overview`, `Orders`, `Addresses`, `Sell with us`, `Settings`; services group is `Help & services` → `Messages`, `Customer service`, `Help centre`, `Sign out`.
+- Mobile overview also has eyebrow `ACCOUNT` / `Manage your account`, the account email under the identity, status-grid labels, and dynamic order count/status/item/total/date strings.
+- Desktop quick cards add sublabels `{n} order(s) placed` and `{n} saved address(es)`.
+- Orders filters show counts and use `No {orderFilter.toLowerCase()} orders` / `Try another order status to see more of your purchases.` / `View all orders` when filtered, and `You have not placed an order yet` / `Order history is kept in this browser only.` / `Start shopping` when there are no orders. The empty-orders section heading is `Continue shopping`.
+- Order actions: `Confirm package received`, `Buy again`, `Get help`, `Cancel order`, `Submit request`, `Keep order`.
+- Delivery confirmation notice (dynamic): `Delivery confirmed for order ${orderId}. The escrow record now shows ${nairaFormatter.format(funds.sellerNet)} for the seller after ${nairaFormatter.format(funds.commission)} commission. No real funds moved.` Fallback: `Delivery confirmed for order ${orderId}. No real funds moved.`
+- Local errors: `Could not request cancellation for this order in this browser.`, `Could not confirm delivery for this order in this browser.`
+- Addresses: display `Landmark: {landmark}`; notices `Delivery address saved in this browser.`, `Delivery address removed from this browser.`, `Default delivery address updated for this browser.`; validation `Complete the required address fields with valid details.`
+- Seller application: eyebrow `SELL ON SUPRECART`; status-specific hero bodies; submitted card `{storeName} · Submitted {date}`; studio copy `Your shop, orders and payouts live in one focused workspace. Seller changes are kept in this browser only.`; `What happens next` steps `Our team checks your shop, products and payout information.`, `Your account dashboard updates when the application is reviewed.`, `Once approved, your seller workspace unlocks at /sellers.`
+- Settings: notices `Your profile has been updated in this browser.`, `Profile photo saved in this browser only.`, `Profile photo removed from this browser.`, `This app keeps one session in this browser, so there are no other devices.`; validation `Enter your name before saving.`; notifications intro: `SupreCart does not send real messages yet; toggles are remembered locally.` (see `src/routes/account.tsx:2135-2137`). Avatar errors come from `src/lib/avatar.ts` (`Choose a JPG, PNG, or WebP image.`, `Choose an image that is 2 MB or smaller.`, `That file is empty. Choose another image.`, `That file is not a real JPG, PNG, or WebP image — only the file name looked right.`, `We could not read that image. Re-export it and try again.`).
+
+### 5.5 Auth routes
+
+Login:
+```text
+WELCOME BACK
+Good to see you.
+Sign in to pick up right where you left off.
+Email address
+Password
+Forgot password?
+Demo accounts (no password needed):
+{name} — {email}
+Sign in
+New to SupreCart? Create an account
+Accounts are stored in this browser only.
+Aside: THE GOOD STUFF IS STILL OUT THERE. / Come on in. Take a look around. / Find your kind of good.
+```
+Password field optional; hint `Use the password you chose when you created your account. Demo accounts can sign in without one.`
+
+Signup:
+```text
+YOUR NEXT GOOD FIND STARTS HERE
+Create your account
+One account. A whole marketplace to make your own.
+Create account
+Already have an account? Sign in
+Account details are stored in this browser only. No email confirmation is required.
+ALL SET
+You’re in, {firstName}.
+Your buyer account is saved in this browser. No email verification is needed.
+Go to your homepage
+Your buyer account is stored in this browser only.
+Aside: GOOD FINDS. GOOD PEOPLE. / A little more considered. A lot more to discover. / Your marketplace, your way.
+```
+
+Forgot password:
+```text
+FORGOT PASSWORD
+Reset your password.
+Enter the email you signed up with, then choose a new password.
+Remembered it? Back to sign in
+No email is sent. Accounts listed on the sign-in page do not use a password.
+PASSWORD UPDATED
+You’re all set.
+Your new password is saved in this browser. Sign in with it to continue.
+Go to sign in
+This reset only changes an account stored in this browser.
+Aside: A FRESH START IS ONE STEP AWAY. / Reset it. Get back in. / Find your kind of good.
+```
+
+Auth layout: two-column editorial split on desktop, single column stacked on small screens. Aside dark/green editorial panel. Form panel standard app inputs/buttons. Inputs on small screens 16px font, min-height 52px to prevent iOS zoom. Every auth panel includes a `Back to SupreCart` link at the top (and on the success panel).
+
+Auth fields, states and errors:
+- Login labels `Email address`, `Password`; password optional with hint `Use the password you chose when you created your account. Demo accounts can sign in without one.` Errors: `No account matches that email yet. Create an account first.`, `That password does not match this account. Please try again.`, plus moderation/banned-account messages from `src/lib/accounts.ts`.
+- Signup labels `First name`, `Last name`, `Email address`, `Phone number`, `Password`, `Confirm password`; hint `At least 8 characters. Use a unique password.`; phone placeholder `+234`; submit label `Create account` / `Creating account…`; validation `Enter your first and last name.`, `Enter a valid email address.`, `Enter a valid phone number.`, `Choose a password with at least 8 characters.`, `Passwords do not match. Please try again.`
+- Forgot-password labels `Email address`, `New password`, `Confirm new password`; hint `At least 8 characters.`; submit `Reset password` / `Saving…`; validation `Choose a password with at least 8 characters.` / `Those passwords do not match.`; aside brand text `SUPRECART YOUR MARKETPLACE`.
+
+### 5.6 Messages `/messages`
+
+Search `validateSearch`: `{productId?: string}`; a match requires `conversation.productName === productId || conversation.id === productId` and an active thread is preserved when valid. Two-pane inbox desktop (thread list + conversation), min-height ~590px, bordered rounded surface; narrow `(max-width:900px)` starts with no active thread and has a back button. Topbar role label is `BUYER CHATS` for sellers and `SELLER CHATS` for buyers.
+
+Copy:
+```text
+Sign in to see your messages.
+Sign in
+BUYER CHATS / SELLER CHATS
+INBOX
+Messages
+Chats are stored in this browser. Nothing is sent to a real buyer or seller.
+{accountInitials} · {account.name}
+{threads.length}
+{peer.name} / Verified
+{latestMessage ?? productName}
+{productName}
+{time}
+Message {peer.name}
+Send message
+No conversations yet.
+Open a product and choose Message seller to start a conversation.
+Your conversations live here.
+Pick a chat to keep browsing with a little help from the seller.
+Messages are stored in this browser only.
+Read / Sent
+```
+
+- `aria-label="Conversations"` on the inbox; `aria-label={`Chat with ${peer.name}`}` on the conversation; `aria-label="Back to conversations"` on the mobile back button; `Read`/`Sent` are `title`s on the own-message check.
+- Composer is `maxLength=1200`; send error `Could not save this message.` (fallback). Signed-out empty uses the sign-in block; guest/admin states never send to a real seller.
+
+### 5.7 Support `/support`
+
+Search `{orderId?: string, topic?: string}`. Queue simulated with 3 seeded tickets.
+
+Copy:
+```text
+CUSTOMER CARE
+Guest
+WE'RE HERE TO HELP
+Chat with customer care
+Ask about an order, delivery, returns or your account. Your first message reserves your place in the queue, and this conversation is kept in your browser.
+Prefer to talk? Call 09015505210.
+SupreCart Customer Care
+You're next in the queue
+About {n} min wait in the queue
+Send a message to join the queue
+Queued
+Hello! Tell us what you need help with. Earlier conversations are served first, so sending your first message quickly reserves your place.
+Automated
+Customer care
+Saved in this browser
+Tell customer care what you need
+Message customer care
+Send message
+Loading your chat…
+CUSTOMER CARE QUEUE
+You're next / Your place
+A live agent would pick up next in a connected queue.
+About {n} min estimated wait. Earlier messages are served first.
+Your place is set by your first message. Sending more messages does not move you back.
+Ready when you are.
+Send your first message to join the queue. Earlier messages are served first.
+Messages stay in this browser and no real agent is connected.
+Shipping & delivery
+Returns & exchanges
+FAQs
+Your orders
+Sign in to view your orders
+```
+
+Composer `maxLength=1200`, `cleanMultiline(...,2000)`. Queue refreshes every 30s. Guest requester is `Guest shopper`; signed-in header shows the account initials/name. Search `orderId` prefills `I need help with order ${orderId}.`; `topic` prefills `Order ${cleanText(orderId,40)}` or `cleanText(topic,120)`. `aria-label="Customer care chat"` on the chat section and `aria-label="Queue and support information"` on the sidebar. Status chip is `Guest`, `Queued`, or `#{position}`; queue card figure is `#{position}` or `…`. Composer placeholder `Tell customer care what you need`, `aria-label="Message customer care"`, send `aria-label="Send message"`; own-message tooltip `Saved in this browser`. Quick help links to `/info/shipping`, `/info/returns`, `/info/faq`, and `/account` (`Your orders`) or `/login` (`Sign in to view your orders`). Errors `Could not save this message in your browser. Please try again.` and `This chat could not be saved.`
+
+### 5.8 Careers `/careers`
+
+```text
+Back to SupreCart
+CAREERS AT SUPRECART
+Good people.
+Good things ahead.
+We’re not on the lookout for talent just yet — but that could change. Please check back later for future opportunities.
+In the meantime, there’s plenty of good to discover across the marketplace.
+Explore the marketplace
+MORE TO COME
+```
+
+### 5.9 Info pages `/info/$slug`
+
+Unknown slug:
+```text
+Back to SupreCart                         (top back link)
+INFORMATION · NOT FOUND
+That page isn’t here.
+The information page you’re looking for may have moved. Head back to the marketplace or get in touch with customer care.
+Back to SupreCart                         (button)
+```
+
+Valid pages exact content (rendered as eyebrow, then title, then body):
+
+- `about`:
+  - `ABOUT SUPRECART` / `Good finds, good people.`
+  - `SupreCart is a buyer-first marketplace bringing independent sellers and thoughtful finds together in one easy place.`
+  - `From everyday style and footwear to home, tech, accessories and beauty, we’re here to make discovering something great feel simple.`
+  - `This preview uses illustrative seller and product details; live inventory will be confirmed before launch.`
+- `contact`:
+  - `CONTACT` / `We’re here to help.`
+  - `For other enquiries, call us on 09015505210.`
+  - `Full customer-care hours and dedicated support channels will be shared when live checkout launches.`
+- `shipping`:
+  - `SHIPPING INFORMATION` / `Delivery, made clear.`
+  - `Delivery options, destinations, costs and estimated arrival times will be confirmed at checkout when our delivery partners are connected.`
+  - `Submitting checkout details here does not create a delivery request.`
+- `returns`:
+  - `RETURNS & EXCHANGES` / `A little peace of mind.`
+  - `Our final returns and exchanges policy will be published before the marketplace opens for orders.`
+  - `This storefront does not accept orders or process returns.`
+- `faq`:
+  - `FREQUENTLY ASKED QUESTIONS` / `The essentials, answered.`
+  - `Is SupreCart live? The storefront is currently a product and buyer-experience showcase.`
+  - `Can I place an order? You can explore checkout, but orders and payments are not processed.`
+  - `Are sellers and ratings real? Seller names, ratings and products shown here are seeded marketplace content.`
+- `privacy-terms`:
+  - `PRIVACY & TERMS` / `Privacy & terms.`
+  - `Cart, wishlist and account details are stored only in your browser. Do not enter sensitive personal or payment information.`
+  - `If you allow analytics cookies, we use Google Analytics to understand how the storefront and seller portal are used. Analytics can see product and cart events, but never your name, email address, delivery address, password or payment details.`
+  - `Product descriptions, prices, seller information and ratings are illustrative and may not represent items available for purchase. No order, payment, delivery, subscription or seller transaction is created through this storefront.`
+  - `No actual email verification, newsletter signup, account authentication or payment service is connected yet. A complete privacy notice and marketplace terms will be published before launch.`
+- `size`:
+  - `SIZE GUIDE` / `Find your right fit.`
+  - `Where sizing applies, displayed sizes are illustrative. Fit and sizing can vary by maker and product.`
+  - `Check the product details or contact the seller for exact measurements before ordering once the marketplace is live.`
+- `cookies`:
+  - `COOKIE POLICY` / `Cookies, kept simple.`
+  - `SupreCart uses one essential first-party cookie to remember your cookie choice. It does not track you across other sites.`
+  - `If you allow analytics, we load Google Analytics (GA4) to measure page views, searches, cart activity, wishlist use, checkout steps and errors. Google Analytics cookies stay off until you accept analytics, and you can reject or manage them from the banner. Marketing cookies are not installed.`
+  - `To change your mind, clear this site's cookies and choose again from the banner.`
+  - `Cart, wishlist and account details are stored only in your browser. Do not enter sensitive personal or payment information.`
+
+All valid pages start with a top `Back to SupreCart` link and end with `Explore the marketplace` → `/shop?filter=All&query=`.
+
+### 5.10 Cookie consent banner
+
+Copy:
+```text
+Cookies on SupreCart
+We use one essential cookie to remember your choice. Google Analytics cookies are only set if you allow analytics. Marketing cookies are not installed.
+Essential
+Always on. Remembers this choice.
+Analytics
+Google Analytics. Off unless you accept.
+Marketing
+Not installed. Off by default.
+Reject optional
+Accept
+Manage
+Save choices
+Read our cookie policy.
+```
+
+`aria-label="Cookie choices"` on the banner. `policyHref` is optional; when present it renders `Read our cookie policy.` as a link. Three-tier consent; marketing is never installed, but `Accept` stores `necessary: true, analytics: true, marketing: true`; `Reject optional` uses `essentialOnly`. Cookie key `suprecart-cookie-consent`, event `suprecart-consent-change`.
+
+### 5.11 Analytics behavior
+
+Consent-gated GA4. Defaults denied for `ad_storage`, `ad_user_data`, `ad_personalization`, `analytics_storage`. When granted, only `analytics_storage` is granted. `send_page_view:false`, `anonymize_ip:true`, `allow_google_signals:false`, `allow_ad_personalization_signals:false`, `debug_mode: import.meta.env.DEV`. Script marker `data-suprecart-ga`.
+
+Events: `page_view`, `select_item`, `view_item`, `add_to_cart`, `remove_from_cart`, `view_cart`, `add_to_wishlist`, `remove_from_wishlist`, `begin_checkout`, `add_shipping_info`, `checkout_order_created`, `view_search_results`, `filter_products`, `newsletter_signup`, `sign_up`, `login`, `contact_seller`, `scroll_depth`, `outbound_click`, `exception`. `add_shipping_info` carries `shipping_tier` (`Pick up` or `Deliver to me`); `checkout_order_created` carries `transaction_id`, `tax`, `shipping`, `payment_type: "paystack"`, `delivery_method`; `newsletter_signup` carries `method: "footer"`. Scroll thresholds `[25,50,75,90,100]`. Emails/phones scrubbed to `[email]`/`[phone]`. Currency `NGN`.
+
+---
+
+## 6. DATA LAYER — EXACT CONTRACTS
+
+### 6.1 Shared catalog
+
+`src/lib/catalog.ts` is the browser-safe seeded catalog. 22 products. Image template:
+
+```ts
+https://images.unsplash.com/photo-{PHOTO_ID}?auto=format&fit=crop&w=900&q=85
+```
+
+| id | name | brand | category | price | rating | reviews | seller | sellerRating | photo id | label |
+|---:|---|---|---|---:|---:|---|---|---|---|---|
+| 1 | Nike Air Force 1 '07 | Nike | Footwear | 85000 | 4.8 | 2.4k | The Sole House | 4.9 | photo-1542291026-7eec264c27ff | Bestseller |
+| 2 | Adidas Superstar | Adidas | Footwear | 72000 | 4.7 | 1.8k | The Sole House | 4.8 | photo-1549298916-b41d501d3772 | — |
+| 3 | Air Jordan 4 Retro | Jordan | Footwear | 120000 | 4.9 | 3.2k | Lace & Legacy | 5.0 | photo-1680204101489-2c1319c872b2 | Popular |
+| 4 | New Balance 530 | New Balance | Footwear | 95000 | 4.6 | 980 | The Sole House | 4.9 | photo-1680204101400-aeac783c9d87 | — |
+| 5 | Vans Old Skool | Vans | Footwear | 65000 | 4.7 | 2.1k | Street Culture NG | 4.7 | photo-1634624943287-6e1f2d103201 | — |
+| 6 | Campus Oversized Hoodie | UniWear | Clothing | 24500 | 4.8 | 126 | UniWear Lagos | 4.9 | photo-1556821840-3a63f95609a7 | Student pick |
+| 7 | Ribbed Cotton Knit | North & Loom | Clothing | 18500 | 4.8 | 92 | North & Loom | 4.9 | photo-1576566588028-4147f3842f27 | Just landed |
+| 8 | Aura Wireless Headphones | Sonora | Electronics | 68000 | 4.7 | 319 | Sound House Lagos | 4.9 | photo-1505740420928-5e560c06d30e | Top rated |
+| 9 | North Campus Backpack | Campus Supply | Accessories | 28500 | 4.8 | 57 | The Study Store | 4.8 | photo-1553062407-98eeb64c6a62 | New |
+| 10 | Everyday Sunscreen SPF 50 | Serein | Beauty | 12500 | 4.6 | 203 | Serein Beauty | 4.7 | photo-1608248543803-ba4f8c70ae0b | — |
+| 11 | Oversized Study Tee | UniWear | Clothing | 12500 | 4.8 | 118 | UniWear Lagos | 4.9 | photo-1521572163474-6864f9cf17ab | Community pick |
+| 12 | LED Study Desk Lamp | Dorm Depot | Home | 22500 | 4.8 | 61 | Dorm Depot | 4.8 | photo-1507473885765-e6ed057f782c | Student pick |
+| 13 | Sonora Pocket Speaker | Sonora | Electronics | 42000 | 4.7 | 147 | Sound House Lagos | 4.9 | photo-1608043152269-423dbba4e7e1 | Bestseller |
+| 14 | A5 Study Notebook Set | Study Co. | Accessories | 6500 | 4.9 | 96 | The Study Store | 4.8 | photo-1531346878377-a5be20888e57 | Small batch |
+| 15 | Serein Daily Hydration | Serein | Beauty | 16500 | 4.8 | 118 | Serein Beauty | 4.7 | photo-1556228720-195a672e8a03 | Community pick |
+| 16 | Noise-Cancelling Earbuds | Sonora | Electronics | 38500 | 4.7 | 38 | Sound House Lagos | 4.9 | photo-1590658268037-6bf12165a8df | — |
+| 17 | Dorm Bedding Set | Dorm Depot | Home | 32000 | 4.8 | 52 | Dorm Depot | 4.8 | photo-1522771739844-6a9f6d5f14af | Just landed |
+| 18 | Insulated Water Bottle | Dorm Depot | Accessories | 9500 | 4.7 | 81 | Dorm Depot | 4.8 | photo-1602143407151-7111542de6e8 | — |
+| 19 | Sunday Market Sunglasses | Atelier Nia | Accessories | 16500 | 4.8 | 52 | Atelier Nia | 4.8 | photo-1511499767150-a48a237f0083 | Just landed |
+| 20 | Slim Fast-Charge Power Bank | Campus Tech | Electronics | 18500 | 4.7 | 143 | Campus Tech Hub | 4.8 | photo-1609091839311-d5365f9ff1c5 | Student pick |
+| 21 | Compact Alarm Clock | Dorm Depot | Home | 8500 | 4.6 | 44 | Dorm Depot | 4.8 | photo-1508963493744-76fce69379c0 | — |
+| 22 | Nourishing Lip Balm | Serein | Beauty | 4500 | 4.8 | 67 | Serein Beauty | 4.7 | photo-1586495777744-4413f21062fa | Small batch |
+
+```ts
+categories = ["Clothing","Footwear","Home","Electronics","Accessories","Beauty"];
+brands = [...new Set(products.map(p => p.brand))];
+money = n => `₦${n.toLocaleString("en-NG")}`;
+sellerIsVerified(seller) = seller.trim().length > 0;
+```
+
+`Product` includes optional `sellerVerified?: boolean`; storefront renders `product.sellerVerified ?? sellerIsVerified(product.seller)`. No current seeded product sets the override, so visible output is unchanged, but the fallback logic must exist.
+
+The catalog contains exactly 22 products; tests rely on ids 1–22. Use 22.
+
+### 6.2 Accounts and credentials
+
+Preset account:
+```ts
+{ email: "blackrose@gmail.com", name: "Daniel Adebisi", role: "buyer" }
+```
+Any password works for this preset. Retired seed email `shewa@gmail.com` must be filtered.
+
+Keys:
+```text
+suprecart-account-session
+suprecart-local-accounts
+suprecart-deleted-accounts
+suprecart-account-moderation
+suprecart-account-preferences:seller:{email}
+suprecart-account-preferences:buyer:{email}
+```
+
+Password algorithm: PBKDF2-SHA-256, 600,000 iterations, 16-byte hex salt, 256-bit hash, format `pbkdf2-sha256$600000$<64 hex>`. Minimum 8, max 256. Legacy SHA-256 hash `${salt}:${password}` is upgraded on verify. Constant-time compare. `crypto.subtle` unavailable error: `This browser cannot store a password safely. Use one of the listed accounts instead.`
+
+Approved buyer gets local seller session via `ensureSellerAccount` with literal salt/hash `"approved-seller"`.
+
+Moderation statuses `active | warned | banned`; case-insensitive email; banned account signs out. Warning banner copy from `reason` or `An administrator has warned this account.`
+
+### 6.3 Commission
+
+```ts
+commissionTiers = [
+  { id:"standard", range:"₦5,000 and below", summary:"₦150 + 7.5% of the selling price", flatFee:150, rate:0.075, min:0, max:5000 },
+  { id:"premium", range:"Above ₦5,000", summary:"11% of the selling price", flatFee:0, rate:0.11, min:5000, max:null },
+];
+calculateCommission(price):
+  tier = price <= 5000 ? standard : premium
+  commission = min(roundKobo(price*rate + flatFee), price)
+  sellerNet = roundKobo(price - commission)
+  effectiveRate = price > 0 ? commission/price : 0
+```
+No listing or subscription fee. Guidance only; no backend enforcement.
+
+### 6.4 Orders and escrow
+
+Keys `suprecart-order-status`, `suprecart-checkout-orders`. `cancellationWindowMs = 24 * 60 * 60 * 1000`.
+
+Statuses `Delivered | In transit | Processing | Cancellation requested | Cancelled`. Settlement status `held | released`.
+
+Seeded orders:
+| email | id | status | created | total | items | delivery |
+|---|---|---|---|---:|---|---|
+| blackrose@gmail.com | SC-2026-10482 | Delivered | day(5) | 185000 | Nike Air Force 1 '07 · Size 10 | Tanke, Ilorin South |
+| blackrose@gmail.com | SC-2026-09816 | In transit | day(2) | 52000 | Dorm Bedding Set · 1 item | Tanke, Ilorin South |
+| blackrose@gmail.com | SC-2026-08327 | Delivered | day(24) | 89500 | Sonora Pocket Speaker · 1 item | Fate, Ilorin East |
+| vickybabs@gmail.com | SC-2026-10531 | Processing | hoursAgo(6) | 71500 | Everyday Sunscreen SPF 50 + Serein Daily Hydration | GRA, Ilorin West |
+| vickybabs@gmail.com | SC-2026-09144 | Delivered | day(13) | 68000 | North Campus Backpack · 1 item | GRA, Ilorin West |
+| izzy@gmail.com | SC-2026-10208 | In transit | day(3) | 320000 | Air Jordan 4 Retro · Size 9 | Oke-Oyi, Ilorin East |
+| izzy@gmail.com | SC-2026-08720 | Delivered | day(20) | 42000 | Oversized Study Tee · Size L | Oke-Oyi, Ilorin East |
+| olowe@gmail.com | SC-2026-10063 | Delivered | day(7) | 88500 | LED Study Desk Lamp + A5 Study Notebook Set | Adewole, Ilorin West |
+| olowe@gmail.com | SC-2026-07652 | Delivered | day(31) | 46500 | Ribbed Cotton Knit · Size M | Adewole, Ilorin West |
+
+Rules:
+- `canCancelOrder`: only `Processing`, within 24h.
+- `canConfirmOrderDelivery`: not funds released; `In transit` or `Delivered`.
+- `confirmOrderDelivery`: status → Delivered, `delivery_confirmed_at`, `funds_released_at` now; settlements become released on read.
+- `createOrderSettlements`: group by seller, gross from subtotal or price×qty, commission per tier, net = gross−commission, kobo rounding.
+- `summarizeOrderFunds`: status `none|partial|held|released`.
+- Checkout orders require `batchNumber`, `createdAt`, `buyerEmail`, `total`; map to `status: Processing`, `source: checkout`. Full written shape: `{ batchNumber, createdAt, buyerEmail, lines: { product, size, quantity, subtotal }[], subtotal, deliveryFee, total, deliveryState, deliveryMethod, deliveryArea, deliveryDestination, shipments: { seller, trackingNumber }[], settlements }`. `lines` copy full `Product` objects; `shipments` are one per distinct seller.
+- Error strings include `Choose a cancellation reason first.`, `That order could not be found in this browser.`, `A cancellation request is already awaiting review for this order.`, `This order can no longer be cancelled because it is already in transit, delivered or cancelled.`, `The 24-hour cancellation window for this order has closed.`, `Delivery is already confirmed and this escrow record is released.`, `A cancelled order cannot be confirmed as received.`
+
+### 6.5 Messages
+
+Key `suprecart-messages`. Max 500 messages, body limit 4000.
+
+Seeded conversations:
+1. `chat-daniel-daniella`: Daniel Adebisi ↔ Daniella Olusegun, product `Everyday glow face serum`; messages `Is this suitable for sensitive skin?` / `It is fragrance-free, but please check the ingredients list and patch test first.`
+2. `chat-victoria-daniella`: Victoria Babatunde ↔ Daniella Olusegun, `Shea butter body cream`; `Hi Daniella, what size is this jar?` / `Hi Victoria, it is 250 ml. I have added the size to the product details too.`
+3. `chat-victoria-adeniji`: Victoria ↔ Emmanuel Adeniji, `Campus Oversized Hoodie`; `Could you confirm the fit around the shoulders?` / `It has a relaxed cut with a little extra room. The size guide has garment measurements.`
+4. `chat-isaac-adeniji`: Isaac Oyebanji ↔ Emmanuel Adeniji, `Oversized Study Tee`; `Is this available in medium?` / `Yes, medium is available in white and sage in this catalogue.`
+5. `chat-isaac-bukunmi`: Isaac ↔ Bukunmi Oluwaseyin, `North Campus Backpack`; `Would this fit a 15-inch laptop?` / `Yes, the padded sleeve fits most 15-inch laptops and still leaves room for notebooks.`
+6. `chat-olowe-bukunmi`: Olowe Goodness ↔ Bukunmi, `LED Study Desk Lamp`; `Does the lamp have a USB charging port?` / `It has a USB-C port and three brightness levels, which is handy for late study sessions.`
+
+### 6.6 Seller applications
+
+Key `suprecart-seller-applications`, event `suprecart-seller-applications-change`, max 200, retired `shewa@gmail.com`. Status `pending | approved | rejected`. Submit always forces `pending`. Review sets `reviewedAt`, optional `reviewNote`. No seeded application.
+
+### 6.7 Support queue
+
+Keys `suprecart-support`, `suprecart-support-guest`, `suprecart-support-seeded`. `serviceWindowMs = 4min`, `minutesPerTicket = 3`, max 200 tickets / 500 messages, body limit 2000.
+
+Seeded tickets `care-ada`, `care-musa`, `care-zainab`, each with only one message: `I need help with my order.` The automated reply `Thanks for reaching out. Your first message has joined the customer care queue.` is added only to newly created tickets, not to the seeded three.
+
+### 6.8 Recommendations
+
+Deterministic browser-local hybrid recommender.
+
+Weights:
+- Content: category 3.0, brand 2.2, seller 1.2, price band 0.8, label 0.5, name token 0.6 each.
+- Price bands: ≤10k, ≤25k, ≤50k, ≤100k, >100k.
+- Stop words: `and for the with set of`.
+- Interactions: favorites 3, cart `2.5 + qty*0.25` (qty clamp 1–5), Delivered 4, In transit 3.5, default order 3, Cancellation requested 1.5, Cancelled 0.
+- Content with focus+history: `focusContent*0.7 + historyContent*0.3`.
+- With focus: `content*0.7 + collaborative*0.25 + quality*0.05`.
+- With history no focus: `content*0.6 + collaborative*0.4 + quality*0.05`.
+- Cold start: `popularity*0.6 + quality*0.4`.
+- Quality: `rating/5 * 0.7 + min(reviews,3200)/3200 * 0.3`.
+- Default limit 4; product dialog limit 3.
+- Sources: `content | collaborative | hybrid | popular`.
+
+Reason strings:
+```text
+Similar to {focus.name}
+Popular with SupreCart shoppers
+Matches your interest in {match.name}
+Matches your saved finds
+Shoppers with similar baskets liked this
+```
+
+Seeded interaction profiles (demo data):
+```text
+seed-runner-01:   1:3 2:2 4:3 18:2
+seed-runner-02:   1:2 3:3 5:2 19:1
+seed-sneaker-01:  1:3 2:2 3:3 4:2 5:1
+seed-street-01:   5:3 6:3 11:2 19:2 9:1
+seed-street-02:   3:2 5:2 6:2 19:3 7:1
+seed-campus-01:   9:3 12:2 14:2 18:2 20:2 21:1
+seed-campus-02:   6:2 9:2 11:3 12:2 17:1 18:1
+seed-dorm-01:     9:2 12:3 14:2 17:3 18:2 21:2
+seed-beauty-01:   10:3 15:3 22:2
+seed-beauty-02:   6:1 10:2 15:2 19:1 22:2
+seed-tech-01:     8:3 13:2 16:2 20:2
+seed-tech-02:     8:2 9:1 13:3 16:1 20:2
+seed-style-01:    6:2 7:3 11:1 19:2 10:1
+seed-gift-01:     10:1 14:1 15:1 18:1 19:1 22:1
+```
+
+Tests require: focus id 10 limit 3 → top two ids `[15,22]`; favorite id 5 → ids among `[6,11,19]`; cold start `source: "popular"`.
+
+### 6.9 Input/image safety/avatar
+
+Input:
+- `cleanText(value,max=500)`: strip controls, collapse whitespace, trim, slice.
+- `cleanMultiline(value,max=4000)`: normalize CRLF, keep tabs/newlines, collapse 3+ newlines to 2.
+- `cleanEmail`: lowercase, regex, max 254.
+- `cleanPhone`: keep digits plus `+() -` and spaces, max 32.
+- `cleanSecret`: strip controls only, preserve whitespace, max 256.
+
+Image safety:
+- `MAX_DATA_IMAGE_CHARS = 4_000_000`
+- Data URL regex: `^data:image/(?:png|jpe?g|webp);base64,[a-z0-9+/]+={0,2}$`
+- `sanitizeImageSource`: data raster only, same-origin `/` but not `//`, HTTPS only, max 2048. Reject SVG, HTML, javascript:, blob:, http:, protocol-relative.
+
+Avatar:
+- `AVATAR_MAX_BYTES = 2*1024*1024`, `AVATAR_SIZE = 400`, accept JPEG/PNG/WebP, output WebP quality .9.
+- Magic-byte sniff JPEG `FF D8 FF`, PNG signature, WebP `RIFF...WEBP`.
+- Center-crop square, 400×400 canvas, data URL + Blob.
+- Error copy: `Choose a JPG, PNG, or WebP image.`, `Choose an image that is 2 MB or smaller.`, `That file is empty. Choose another image.`, `That file is not a real JPG, PNG, or WebP image — only the file name looked right.`, `We could not read that image. Re-export it and try again.`
+- Storage path `${sellerId}/avatar.{jpg|png|webp}`.
+
+### 6.10 Account preferences
+
+Key prefix `suprecart-account-preferences:`, scope `${role}:${email.toLowerCase()}`, event `suprecart-account-preferences-change`.
+
+Defaults:
+```ts
+{
+  avatarDataUrl: "",
+  notifications: { orderUpdates:true, promotions:false, newsletter:false, securityAlerts:true },
+  twoFactorEnabled: false,
+  store: { storeName:"", tagline:"", description:"", logoDataUrl:"" },
+  fulfilment: { processingTime:"1–2 business days", shippingOptions:["Doorstep delivery"], openingHours:"" }
+}
+```
+
+Shipping catalog:
+1. Doorstep delivery — Courier brings the order to the buyer's address.
+2. Pickup station — Buyer collects from a nearby SupreCart pickup point.
+3. Local pickup — Buyer collects directly from your shop.
+4. Nationwide courier — 3–5 business days to anywhere in Nigeria.
+5. Express delivery — Priority 1–2 day delivery within major cities.
+6. Inter-state delivery — Delivery to another state via a logistics partner.
+7. Bus / park waybill — Buyer receives the order through a motor-park waybill.
+8. Free shipping — You cover delivery on qualifying orders.
+
+Processing options: `1–2 business days`, `3–5 business days`, `1–2 weeks`, `Made to order`.
+
+### 6.11 Addresses
+
+Key `suprecart-addresses:{cleanEmail(email)}`, max 50.
+```ts
+BuyerAddress = {
+  id, first_name, last_name, email, phone, lga, community,
+  street_address, landmark, is_default
+}
+```
+One default only; first becomes default if none. Shared between account and checkout. Field caps: 80/80/80/254/32/80/120/200/160.
+
+### 6.12 Account cleanup
+
+`deleteAccountData(email)` order:
+1. `deleteAccount`
+2. `deleteSellerApplication`
+3. `deleteProfile`
+4. `deleteOrdersFor`
+5. `deleteMessagesFor`
+6. `deleteSupportFor`
+7. clear buyer preferences
+8. clear seller preferences
+9. remove `suprecart-addresses:${normalized}`
+10. remove `suprecart-seller-products:${normalized}`
+
+### 6.13 Complete storage/event inventory
+
+localStorage:
+```text
+suprecart-cart
+suprecart-favorites
+suprecart-theme
+suprecart-account-session
+suprecart-local-accounts
+suprecart-deleted-accounts
+suprecart-account-moderation
+suprecart-account-preferences:{buyer|seller}:{email}
+suprecart-addresses:{email}
+suprecart-seller-products:{email}
+suprecart-seller-applications
+suprecart-messages
+suprecart-order-status
+suprecart-checkout-orders
+suprecart-profile:{email}
+suprecart-support
+suprecart-support-guest
+suprecart-support-seeded
+```
+
+Cookie/window:
+```text
+suprecart-cookie-consent
+ga-disable-{VITE_GA_MEASUREMENT_ID}
+```
+
+Events:
+```text
+suprecart-session-change
+suprecart-account-moderation-change
+suprecart-account-preferences-change
+suprecart-seller-applications-change
+suprecart-consent-change
+native storage / popstate / hashchange / keydown / pointerdown / scroll / matchMedia change / error / unhandledrejection
+```
+
+---
+
+## 7. SELLER STUDIO — FULL DESIGN AND BEHAVIOR
+
+`src/routes/sellers.tsx` is a thin wrapper: imports `SellerPortal` from `../../seller-portal/src/SellerPortal`, sets head title `Sell with SupreCart` and description `Apply to sell on SupreCart, manage your products and track your sales.` Standalone `seller-portal/index.html` title is `SupreCart Seller Studio`, favicon `/suprecart-icon.png`, same description; `seller-portal/src/main.tsx` renders `<StrictMode><SellerPortal standalone /></StrictMode>` and imports `seller.css` then `standalone.css`. Standalone alone renders `<Analytics />` and `<CookieConsent policyHref={cookiePolicyHref} />`; embedded seller route does not.
+
+Keep the seller studio at approximately `seller-portal/src/SellerPortal.tsx` 2,379 lines and `seller-portal/src/seller.css` 2,443 lines if matching source proportions matters.
+
+### 7.1 Shell
+
+Header (sticky, z-index 10, blur 15px, white 94%, border `#e8ece6`, 76px / 65px mobile):
+- Logo link `/suprecart-logo.png` + dark variant `/suprecart-logo-light.png`, `aria-label="SupreCart home"`, 166×54 (138×48 ≤760, 124px ≤520, 112px ≤420).
+- Note `SELLER STUDIO` with green dot/icon.
+- Actions right: `ThemeToggle` class `seller-theme-toggle`, settings gear (approved sellers), hamburger (session), account pill or `Buyer sign in →`.
+- Account pill: 34px avatar (image `sellerAvatar` or initial), `<small>Seller account</small><strong>{name}</strong>`, chevron. Dropdown: Account settings, Buyer homepage, Switch to buyer account, Sign out.
+- Settings dropdown label `Account settings`, 7 tab buttons.
+- Mobile dropdown: Overview, Products, Orders, Payouts, Account settings, Messages, Buyer homepage, Switch to buyer account, Sign out.
+
+Sidebar desktop 252px (210px ≤1080, hidden ≤760):
+- Back link `Marketplace`
+- Icon `Store`, title `Seller studio`, caption `GOOD BUSINESS, GROWING.`
+- Section label `YOUR SPACE`
+- Links Overview, Products, Orders, Payouts, Account settings, Messages
+- Footer `ShieldCheck` + `Your information is protected by SupreCart.`
+
+Footer: `© 2026 SupreCart` + `Built for sellers with something good to share.`
+
+Loading splash 1050ms (`role="status" aria-label="Loading SupreCart Seller Studio"`): fixed `#c7d9b4` radial dots `#fffefa`, `/suprecart-logo.png`, `A good place to grow.`, 96×2px progress track, `SELLER STUDIO`.
+
+Busy/redirect: `Preparing your seller space…`, `Taking you to sign in…`. Unauthenticated visitors see `SellerRedirectPanel`, then location replaced with `loginHref`.
+
+### 7.2 Hash routing
+
+```ts
+sellerPages = ["overview","products","orders","payouts","settings"];
+readSellerPage() = window.location.hash.replace(/^#\/?/, "") if valid else "overview";
+goToPage(next): set page, close menus, trackEvent("seller_page_view",{page:next}), history.pushState(null,"",`#${next}`), smooth scroll top.
+```
+Listeners: `popstate`, `hashchange`. Settings tab is not in hash.
+
+Standalone links use `marketplaceUrl = import.meta.env["VITE_MARKETPLACE_URL"] || "/"`; base strips trailing slash; cookie policy href only when absolute http(s). Seller `Messages` links add `accountEmail` and `accountRole` query params; the buyer `/messages` route validates only `productId`.
+
+### 7.3 Important source-state discrepancy
+
+`ApplicationForm`, `SignInPanel`, `SignIn` flow, `register`, `requestPasswordReset`, and `confirmed` state are defined but **not rendered** in current JSX. The visible unauthenticated flow is redirect-to-buyer-login. Reproduce that behavior; copy for dead-code forms is listed below only for fidelity if you choose to resurrect them.
+
+### 7.4 Dead-code application/sign-in copy (optional fidelity)
+
+```text
+OPEN TO INDEPENDENT SELLERS
+MAKE GOOD THINGS. FIND YOUR PEOPLE.
+Bring your shop / to SupreCart.
+Grow your business with a marketplace that makes room for independent sellers and the things they create.
+SELLER APPLICATION
+Tell us about yourself
+01 — 01
+First name, Middle name (optional), Last name, Email address
+Create a password / At least 10 characters. Stored in this browser so you can sign in again later.
+What do you make or sell? / Tell us about your shop, your products, and what makes them special…
+Product / business attachments (optional) / Choose files to upload / JPG, PNG or PDF · max 10 MB each
+Submit application / Submitting securely…
+By applying, you agree to SupreCart reviewing your details and contacting you about your application.
+Already have a seller account? Sign in
+Errors: Attachments must be JPG, PNG, or PDF files under 10 MB each. / No seller account matches that email yet. Submit an application first. / That password does not match this account. Please try again.
+WELCOME BACK / Your shop, your way. / Sign in to check orders, add new products and keep your business moving.
+Seller accounts can sign in without a password. Accounts you create here use the password you chose.
+Sign in / Signing in...
+Sign in with the email and password attached to your approved seller account. Approved buyers can also sign in from the storefront.
+Email / For password reset / Send reset link
+New to SupreCart? Apply to sell
+Seller accounts live in this browser, so there is no password reset email for {email}.
+APPLICATION RECEIVED
+Your information is under review, we will be in touch!
+We’ll review your seller profile and email you with an update. Once approved, sign in here to set up your shop.
+Go to seller sign in
+Your seller application is saved in this browser and pending review.
+Thanks, {name}. We’re reviewing your shop. / UNDER REVIEW / View your application
+We’re unable to approve your application yet. / REVIEW COMPLETE / Update your application
+ONE ACCOUNT, TWO SIDES / Your seller story starts in your buyer account. / Apply to sell from your SupreCart dashboard. Once approved, this studio opens with your products, orders and payouts. / Go to your seller application
+```
+
+### 7.5 Dashboard overview
+
+Top line: `YOUR SELLER STUDIO` + `VERIFIED SELLER` (BadgeCheck). Seeded banner:
+```text
+ACCOUNT DATA · These seeded orders, ratings, and NGN figures are stored locally. No purchases, payouts, or backend records exist.
+```
+Admin warning: `Admin warning: ${moderation.reason || "please review the marketplace rules."}`.
+
+Greeting: 46px avatar (image or `UserRound`), `Good to see you, {first_name}.`; seeded subtext `Live seller metrics are not loaded yet. — real seller data is not loaded.`; non-seeded `Here’s how your shop is doing today.`
+
+Actions: outline `Withdraw` (non-seeded only), primary `Add a product` (both).
+
+Metric cards `.seller-metric-grid` auto-fit min 180px, min-height 124px:
+1. `AVAILABLE FUNDS` / `AVAILABLE TO REQUEST`, balance, `For buyer-confirmed deliveries`, CircleDollarSign, green gradient.
+2. `HELD BY SUPRECART`, heldFunds, `Held until the buyer confirms delivery`, ShieldCheck, amber.
+3. `NET EARNINGS` / `TOTAL EARNED`, earnings, `Your net from confirmed deliveries`, ArrowDownToLine.
+4. `ITEMS SOLD`, soldCount, `Across fulfilled orders`, Box.
+5. `SHOP RATING`, average.toFixed(1) + gold star, `{n} verified reviews`, BadgeCheck.
+
+### 7.6 Products page
+
+Header `YOUR CATALOGUE` / `Products`, outline `Add product`.
+
+Product form:
+```text
+Product name
+Category / Choose a category…
+Brand / maker / e.g. Northline Studio
+Condition / New | Refurbished | Pre-owned
+Price (NGN)
+Available quantity
+Detailed product description / Materials, dimensions, care instructions, what's included, and anything a buyer should know…
+At least 30 characters. Clear details help buyers decide with confidence.
+Product image / .jpg,.jpeg,.png,.webp / JPG, PNG, or WebP · max 10 MB. Use a bright, clear product photo.
+Listings are available to approved SupreCart sellers only. New products are saved in this browser and shown in your catalogue immediately.
+Publish product / Saving product…
+SupreCart commission {fee} · you receive {net} per item ({tier.summary}).
+```
+
+Categories: `["Clothing","Footwear","Home","Electronics","Accessories","Beauty"]`.
+
+Validation errors:
+```text
+Choose a product image.
+Product images must be JPG, PNG, or WebP files under 10 MB.
+That file is not a real JPG, PNG, or WebP image.
+Enter a product name.
+Choose a product category from the list.
+Add a detailed product description of at least 30 characters.
+Enter a valid product price.
+Available quantity must be a whole number.
+```
+Success `Product added to your listings.`
+
+Product row: 40×43 image; name; `{category} · {condition} · {brand}`; 2-line clamped description; `Net ₦{x} · fee ₦{y}` green; price; `{n} in stock` / `Out of stock` + `Mark out`/`Restock`; star rating or `New`; `LIVE`/`HIDDEN`. Notices `{name} is now in stock.` / `is now out of stock.`
+
+Empty: `PackagePlus`, `Your first product is waiting.`, `Add a product with a detailed description and category to start selling.`, `Add your first product →`.
+
+Storage key `suprecart-seller-products:{email.toLowerCase()}`, max 200. Images stored as data URLs and revalidated via `sanitizeImageSource`.
+
+### 7.7 Orders page
+
+```text
+FULFILMENT
+Orders
+{n} orders
+Order SC-1048
+{product.name} · {qty} item(s) · ₦{net} seller net
+No live orders are connected yet.
+Orders containing your products will appear here after a buyer places an order.
+```
+Status chips: delivered, processing, in_transit (underscores → spaces). Seeded order ids `SC-1048`, `SC-1031`, `SC-0996`, `SC-0942`.
+
+### 7.8 Payouts page
+
+```text
+YOUR EARNINGS
+Withdrawals
+{money} available
+Withdraw your available balance
+Buyer-confirmed earnings, less applicable commission. Withdrawals are reviewed before any payment is made.
+Withdraw funds
+Amount (NGN)
+Submit payout request / Submitting…
+Payout requests are saved for review. No money has moved yet.
+Balances shown here cannot be withdrawn.
+A payout request does not transfer funds…
+SupreCart commission: ₦5,000 and below → ₦150 + 7.5%; above ₦5,000 → 11% of the selling price. See Commission & fees for a full breakdown.
+{heldFunds} is held by SupreCart until buyers confirm delivery. SupreCart deducts its commission, then releases the seller net. If a sale does not complete, the held amount is never credited to your available balance.
+```
+
+`Withdraw funds` and the payout request form render only when `!seededMode`; seeded demo accounts see `Balances shown here cannot be withdrawn.` instead. Keep this visibility condition; do not offer withdrawals for seeded balances.
+
+### 7.9 Settings tabs
+
+Tab bar: Account (Settings), Store profile (Store), Fulfilment (Truck), Commission & fees (Percent), Notifications (Bell), Security (ShieldCheck), Danger zone (AlertTriangle).
+
+Account:
+```text
+PROFILE & SECURITY
+Account settings
+Seller account / This seller account is stored in this browser only.
+Profile photo / JPG, PNG, or WebP · square 400×400px · 2 MB max. Shown next to your store once object storage is connected; it is kept in your browser.
+Add photo / Change photo / Remove
+Verified seller / SupreCart has confirmed your store details.
+Profile changes are saved only in this browser. Email and password remain stored here and cannot be changed.
+Display name, Contact phone, Email, Save profile
+Your seller profile has been updated in this browser.
+```
+Non-seeded account form also: Email placeholder `Leave unchanged to keep current email`, help `Email updates require confirmation from the new address.`; New password placeholder `At least 10 characters`; `Save account settings` / `Saving settings…`.
+
+Store profile:
+```text
+How your shop is presented to buyers on SupreCart.
+Store name / e.g. Northline Home Studio
+Tagline / A short line about your shop
+Store description / Tell buyers what you make and what makes it special…
+Store logo / JPG, PNG, or WebP · max 2 MB · stored in this browser.
+Logo (saved in this browser)
+Saving here keeps your storefront details in this browser. Publishing to the public marketplace is not connected yet.
+Save store profile
+Store profile saved in this browser. It is not yet published to the marketplace.
+Store logo saved in this browser only.
+```
+
+Store name input defaults to `preferences.store.storeName || application.first_name`, `maxLength=80`, placeholder `e.g. Northline Home Studio…` (source literal begins `e.g. No…`). Match this default/prefill behavior.
+
+Fulfilment:
+```text
+Defaults for how you process and ship orders.
+Typical processing time
+Shipping options you offer
+Select every method you can support. Buyers see your choices at checkout.
+{n} of 8 selected
+Opening / support hours / e.g. Mon–Fri, 9am–5pm
+These preferences are saved in this browser and are not yet applied to checkout.
+```
+
+Commission & fees:
+```text
+What SupreCart deducts before releasing each sale.
+Commission is charged on the selling price when the buyer confirms delivery. The seller net is released after the deduction. There is no listing or subscription fee.
+₦5,000 and below / ₦150 + 7.5% of the selling price
+Above ₦5,000 / 11% of the selling price
+Enter a selling price (NGN) / e.g. 1000
+SupreCart commission
+You receive per item
+Applies to
+Enter a price to see the commission and your net payout per item.
+```
+
+Notifications:
+```text
+Choose what SupreCart tells you about.
+Orders & account
+New orders / When a buyer orders one of your products
+Security alerts / Sign-ins and account changes
+News & marketing
+Tips & promotions / Seller features and marketplace campaigns
+Newsletter / Occasional seller news
+Messaging is not connected yet. {enabledNotifications} of 4 alerts are on and remembered in this browser.
+```
+
+Security:
+```text
+Two-factor authentication / Extra protection for sign-in has not been connected yet.
+Password / Change your password from the Account tab.
+Sign out other sessions
+Seller accounts are browser-only, so there are no other sessions to sign out.
+Two-factor authentication is a placeholder; it never blocks sign-in.
+```
+
+Danger zone:
+```text
+Permanently delete this seller account and all its local data from this browser.
+Closing a real seller store is handled by the SupreCart team.
+This permanently deletes the seller account, profile, messages, application and preferences. It cannot be undone. Continue?
+Account closure is handled by SupreCart support. Continue to see more?
+Delete seller account / Continue / Cancel / Request store closure
+Store closure is handled by SupreCart support. Nothing was deleted.
+```
+
+### 7.10 Seller seeded data
+
+`buildSeededSellerStats(email)`:
+- Beauty → `daniella@gmail.com`; Clothing → `adeniji@gmail.com`; else Home.
+- 3 seeded products ids `seeded-product-1..3`, inventories `[8,14,5]`, reviews `[18,9,6]`, ratings `[4.9,4.8,4.7]`, created 45/36/27 days ago.
+- Orders `SC-1048 delivered`, `SC-1031 processing`, `SC-0996 in_transit`, `SC-0942 delivered` (buyer_confirmed for delivered).
+- `seller_net=0`, `committedPayouts=0`; seeded available balance/earnings ₦0; heldFunds from unconfirmed items.
+- `isProductInStock = in_stock !== false && inventory > 0`.
+
+### 7.11 Seller responsive breakpoints
+
+- ≤1080px: sidebar 210px, metrics 2 cols, content padding-inline 30px.
+- ≤760px: header 65px/padding 17px, logo 138×48, header note hidden, account name/chevron hidden, layout block, sidebar hidden, hamburger/settings shown, content `22px 16px 0`, settings tabs hidden, cards 18px 16px, dashboard heading column, product rows grid areas `"thumb name state" / "thumb price rating" / "thumb stock stock"`, order rows 3 cols with time on second line, `.seller-order-list` and `.seller-fund-ledger` horizontal scroll min-width 560px, inputs 16px, toggle targets ≥44px, cookie banner full-width column.
+- ≤520px: content `16px 12px`, header padding 12px, logo 124px, single-column form grids, metrics min 110px/value 20px, sections 14px 12px, status cards `38px 20px`, auth card `22px 18px`, reset form column.
+- ≤420px: header gap 8px, logo 112px, toggles 34px.
+- `prefers-reduced-motion`: remove the seller splash/transition motion.
+- Standalone `seller-portal/src/standalone.css` additionally imports Google fonts `DM Mono` (400/500) and `Space Grotesk` (400/500/600/700), sets `body` font to `Space Grotesk, Arial, sans-serif`, `min-width: 320px`, `min-height: 100vh`, `scroll-behavior: smooth`, tap highlight transparent, inherited link color/no underline, pointer cursor on buttons.
+
+### 7.12 Key seller CSS class index
+
+```text
+seller-site, seller-header, seller-logo-link/-default/-dark, seller-header-note,
+seller-header-actions, seller-mobile-toggle/-menu/-dropdown, seller-account-menu/-trigger/-avatar/-name/-dropdown,
+seller-settings-menu/-trigger/-dropdown/-dropdown-label, seller-text-button, seller-switch-link,
+seller-layout, seller-sidebar, seller-back-link, seller-sidebar-intro/-icon/-caption, seller-side-link,
+seller-sidebar-foot, seller-content, seller-eyebrow, seller-hero-label, seller-form-page, seller-form-card,
+seller-form-heading, seller-step-pill, seller-form-grid, seller-field-full, seller-optional, seller-upload-box,
+seller-primary-button, seller-outline-button, seller-consent, seller-form-error/-notice/-warning,
+seller-confirmation/-icon, seller-status-page/-icon/-badge, seller-auth-page/-card/-icon, seller-reset-form,
+seller-dashboard, seller-dashboard-topline/-heading/-greeting/-actions, seller-approved,
+seller-metric-grid/-card/-balance/-held, seller-dashboard-section, seller-order-list/-status/-detail,
+seller-settings-card/-form/-note/-tabs/-actions, seller-field-pair, seller-toggle-list/-row,
+seller-switch/-knob, seller-shipping-options/-hint/-grid/-card/-count, seller-store-logo,
+seller-avatar/-sm/-actions/-buttons, seller-profile-header, seller-verify-banner,
+seller-fee-estimate, seller-commission-tiers/-tier/-estimator/-result, seller-product-net,
+seller-product-form/-access-note/-table/-row/-name/-description/-price/-stock/-rating/-state,
+seller-stock-toggle, seller-empty-products, seller-finance-section/-note,
+seller-payout-balance/-panel/-form, seller-fund-ledger/-row, seller-config-note,
+seller-listing-error, seller-state-panel, seller-spinner, seller-footer,
+seller-loading-screen/-track, seller-danger-zone, seller-confirm/-actions, seller-danger-button,
+cookie-consent(-actions/-toggle/-preferences/-policy-link), theme-toggle/seller-theme-toggle
+```
+
+---
+
+## 8. SSR, SECURITY, ERROR HANDLING
+
+### 8.1 src/start.ts
+
+Defines `errorMiddleware` server middleware:
+- Rethrows objects with `statusCode`.
+- Others log and return 500 `text/html; charset=utf-8` from `renderErrorPage()`.
+- Explicitly re-adds `createCsrfMiddleware({ filter: ctx => ctx.handlerType === "serverFn" })` because defining `src/start.ts` opts out of Start's automatic install.
+- `startInstance = createStart(() => ({ requestMiddleware: [errorMiddleware, csrfMiddleware] }))`.
+
+### 8.2 src/server.ts
+
+- Lazy-caches `@tanstack/react-start/server-entry` import.
+- `normalizeCatastrophicSsrResponse()` detects JSON `{"unhandled":true,"message":"HTTPError"}` on 5xx, returns 500 HTML with `cache-control: no-store`.
+- Default export worker handler `{ fetch(request, env, ctx) }`: wraps handler, applies `normalizeCatastrophicSsrResponse`, then `applySecurityHeaders` on every response including errors.
+
+### 8.3 src/lib/error-capture.ts
+
+- Captures Error instances passed to `console.error`, expands with `describeError`, TTL 5s, cause depth 5, description limit 8000.
+- Global `error` and `unhandledrejection` listeners.
+- `consumeLastCapturedError()` returns once.
+
+### 8.4 src/lib/error-page.ts
+
+Self-contained HTML `This page didn't load`, `Something went wrong on our end. You can try refreshing or head back home.`, `Try again` (`href=""`), `Go home` (`href="/"`), inline CSS `#fafafa`, `#111`, `#4b5563`, `#d1d5db`, `<meta name="robots" content="noindex">`.
+
+### 8.5 Security headers
+
+CSP:
+```text
+default-src 'self'
+script-src 'self' 'unsafe-inline' https://www.googletagmanager.com  (+ 'unsafe-eval' dev)
+style-src 'self' 'unsafe-inline' https://fonts.googleapis.com
+img-src 'self' data: blob: https:
+font-src 'self' data: https://fonts.gstatic.com
+connect-src 'self' + GA/GTA/DoubleClick origins (+ ws: wss: http://127.0.0.1:* dev)
+media-src 'self' data: blob: https:
+worker-src 'self' blob:
+manifest-src 'self'
+frame-src 'self' https://www.googletagmanager.com https://td.doubleclick.net
+object-src 'none'
+base-uri 'self'
+form-action 'self'
+frame-ancestors 'none'
+upgrade-insecure-requests (prod only)
+```
+
+Additional headers:
+```text
+x-content-type-options: nosniff
+x-frame-options: DENY
+referrer-policy: strict-origin-when-cross-origin
+permissions-policy: camera=(), microphone=(), geolocation=(), payment=(), usb=(), magnetometer=(), gyroscope=(), accelerometer=()
+cross-origin-opener-policy: same-origin
+cross-origin-resource-policy: same-origin
+x-dns-prefetch-control: off
+strict-transport-security: max-age=63072000; includeSubDomains; preload (prod only)
+```
+
+`applySecurityHeaders` preserves multiple `set-cookie` via `getSetCookie()` and handles null-body statuses 204/205/304.
+
+---
+
+## 9. UI COMPONENTS AND HOOKS
+
+### 9.1 Essential shadcn files
+
+Only three shadcn UI files plus `utils.ts` are used by app code:
+- `src/components/ui/button.tsx` — imported by 11 files. Has custom `buttonVariants` extra variants `feature`, `dot`, `sale` and added `cursor-pointer`.
+- `src/components/ui/dialog.tsx` — used by storefront.
+- `src/components/ui/dropdown-menu.tsx` — used by storefront.
+- `src/lib/utils.ts` — `cn = twMerge(clsx(inputs))`.
+
+The other 43 files in `src/components/ui/` are scaffolded but unused by app code. They wrap Radix/cmdk/recharts/etc. If exact repo parity matters, copy them; for a functional visual clone, they can be omitted. Do not regenerate with current shadcn CLI if fidelity matters — mixed old/new APIs exist (`forwardRef` vs `data-slot`).
+
+Full UI list: accordion, alert-dialog, alert, aspect-ratio, avatar, badge, breadcrumb, button, calendar, card, carousel, chart, checkbox, collapsible, command, context-menu, dialog, drawer, dropdown-menu, form, hover-card, input-otp, input, label, menubar, navigation-menu, pagination, popover, progress, radio-group, resizable, scroll-area, select, separator, sheet, sidebar, skeleton, slider, sonner, switch, table, tabs, textarea, toggle-group, toggle, tooltip.
+
+### 9.2 App components
+
+- `src/components/storefront.tsx` (~1327 lines): shared announcement/header/drawer/tabbar/footer/dialogs/product card/cart/wishlist/search state. Essential.
+- `src/components/theme.tsx`: 19 lines, `ThemeToggle`.
+- `src/components/Analytics.tsx`: consent-gated GA4 + page/scroll/outbound tracking.
+- `src/components/CookieConsent.tsx`: banner.
+- `src/hooks/use-mobile.tsx`: `MOBILE_BREAKPOINT = 768`, `matchMedia("(max-width: 767px)")`.
+- `src/hooks/use-active-account.ts`: `{ account, avatar, ready, signOut }`, `accountFirstName`, `accountInitials`.
+
+---
+
+## 10. TEST CONTRACTS
+
+If you port tests, these must hold:
+
+- `app-routing.test.tsx`: `router.matchRoutes` resolves `/`, `/shop`, `/login`, `/signup`, `/account`, `/messages`, `/checkout`, `/careers`, `/info/contact`.
+- `account-cleanup.test.ts`: preset buyer `blackrose@gmail.com`; 3 seeded orders; cleanup removes account/orders/chats/application/profile.
+- `account-moderation.test.ts`: default active; case-insensitive ban; banned session null.
+- `orders.test.ts`: 24h window; reason required; shipped blocked; checkout-order isolation; ₦2,000 gross → ₦450 commission, ₦1,550 net; held→released.
+- `recommendations.test.ts`: ids/names exact; focus id 10 top two `[15,22]`; favorites id 5 → `[6,11,19]`; cold start `popular`.
+- `seller-applications.test.ts`: no seeded application; `shewa@gmail.com` dropped; lowercase normalization; resubmit replaces; review notes.
+- `support.test.ts`: 3 seeded tickets; new customer `position: 4`, `waitingAhead: 3`; 4–5min service window.
+- `avatar.test.ts`: magic byte sniffing; 2MiB cap; error codes/messages.
+- `image-safety.test.ts`: raster data URLs, `/`, HTTPS allowed; SVG/HTML/javascript/blob/http/protocol-relative rejected.
+- `security-headers.test.ts`: exact header/CSP values.
+
+---
+
+## 11. ASSETS
+
+Copy `public/` verbatim:
+```text
+public/apple-touch-icon.png       8,641 B   rel=apple-touch-icon in __root
+public/robots.txt                   245 B   allows all bots, disallows /admin (legacy)
+public/suprecart-favicon.png      2,111 B   rel=icon in __root
+public/suprecart-icon.png        21,677 B   standalone seller favicon
+public/suprecart-logo-light.png  62,699 B   dark surfaces, auth aside, seller dark
+public/suprecart-logo.png       718,014 B   default wordmark
+```
+
+No local fonts. All product photos are remote Unsplash URLs in `catalog.ts`. Uploaded images are browser data URLs.
+
+Unreferenced source assets you may omit:
+```text
+src/assets/category-0.jpg ... category-6.jpg
+src/assets/category-sheet.jpg
+src/assets/hero-sneaker.jpg
+src/assets/product-0.jpg ... product-4.jpg
+src/assets/product-sheet.jpg
+src/assets/sale-sneakers.jpg
+suprecart.jpg
+WhatsApp Video 2026-11-14 at 11.34.58.mp4
+```
+Keep them only if preserving design provenance. Legacy `.hero`, `.hero-grid`, category-card, and deal-card CSS remains in `styles.css` but active homepage doesn't use it.
+
+---
+
+## 12. ESSENTIAL FILES CHECKLIST
+
+### 12.1 Copy verbatim if available
+
+```text
+package.json
+package-lock.json
+tsconfig.json
+vite.config.ts
+vitest.config.ts
+eslint.config.js
+.prettierrc
+.prettierignore
+.gitignore
+.gitattributes
+.env.example
+components.json
+CNAME
+README.md
+AGENTS.md
+public/**
+src/styles.css
+src/app-theme.css
+src/start.ts
+src/server.ts
+src/router.tsx
+src/routeTree.gen.ts (or regenerate via plugin)
+src/routes/__root.tsx
+src/routes/index.tsx
+src/routes/shop.tsx
+src/routes/checkout.tsx
+src/routes/account.tsx
+src/routes/login.tsx
+src/routes/signup.tsx
+src/routes/forgot-password.tsx
+src/routes/messages.tsx
+src/routes/support.tsx
+src/routes/careers.tsx
+src/routes/info.$slug.tsx
+src/routes/sellers.tsx
+src/components/storefront.tsx
+src/components/theme.tsx
+src/components/Analytics.tsx
+src/components/CookieConsent.tsx
+src/components/ui/button.tsx
+src/components/ui/dialog.tsx
+src/components/ui/dropdown-menu.tsx
+src/lib/utils.ts
+src/lib/** (all 20 files)
+src/hooks/**
+src/test/** (if porting test suite)
+seller-portal/index.html
+seller-portal/vite.config.ts
+seller-portal/README.md
+seller-portal/src/main.tsx
+seller-portal/src/SellerPortal.tsx
+seller-portal/src/seller.css
+seller-portal/src/standalone.css
+```
+
+### 12.2 Omit for minimal clone
+
+```text
+43 unused src/components/ui/* files (keep only button/dialog/dropdown-menu)
+src/assets/** unreferenced images
+suprecart.jpg
+WhatsApp Video 2026-11-14 at 11.34.58.mp4
+bun.lock (stale) unless regenerated
+roadmap.md (stale/unchecked)
+generated dist/, .output/, .vinxi/, seller-portal/dist/
+```
+
+### 12.3 Full tracked file inventory (152 files)
+
+```text
+.env.example
+.gitattributes
+.gitignore
+.prettierignore
+.prettierrc
+AGENTS.md
+CNAME
+README.md
+WhatsApp Video 2026-11-14 at 11.34.58.mp4
+bun.lock
+bunfig.toml
+components.json
+eslint.config.js
+package-lock.json
+package.json
+public/apple-touch-icon.png
+public/robots.txt
+public/suprecart-favicon.png
+public/suprecart-icon.png
+public/suprecart-logo-light.png
+public/suprecart-logo.png
+roadmap.md
+seller-portal/README.md
+seller-portal/index.html
+seller-portal/src/SellerPortal.tsx
+seller-portal/src/main.tsx
+seller-portal/src/seller.css
+seller-portal/src/standalone.css
+seller-portal/vite.config.ts
+src/app-theme.css
+src/assets/category-0.jpg
+src/assets/category-1.jpg
+src/assets/category-2.jpg
+src/assets/category-3.jpg
+src/assets/category-4.jpg
+src/assets/category-5.jpg
+src/assets/category-6.jpg
+src/assets/category-sheet.jpg
+src/assets/hero-sneaker.jpg
+src/assets/product-0.jpg
+src/assets/product-1.jpg
+src/assets/product-2.jpg
+src/assets/product-3.jpg
+src/assets/product-4.jpg
+src/assets/product-sheet.jpg
+src/assets/sale-sneakers.jpg
+src/components/Analytics.tsx
+src/components/CookieConsent.tsx
+src/components/storefront.tsx
+src/components/theme.tsx
+src/components/ui/accordion.tsx
+src/components/ui/alert-dialog.tsx
+src/components/ui/alert.tsx
+src/components/ui/aspect-ratio.tsx
+src/components/ui/avatar.tsx
+src/components/ui/badge.tsx
+src/components/ui/breadcrumb.tsx
+src/components/ui/button.tsx
+src/components/ui/calendar.tsx
+src/components/ui/card.tsx
+src/components/ui/carousel.tsx
+src/components/ui/chart.tsx
+src/components/ui/checkbox.tsx
+src/components/ui/collapsible.tsx
+src/components/ui/command.tsx
+src/components/ui/context-menu.tsx
+src/components/ui/dialog.tsx
+src/components/ui/drawer.tsx
+src/components/ui/dropdown-menu.tsx
+src/components/ui/form.tsx
+src/components/ui/hover-card.tsx
+src/components/ui/input-otp.tsx
+src/components/ui/input.tsx
+src/components/ui/label.tsx
+src/components/ui/menubar.tsx
+src/components/ui/navigation-menu.tsx
+src/components/ui/pagination.tsx
+src/components/ui/popover.tsx
+src/components/ui/progress.tsx
+src/components/ui/radio-group.tsx
+src/components/ui/resizable.tsx
+src/components/ui/scroll-area.tsx
+src/components/ui/select.tsx
+src/components/ui/separator.tsx
+src/components/ui/sheet.tsx
+src/components/ui/sidebar.tsx
+src/components/ui/skeleton.tsx
+src/components/ui/slider.tsx
+src/components/ui/sonner.tsx
+src/components/ui/switch.tsx
+src/components/ui/table.tsx
+src/components/ui/tabs.tsx
+src/components/ui/textarea.tsx
+src/components/ui/toggle-group.tsx
+src/components/ui/toggle.tsx
+src/components/ui/tooltip.tsx
+src/hooks/use-active-account.ts
+src/hooks/use-mobile.tsx
+src/lib/account-cleanup.ts
+src/lib/account-preferences.ts
+src/lib/accounts.ts
+src/lib/analytics.ts
+src/lib/avatar.ts
+src/lib/catalog.ts
+src/lib/commission.ts
+src/lib/consent.ts
+src/lib/error-capture.ts
+src/lib/error-page.ts
+src/lib/image-safety.ts
+src/lib/input.ts
+src/lib/messages.ts
+src/lib/orders.ts
+src/lib/recommendations.ts
+src/lib/security-headers.ts
+src/lib/seller-applications.ts
+src/lib/support.ts
+src/lib/theme.ts
+src/lib/utils.ts
+src/routeTree.gen.ts
+src/router.tsx
+src/routes/README.md
+src/routes/__root.tsx
+src/routes/account.tsx
+src/routes/careers.tsx
+src/routes/checkout.tsx
+src/routes/forgot-password.tsx
+src/routes/index.tsx
+src/routes/info.$slug.tsx
+src/routes/login.tsx
+src/routes/messages.tsx
+src/routes/sellers.tsx
+src/routes/shop.tsx
+src/routes/signup.tsx
+src/routes/support.tsx
+src/server.ts
+src/start.ts
+src/styles.css
+src/test/account-cleanup.test.ts
+src/test/account-moderation.test.ts
+src/test/app-routing.test.tsx
+src/test/avatar.test.ts
+src/test/image-safety.test.ts
+src/test/orders.test.ts
+src/test/recommendations.test.ts
+src/test/security-headers.test.ts
+src/test/seller-applications.test.ts
+src/test/setup.ts
+src/test/support.test.ts
+suprecart.jpg
+tsconfig.json
+vite.config.ts
+vitest.config.ts
+```
+
+---
+
+## 13. ACCEPTANCE CHECKLIST
+
+Before calling the clone done:
+
+1. `npm install`, `npm run dev`, `npm run build`, `npm run test`, `npm run lint`, `npm run typecheck` all pass.
+2. 19 URLs resolve and 404/error pages match copy.
+3. Theme toggles light/dark with correct tokens and theme-color meta; default dark.
+4. Shared cart/wishlist state persists across `/` and `/shop`; count badges match dialogs and tabbar.
+5. Desktop header, mobile drawer, bottom tabbar, and footer match arrangement and copy exactly.
+6. Checkout hides global shell and uses focused top/bottom bars; receipt explicitly says no payment/order.
+7. `/sellers` bypasses storefront shell and renders Seller Studio; standalone seller app builds on port 5181.
+8. Seeded account `blackrose@gmail.com` signs in with any password; other local accounts use PBKDF2.
+9. Commission, escrow, cancellation, recommendation, support queue, and local-only caveats match contracts.
+10. Consent banner off by default for analytics; marketing never installed; GA only with ID + consent.
+11. Security headers applied to every response.
+12. No copy anywhere implies real order, payment, refund, payout, delivery, subscription, email verification, seller contact, or live agent contact.
+13. Use npm/lockfile as source of truth; do not trust stale `bun.lock`.
+14. Do not hand-edit `routeTree.gen.ts`.
+15. Keep Lovable-safe git history; never force-push published commits.
+
+END OF PROMPT.
